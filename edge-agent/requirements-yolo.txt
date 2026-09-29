@@ -1,0 +1,4 @@
+# Optional: real YOLO inference (GPU build of torch recommended on the edge device)
+-r requirements.txt
+ultralytics>=8.2
+nvidia-ml-py>=12

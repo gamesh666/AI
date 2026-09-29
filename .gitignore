@@ -1,0 +1,31 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# edge runtime
+edge-agent/data/
+*.pt
+*.onnx
+*.engine
+
+# misc
+.DS_Store
+.idea/
+.vscode/

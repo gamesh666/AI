@@ -1,0 +1,203 @@
+# AI VMS platform — full stack.
+# Start from the repository root:  docker compose up -d
+# (the root docker-compose.yml includes this file and loads ../.env)
+#
+# All secrets are read from environment variables; `:?` makes compose fail fast when one is missing.
+
+name: aivms
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  # --------------------------------------------------------------------------- data
+  postgres:
+    image: postgres:16-alpine
+    <<: [*restart, *logging]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aivms}
+      POSTGRES_USER: ${POSTGRES_USER:-aivms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PORT_PUBLISHED:-127.0.0.1:5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    <<: [*restart, *logging]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT_PUBLISHED:-127.0.0.1:6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  minio:
+    # MinIO no longer publishes images on Docker Hub. Default: community build of the official source.
+    # Alternative: MINIO_IMAGE=quay.io/minio/minio:<RELEASE tag>
+    image: ${MINIO_IMAGE:-alpine/minio:RELEASE.2025-10-15T17-29-55Z}
+    <<: [*restart, *logging]
+    # same as the official image (runs as root); the community image's default user cannot write a fresh volume
+    user: "0:0"
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "${MINIO_API_PORT_PUBLISHED:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT_PUBLISHED:-127.0.0.1:9001}:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # --------------------------------------------------------------------------- messaging
+  mosquitto:
+    build: ./mosquitto
+    image: aivms/mosquitto:dev
+    <<: [*restart, *logging]
+    environment:
+      MQTT_BACKEND_USERNAME: ${MQTT_BACKEND_USERNAME:-backend}
+      MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:?MQTT_BACKEND_PASSWORD is required}
+      MQTT_EDGE_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
+      MQTT_EDGE_PASSWORD: ${MQTT_EDGE_PASSWORD:?MQTT_EDGE_PASSWORD is required}
+    volumes:
+      - mosquitto-data:/mosquitto/data
+    ports:
+      - "${MQTT_PORT_PUBLISHED:-1883}:1883"
+
+  # --------------------------------------------------------------------------- streaming
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.1
+    <<: [*restart, *logging]
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    environment:
+      MTX_AUTHHTTPADDRESS: http://backend:8000/api/v1/streams/mediamtx/auth
+      # comma-separated public IPs/hostnames for WebRTC ICE candidates
+      MTX_WEBRTCADDITIONALHOSTS: ${MEDIAMTX_WEBRTC_ADDITIONAL_HOSTS:-}
+    ports:
+      - "${MEDIAMTX_RTSP_PORT_PUBLISHED:-8554}:8554"      # RTSP publish (edge)
+      - "${MEDIAMTX_HLS_PORT_PUBLISHED:-8888}:8888"       # HLS
+      - "${MEDIAMTX_WEBRTC_PORT_PUBLISHED:-8889}:8889"    # WebRTC / WHEP (HTTP)
+      - "${MEDIAMTX_WEBRTC_UDP_PORT_PUBLISHED:-8189}:8189/udp"  # WebRTC ICE
+
+  # --------------------------------------------------------------------------- application
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    image: aivms/backend:dev
+    <<: [*restart, *logging]
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-aivms}
+      POSTGRES_USER: ${POSTGRES_USER:-aivms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:?CREDENTIAL_ENCRYPTION_KEY is required}
+      EDGE_PROVISIONING_TOKEN: ${EDGE_PROVISIONING_TOKEN:?EDGE_PROVISIONING_TOKEN is required}
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-admin}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?INITIAL_ADMIN_PASSWORD is required}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      DEMO_DEVICE_UUID: ${EDGE_DEVICE_UUID:-edge-demo-001}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      MQTT_USERNAME: ${MQTT_BACKEND_USERNAME:-backend}
+      MQTT_PASSWORD: ${MQTT_BACKEND_PASSWORD}
+      MQTT_SHARED_GROUP: ${MQTT_SHARED_GROUP:-backend}
+      MQTT_PUBLIC_HOST: ${MQTT_PUBLIC_HOST:-localhost}
+      MQTT_PUBLIC_PORT: ${MQTT_PORT_PUBLISHED:-1883}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_SNAPSHOTS: ${MINIO_BUCKET_SNAPSHOTS:-snapshots}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+      # host edge agents use to upload snapshots (presigned URLs are signed for this exact host)
+      MINIO_EDGE_URL: ${MINIO_EDGE_URL:-http://minio:9000}
+      MEDIAMTX_WEBRTC_PUBLIC_URL: ${MEDIAMTX_WEBRTC_PUBLIC_URL:-http://localhost:8889}
+      MEDIAMTX_HLS_PUBLIC_URL: ${MEDIAMTX_HLS_PUBLIC_URL:-http://localhost:8888}
+      MEDIAMTX_RTSP_PUBLISH_URL: ${MEDIAMTX_RTSP_PUBLISH_URL:-rtsp://localhost:8554}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_started }
+      mosquitto: { condition: service_started }
+    ports:
+      - "${BACKEND_PORT_PUBLISHED:-8000}:8000"
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    image: aivms/frontend:dev
+    <<: [*restart, *logging]
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT_PUBLISHED:-3000}:3000"
+
+  # --------------------------------------------------------------------------- demo edge (optional)
+  # docker compose --profile edge up -d
+  # Runs an edge agent in this compose network. With SEED_DEMO_DATA=true the backend creates a demo
+  # site/device/camera (mock://testsrc -> ffmpeg test pattern) and the mock detector emits events.
+  edge-agent:
+    profiles: ["edge"]
+    build:
+      context: ..
+      dockerfile: edge-agent/Dockerfile
+    image: aivms/edge-agent:dev
+    <<: [*restart, *logging]
+    environment:
+      EDGE_DEVICE_UUID: ${EDGE_DEVICE_UUID:-edge-demo-001}
+      EDGE_DEVICE_NAME: ${EDGE_DEVICE_NAME:-Demo Edge}
+      EDGE_API_URL: http://backend:8000/api/v1
+      EDGE_PROVISIONING_TOKEN: ${EDGE_PROVISIONING_TOKEN}
+      EDGE_MQTT_HOST: mosquitto
+      EDGE_MQTT_PORT: 1883
+      EDGE_MQTT_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
+      EDGE_MQTT_PASSWORD: ${MQTT_EDGE_PASSWORD}
+      EDGE_RTSP_PUBLISH_URL: rtsp://mediamtx:8554
+      EDGE_DETECTOR: ${EDGE_DETECTOR:-mock}
+    volumes:
+      - edge-data:/var/lib/aivms-edge
+    depends_on:
+      - backend
+      - mosquitto
+      - mediamtx
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  mosquitto-data:
+  edge-data:

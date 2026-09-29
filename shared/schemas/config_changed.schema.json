@@ -1,0 +1,32 @@
+{
+  "description": "Notification only. Config content (incl. RTSP credentials) is fetched over REST.",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "type": "integer"
+    },
+    "changed_at": {
+      "format": "date-time",
+      "title": "Changed At",
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "title": "ConfigChanged",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

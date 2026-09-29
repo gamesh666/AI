@@ -1,0 +1,25 @@
+# Edge agent configuration. Point EDGE_CONFIG_FILE at this file.
+# Every key can also be set as an environment variable: EDGE_<KEY> (env wins).
+# Secrets (provisioning_token, mqtt_password, device_key) should be passed via env, not this file.
+
+device_uuid: edge-001
+device_name: Warehouse Gate Edge
+data_dir: /var/lib/aivms-edge
+
+api_url: https://vms.example.com/api/v1
+
+mqtt_host: vms.example.com
+mqtt_port: 1883
+mqtt_username: edge
+mqtt_tls: false
+
+stream_relay_enabled: true
+rtsp_publish_url: rtsp://vms.example.com:8554
+
+detector: mock          # mock | yolo
+inference_fps: 2
+min_confidence: 0.5
+event_cooldown_seconds: 5
+
+snapshot_enabled: true
+heartbeat_interval_seconds: 10

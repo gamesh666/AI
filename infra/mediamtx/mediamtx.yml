@@ -1,0 +1,68 @@
+###############################################################################
+# MediaMTX configuration for the AI VMS platform
+#
+# Edge agents PUBLISH RTSP to rtsp://mediamtx:8554/<stream_id>
+# Browsers READ via WebRTC/WHEP (:8889) or HLS (:8888)
+# Every publish/read is authorized by the backend (authMethod: http).
+#
+# Settings can be overridden with env vars: MTX_<KEY> (e.g. MTX_WEBRTCADDITIONALHOSTS)
+###############################################################################
+
+logLevel: info
+logDestinations: [stdout]
+
+readTimeout: 10s
+writeTimeout: 10s
+writeQueueSize: 512
+udpMaxPayloadSize: 1472
+
+# ---- authentication: delegated to backend ----------------------------------
+authMethod: http
+authHTTPAddress: http://backend:8000/api/v1/streams/mediamtx/auth
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+# ---- control API (internal network only, not published in compose) ---------
+api: yes
+apiAddress: :9997
+metrics: yes
+metricsAddress: :9998
+
+# ---- RTSP (edge publish) ----------------------------------------------------
+rtsp: yes
+rtspTransports: [tcp]
+rtspAddress: :8554
+
+rtmp: no
+srt: no
+moq: no
+
+# ---- HLS (fallback playback) -------------------------------------------------
+hls: yes
+hlsAddress: :8888
+hlsAlwaysRemux: no
+hlsVariant: lowLatency
+hlsSegmentCount: 7
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+
+# ---- WebRTC (primary playback) -----------------------------------------------
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: ""
+# public IPs / hostnames browsers can reach; set MTX_WEBRTCADDITIONALHOSTS in .env
+webrtcAdditionalHosts: []
+webrtcICEServers2: []
+
+# ---- paths --------------------------------------------------------------------
+pathDefaults:
+  source: publisher
+  overridePublisher: yes
+  # future: event clips -> record: yes, recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+
+paths:
+  # any path name (stream_id); authorization is enforced by the backend hook
+  all_others:

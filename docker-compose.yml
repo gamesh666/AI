@@ -1,0 +1,7 @@
+# Entry point: `docker compose up -d` from the repository root.
+# The stack definition lives in infra/docker-compose.yml; variables come from ./.env
+name: aivms
+
+include:
+  - path: infra/docker-compose.yml
+    env_file: .env

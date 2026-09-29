@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aivms-shared"
+version = "0.1.0"
+description = "Shared MQTT topics and payload contracts for the AI VMS platform"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.6,<3"]
+
+[tool.setuptools]
+packages = ["aivms_shared"]

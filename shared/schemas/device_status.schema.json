@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "CameraState": {
+      "enum": [
+        "online",
+        "offline",
+        "error"
+      ],
+      "title": "CameraState",
+      "type": "string"
+    },
+    "CameraStatus": {
+      "properties": {
+        "camera_id": {
+          "title": "Camera Id",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/CameraState"
+        },
+        "fps": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fps"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        }
+      },
+      "required": [
+        "camera_id",
+        "state"
+      ],
+      "title": "CameraStatus",
+      "type": "object"
+    },
+    "DeviceState": {
+      "enum": [
+        "online",
+        "offline"
+      ],
+      "title": "DeviceState",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "device_uuid": {
+      "title": "Device Uuid",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/DeviceState"
+    },
+    "cameras": {
+      "items": {
+        "$ref": "#/$defs/CameraStatus"
+      },
+      "title": "Cameras",
+      "type": "array"
+    }
+  },
+  "required": [
+    "device_uuid",
+    "state"
+  ],
+  "title": "DeviceStatus",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

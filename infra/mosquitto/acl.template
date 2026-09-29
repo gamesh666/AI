@@ -1,0 +1,13 @@
+# Generated from acl.template by entrypoint.sh — do not edit the generated file.
+
+# central backend: consume edge telemetry, send commands/config
+user ${MQTT_BACKEND_USERNAME}
+topic read edge/#
+topic write server/#
+
+# edge agents (shared account in the MVP): publish telemetry, receive commands.
+# Payload device_id is cross-checked against the topic by the backend.
+# Production: per-device credentials via EMQX HTTP auth / mosquitto-go-auth.
+user ${MQTT_EDGE_USERNAME}
+topic write edge/#
+topic read server/#

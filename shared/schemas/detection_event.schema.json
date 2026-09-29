@@ -1,0 +1,143 @@
+{
+  "$defs": {
+    "BBox": {
+      "properties": {
+        "x1": {
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "title": "Y1",
+          "type": "number"
+        },
+        "x2": {
+          "title": "X2",
+          "type": "number"
+        },
+        "y2": {
+          "title": "Y2",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x1",
+        "y1",
+        "x2",
+        "y2"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "Detection": {
+      "properties": {
+        "class_id": {
+          "title": "Class Id",
+          "type": "integer"
+        },
+        "class_name": {
+          "title": "Class Name",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "bbox": {
+          "$ref": "#/$defs/BBox"
+        }
+      },
+      "required": [
+        "class_id",
+        "class_name",
+        "confidence",
+        "bbox"
+      ],
+      "title": "Detection",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "event_id": {
+      "format": "uuid",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "device_id": {
+      "title": "Device Id",
+      "type": "string"
+    },
+    "camera_id": {
+      "title": "Camera Id",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "model": {
+      "title": "Model",
+      "type": "string"
+    },
+    "detections": {
+      "items": {
+        "$ref": "#/$defs/Detection"
+      },
+      "title": "Detections",
+      "type": "array"
+    },
+    "snapshot_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "MinIO object key of the snapshot",
+      "title": "Snapshot Key"
+    },
+    "frame_width": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Frame Width"
+    },
+    "frame_height": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Frame Height"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "device_id",
+    "camera_id",
+    "model",
+    "detections"
+  ],
+  "title": "DetectionEvent",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
