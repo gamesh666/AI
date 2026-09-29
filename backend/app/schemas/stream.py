@@ -5,10 +5,16 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app.core.enums import StreamStatus, StreamType
+
 
 class StreamInfo(BaseModel):
+    """Everything a browser needs to play a camera — and nothing about the camera itself."""
+
     camera_id: uuid.UUID
-    stream_id: str
+    camera_code: str
+    status: StreamStatus
+    stream_type: StreamType
     webrtc_url: str
     hls_url: str
     token: str

@@ -20,13 +20,23 @@ export function Badge({ tone = "gray", children }: { tone?: Tone; children: Reac
 
 const STATUS_TONE: Record<string, Tone> = {
   online: "green",
+  streaming: "green",
+  running: "green",
   offline: "red",
   error: "red",
   pending: "yellow",
+  connecting: "yellow",
+  loading: "yellow",
   unknown: "gray",
+  idle: "gray",
+  disabled: "gray",
 };
 
-export function StatusBadge({ status }: { status: string | null | undefined }) {
+export function StatusBadge({ status, label }: { status: string | null | undefined; label?: string }) {
   const s = status ?? "unknown";
-  return <Badge tone={STATUS_TONE[s] ?? "gray"}>{s}</Badge>;
+  return (
+    <Badge tone={STATUS_TONE[s] ?? "gray"}>
+      {label ? `${label} ${s}` : s}
+    </Badge>
+  );
 }

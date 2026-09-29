@@ -1,10 +1,11 @@
 import uuid
 
 from app.core.crypto import encrypt_secret
+from app.core.enums import StreamType
 from app.models.camera import Camera
-from app.services.camera_service import build_authenticated_url, split_credentials
-from app.services.mappers import mask_rtsp_url
+from app.services.camera_service import build_authenticated_url, build_stream_path, split_credentials
 from app.services.storage_service import build_snapshot_key, key_belongs_to_device
+from app.services.stream_service import split_stream_path
 
 
 def test_split_credentials_strips_userinfo():
@@ -23,8 +24,19 @@ def test_authenticated_url_is_rebuilt_for_edge_only():
     assert build_authenticated_url(cam) == "rtsp://admin:p%40ss%3A1@10.0.0.5:554/s"
 
 
-def test_mask_never_leaks_credentials():
-    assert mask_rtsp_url("rtsp://u:p@host:554/a") == "rtsp://host:554/a"
+def test_stream_path_uses_system_ids_not_camera_ip():
+    assert build_stream_path("site01", "edge01", "cam01") == "ai/site01/edge01/cam01"
+    assert build_stream_path(None, "edge01", "cam01") == "ai/unassigned/edge01/cam01"
+    assert build_stream_path("site01", "edge01", "cam01", StreamType.ORIGINAL) == "original/site01/edge01/cam01"
+
+
+def test_split_stream_path():
+    assert split_stream_path("ai/site01/edge01/cam01") == (StreamType.AI, "ai/site01/edge01/cam01")
+    assert split_stream_path("/original/site01/edge01/cam01") == (StreamType.ORIGINAL, "ai/site01/edge01/cam01")
+    assert split_stream_path("cam01") is None
+    assert split_stream_path("ai/site01/cam01") is None
+    assert split_stream_path("hack/site01/edge01/cam01") is None
+    assert split_stream_path("ai/a/b/c/d") is None
 
 
 def test_snapshot_key_ownership():

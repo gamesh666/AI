@@ -1,64 +1,115 @@
+"""Integration: real threads, synthetic camera, mock detector — no network needed."""
+
+import time
+
 import numpy as np
-import pytest
 
-from agent.camera.stream_relay import build_ffmpeg_command, build_publish_url
-from agent.inference.base import BoundingBox, Detection
-from agent.inference.factory import create_detector
-from agent.inference.mock_detector import MockDetector
-from agent.pipeline.event_builder import build_event
-from agent.pipeline.throttle import EventThrottle
-
-
-def test_mock_detector_returns_valid_boxes():
-    det = MockDetector(probability=1.0, seed=42)
-    frame = np.zeros((720, 1280, 3), dtype=np.uint8)
-    results = det.detect(frame)
-    assert 1 <= len(results) <= 3
-    for d in results:
-        assert 0 <= d.bbox.x1 < d.bbox.x2 <= 1280
-        assert 0 <= d.bbox.y1 < d.bbox.y2 <= 720
-        assert 0 <= d.confidence <= 1
+import agent.camera.pipeline as pipeline_mod
+from agent.camera.manager import CameraManager
+from agent.camera.pipeline import CameraPipeline, PipelineContext
+from agent.config.settings import AgentSettings
+from agent.streaming.factory import PublishEndpoint
+from aivms_shared.payloads import AiStatus, RtspStatus, StreamStatus
 
 
-def test_mock_detector_probability_zero():
-    assert MockDetector(probability=0.0).detect(np.zeros((10, 10, 3), dtype=np.uint8)) == []
+class FakeMQTT:
+    def __init__(self):
+        self.events, self.statuses = [], []
+
+    def detection(self, event):
+        self.events.append(event)
+
+    def camera_status(self, status):
+        self.statuses.append(status)
 
 
-def test_factory_rejects_unknown():
-    with pytest.raises(ValueError):
-        create_detector("nope", None)
+class RecordingPublisher:
+    """StreamPublisher double; can simulate a media server outage."""
+
+    def __init__(self):
+        self.frames: list[np.ndarray] = []
+        self.status = StreamStatus.CONNECTING
+        self.last_error = None
+        self.down = False
+
+    def publish(self, frame):
+        if self.down:
+            self.status, self.last_error = StreamStatus.ERROR, "media server unavailable"
+            return False
+        self.frames.append(frame)
+        self.status = StreamStatus.STREAMING
+        return True
+
+    def stop(self):
+        self.status = StreamStatus.OFFLINE
 
 
-def test_throttle_cooldown():
-    now = [0.0]
-    t = EventThrottle(5, clock=lambda: now[0])
-    assert t.allow("person")
-    assert not t.allow("person")
-    assert t.allow("car")
-    now[0] = 5.1
-    assert t.allow("person")
+def _ctx(mqtt):
+    s = AgentSettings(device_uuid="edge01", tracker="iou", min_confidence=0.5, snapshot_enabled=False)
+    return PipelineContext(settings=s, device_id="edge01", publisher=mqtt, uploader=None,
+                           endpoint=PublishEndpoint("rtsp", "rtsp://127.0.0.1:1", "edge01", "k"))
 
 
-def test_event_matches_contract():
-    d = Detection(0, "person", 0.95, BoundingBox(100, 120, 400, 650))
-    ev = build_event("edge-001", "cam-001", "yolov8n", [d], (720, 1280, 3), "snapshots/k.jpg")
-    body = ev.model_dump(mode="json")
-    assert body["device_id"] == "edge-001"
-    assert body["camera_id"] == "cam-001"
-    assert body["detections"][0] == {
-        "class_id": 0,
-        "class_name": "person",
-        "confidence": 0.95,
-        "bbox": {"x1": 100, "y1": 120, "x2": 400, "y2": 650},
-    }
-    assert body["frame_width"] == 1280
+def test_pipeline_streams_annotated_video_and_emits_events(monkeypatch, camera_config):
+    publishers = []
+    monkeypatch.setattr(pipeline_mod, "create_publisher",
+                        lambda *a, **k: publishers.append(RecordingPublisher()) or publishers[-1])
+    mqtt = FakeMQTT()
+    p = CameraPipeline(camera_config("cam01"), _ctx(mqtt))
+    p.start()
+    try:
+        time.sleep(2.0)
+        # media server goes down: streaming fails, AI keeps running
+        publishers[0].down = True
+        events_before = len(mqtt.events)
+        time.sleep(1.5)
+        st = p.status()
+    finally:
+        p.stop()
+
+    frames = publishers[0].frames
+    assert 10 <= len(frames) <= 25, len(frames)  # ~10 fps for ~2 s
+    assert frames[0].shape == (180, 320, 3)
+    assert st.rtsp_status == RtspStatus.ONLINE and st.ai_status == AiStatus.RUNNING
+    assert st.stream_status == StreamStatus.ERROR and "media server unavailable" in st.error
+    assert st.inference_fps > 2 and st.input_fps > 15
+    assert mqtt.events and all(d.track_id for e in mqtt.events for d in e.detections)
+    assert mqtt.events[0].camera_id == "cam01" and mqtt.events[0].frame.width == 320
+    assert st.inference_fps > 0 and len(mqtt.events) >= events_before
 
 
-def test_publish_url_escapes_credentials():
-    url = build_publish_url("rtsp://mediamtx:8554", "cam-1", "edge-001", "k/e:y")
-    assert url == "rtsp://edge-001:k%2Fe%3Ay@mediamtx:8554/cam-1"
+def test_camera_failures_are_isolated(monkeypatch, camera_config):
+    monkeypatch.setattr(pipeline_mod, "create_publisher", lambda *a, **k: RecordingPublisher())
+
+    def factory(camera, ctx):
+        if camera.camera_id == "cam02":
+            raise RuntimeError("bad camera config")
+        return CameraPipeline(camera, ctx)
+
+    mgr = CameraManager(_ctx(FakeMQTT()), factory=factory)
+    cams = [camera_config("cam01"), camera_config("cam02"),
+            camera_config("cam03", rtsp_url="rtsp://127.0.0.1:1/unreachable")]
+    mgr.apply(cams)
+    try:
+        time.sleep(1.5)
+        statuses = {s.camera_id: s for s in mgr.statuses()}
+    finally:
+        mgr.stop_all()
+    assert set(statuses) == {"cam01", "cam03"}
+    assert statuses["cam01"].rtsp_status == RtspStatus.ONLINE and statuses["cam01"].output_fps > 0
+    assert statuses["cam03"].rtsp_status in (RtspStatus.OFFLINE, RtspStatus.CONNECTING)
 
 
-def test_ffmpeg_copy_for_rtsp():
-    cmd = build_ffmpeg_command("ffmpeg", "rtsp://cam/1", "rtsp://x/y")
-    assert "-c" in cmd and cmd[cmd.index("-c") + 1] == "copy"
+def test_manager_restarts_only_changed_cameras(monkeypatch, camera_config):
+    monkeypatch.setattr(pipeline_mod, "create_publisher", lambda *a, **k: RecordingPublisher())
+    mgr = CameraManager(_ctx(FakeMQTT()))
+    mgr.apply([camera_config("cam01"), camera_config("cam02")])
+    try:
+        first = dict(mgr._pipelines)
+        mgr.apply([camera_config("cam01"), camera_config("cam02", name="Renamed")])
+        assert mgr._pipelines["cam01"] is first["cam01"]
+        assert mgr._pipelines["cam02"] is not first["cam02"]
+        mgr.apply([camera_config("cam01")])
+        assert mgr.camera_ids() == ["cam01"]
+    finally:
+        mgr.stop_all()

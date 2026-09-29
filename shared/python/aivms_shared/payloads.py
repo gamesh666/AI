@@ -2,6 +2,9 @@
 
 Both the backend (consumer) and the edge agent (producer) import these models,
 so a contract change is a single edit here.
+
+Video never travels over MQTT: these payloads carry metadata only. Annotated video is
+an H.264 stream pushed from the edge to MediaMTX.
 """
 
 from __future__ import annotations
@@ -44,7 +47,7 @@ class Heartbeat(_Payload):
     gpu_memory: int | None = Field(default=None, description="Total GPU memory in MB")
 
 
-# ---- status ----------------------------------------------------------------
+# ---- device status (edge/{device}/status, retained, also the MQTT Last Will) -----
 
 
 class DeviceState(StrEnum):
@@ -52,24 +55,49 @@ class DeviceState(StrEnum):
     OFFLINE = "offline"
 
 
-class CameraState(StrEnum):
+class DeviceStatus(_Payload):
+    device_uuid: str
+    timestamp: datetime = Field(default_factory=utcnow)
+    state: DeviceState
+
+
+# ---- per-camera health (edge/{device}/cameras/{camera}/status) --------------------
+
+
+class RtspStatus(StrEnum):
+    CONNECTING = "connecting"
     ONLINE = "online"
     OFFLINE = "offline"
     ERROR = "error"
 
 
-class CameraStatus(_Payload):
+class AiStatus(StrEnum):
+    DISABLED = "disabled"
+    LOADING = "loading"
+    RUNNING = "running"
+    ERROR = "error"
+
+
+class StreamStatus(StrEnum):
+    OFFLINE = "offline"
+    CONNECTING = "connecting"
+    STREAMING = "streaming"
+    ERROR = "error"
+
+
+class CameraRuntimeStatus(_Payload):
     camera_id: str
-    state: CameraState
-    fps: float | None = None
-    error: str | None = None
-
-
-class DeviceStatus(_Payload):
-    device_uuid: str
     timestamp: datetime = Field(default_factory=utcnow)
-    state: DeviceState
-    cameras: list[CameraStatus] = Field(default_factory=list)
+    rtsp_status: RtspStatus
+    ai_status: AiStatus
+    stream_status: StreamStatus
+    input_fps: float = 0.0
+    inference_fps: float = 0.0
+    output_fps: float = 0.0
+    resolution: str | None = Field(default=None, description="Source resolution, e.g. 1920x1080")
+    last_frame_at: datetime | None = None
+    dropped_frames: int = 0
+    error: str | None = None
 
 
 # ---- detection -------------------------------------------------------------
@@ -83,10 +111,17 @@ class BBox(BaseModel):
 
 
 class Detection(BaseModel):
+    track_id: int | None = None
     class_id: int
     class_name: str
     confidence: float = Field(ge=0, le=1)
     bbox: BBox
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class FrameInfo(BaseModel):
+    width: int
+    height: int
 
 
 class DetectionEvent(_Payload):
@@ -95,10 +130,9 @@ class DetectionEvent(_Payload):
     camera_id: str
     timestamp: datetime = Field(default_factory=utcnow)
     model: str
+    frame: FrameInfo | None = None
     detections: list[Detection]
-    snapshot_key: str | None = Field(default=None, description="MinIO object key of the snapshot")
-    frame_width: int | None = None
-    frame_height: int | None = None
+    snapshot_key: str | None = Field(default=None, description="MinIO object key of the annotated snapshot")
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -130,6 +164,7 @@ class ConfigChanged(_Payload):
 ALL_PAYLOADS: dict[str, type[BaseModel]] = {
     "heartbeat": Heartbeat,
     "device_status": DeviceStatus,
+    "camera_status": CameraRuntimeStatus,
     "detection_event": DetectionEvent,
     "command": Command,
     "config_changed": ConfigChanged,

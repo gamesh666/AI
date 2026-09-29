@@ -2,6 +2,10 @@
 
 本文件是 MVP Framework 的設計基準。程式碼依照本文件產生；後續擴充請先更新本文件。
 
+> **v2 更新**：影像架構已改為「Edge 完成 YOLO 辨識後，將畫上 BBox / Label / Confidence / Track ID 的
+> H.264 影像主動 Push 到中央 MediaMTX」。影像管線、Detection 資料流、多攝影機架構與 Edge → Server
+> 串流策略請見 **[`video-architecture.md`](video-architecture.md)**；本文件其餘章節（DB / API / MQTT）已同步更新。
+
 ---
 
 ## 1. Architecture Design
@@ -30,8 +34,8 @@
  │  ┌──────────────────────┐ │ │         ▼                    │  └─ Device monitor   │  │  (+ cache/lock)   │
  │  │ Edge Agent (Python)  │ │ │   ┌───────────┐  auth hook   └──────────┬───────────┘  │                   │
  │  │  ├─ RTSP reader(CV2) │─┼─┼──►│ MediaMTX  │─────────────────────────┘              │                   │
- │  │  ├─ YOLO (local)     │ │ │   └───────────┘  (FFmpeg RTSP publish)                 │                   │
- │  │  ├─ FFmpeg relay     │ │ │   ┌───────────┐                                        │                   │
+ │  │  ├─ YOLO + overlay   │ │ │   └───────────┘  (H.264 annotated, RTSP/SRT push)      │                   │
+ │  │  ├─ H.264 encoder    │ │ │   ┌───────────┐                                        │                   │
  │  │  ├─ MQTT client      │─┼─┼──►│ Mosquitto │────────────────────────────────────────┘                   │
  │  │  └─ REST client      │─┼─┼──►│ / EMQX    │  events / heartbeat / status                              │
  │  └──────────────────────┘ │ │   └───────────┘                                                            │
@@ -63,7 +67,7 @@ Device monitor (Redis lock 保證只有一個實例執行) → last_seen 超過 
 
 **(c) 影像**
 ```
-IP Camera ─RTSP→ Edge Agent FFmpeg (-c copy) ─RTSP publish→ MediaMTX path {stream_id}
+IP Camera ─RTSP→ Edge (capture → YOLO → overlay → H.264) ─RTSP/SRT push→ MediaMTX path ai/{site}/{device}/{camera}
 Browser ─WHEP (WebRTC)→ MediaMTX   （失敗時）─HLS→ MediaMTX
 MediaMTX 每次 publish/read 都呼叫 Backend /api/v1/streams/mediamtx/auth 驗證
 ```
@@ -84,7 +88,7 @@ MediaMTX 每次 publish/read 都呼叫 Backend /api/v1/streams/mediamtx/auth 驗
 |------|---------|
 | Backend | 無狀態；`docker compose up --scale backend=N` + LB。MQTT 使用 shared subscription `$share/backend/...`，WS 走 Redis Pub/Sub |
 | MQTT | Mosquitto 單機（MVP）→ EMQX cluster（替換連線設定即可） |
-| MediaMTX | 依 stream_id 分片到多台 MediaMTX；`streams` API 回傳的 URL 由 Backend 決定，前端不寫死 |
+| MediaMTX | 依 stream_path（site / device）分片到多台 MediaMTX；`/cameras/{id}/stream` 回傳的 URL 由 Backend 決定，前端不寫死 |
 | PostgreSQL | detection_events 依 `detected_at` 建索引；未來可改 TimescaleDB / 依月份 partition |
 | MinIO | 分散式模式；bucket `snapshots`，物件 key 以 `{yyyy}/{mm}/{dd}/{device}/{camera}/{uuid}.jpg` 分散 |
 | Edge | 每台 Edge 獨立；每支攝影機一個 pipeline thread |
@@ -154,9 +158,12 @@ project-root/
 │       ├── api_client/          # Backend REST client
 │       ├── messaging/           # MQTT client, publisher, command handler
 │       ├── telemetry/           # system metrics (CPU/MEM/GPU/溫度), heartbeat loop
-│       ├── camera/              # RTSP reader (OpenCV), FFmpeg relay, camera manager
-│       ├── inference/           # Detector 介面, MockDetector, YoloDetector(stub), factory
-│       ├── pipeline/            # camera pipeline, event builder, 節流
+│       ├── config/              # settings (env/YAML) + server config models
+│       ├── camera/              # capture (decoder + reconnect), pipeline, manager, synthetic source
+│       ├── ai/                  # Detector 介面, Mock/YOLO detector, tracking, inference worker, event processor
+│       ├── video/               # overlay renderer, VideoEncoder (FFmpeg/NVENC/GStreamer), render worker
+│       ├── streaming/           # StreamPublisher (RTSP / SRT), publish worker, original passthrough
+│       ├── monitoring/          # per-camera health (fps, rtsp/ai/stream status)
 │       └── storage/             # snapshot uploader (presigned PUT)
 ├── shared/
 │   ├── python/aivms_shared/     # 共用：MQTT topics、payload models（Backend/Edge 共用）
@@ -204,7 +211,7 @@ sites ─< edge_devices ─< cameras >─ ai_models
 | id uuid PK | user_id FK | token_hash (sha256, unique) | expires_at | revoked_at null | created_at |
 
 ### sites
-| id uuid PK | name varchar(128) unique | address varchar(255) | description text | created_at / updated_at |
+| id uuid PK | name varchar(128) unique | **code varchar(32) unique**（stream path 用，例 `site01`） | address varchar(255) | description text | created_at / updated_at |
 
 ### edge_devices
 | 欄位 | 型別 | 說明 |
@@ -234,7 +241,12 @@ sites ─< edge_devices ─< cameras >─ ai_models
 | rtsp_username | varchar(128) null | **擴充**：明文帳號（不回傳前端） |
 | rtsp_password_encrypted | text null | **擴充**：Fernet 加密 |
 | onvif_url | varchar(512) null | **擴充**：ONVIF device service |
-| stream_id | varchar(64) unique | MediaMTX path |
+| code | varchar(32) | camera ID（同一 Edge 內唯一，例 `cam01`；MQTT 的 camera_id） |
+| stream_path | varchar(255) unique | `ai/{site}/{device}/{camera}`（原始影像：`original/…`） |
+| stream_enabled / annotated_stream_enabled / original_stream_enabled | bool | 串流開關 |
+| resolution / stream_fps / inference_fps / video_codec / bitrate / gop_size | | 編碼與推論設定 |
+| stream_status | enum(offline, connecting, streaming, error) | Edge 回報 |
+| ai_status / last_frame_at / runtime_stats | | Edge 回報（fps、解析度、drop 數、錯誤） |
 | enabled / ai_enabled | bool | |
 | ai_model_id | FK ai_models null | **擴充**：此攝影機使用的模型 |
 | status | enum(unknown, online, offline, error) | **擴充**：Edge 回報 |
@@ -293,7 +305,7 @@ Base path `/api/v1`。管理 API 使用 `Authorization: Bearer <access_token>`�
 | GET | `/events/{id}` | viewer+ | |
 | DELETE | `/events/{id}` | admin | |
 | GET | `/dashboard/summary` | viewer+ | online/offline devices, camera count, active cameras, events today |
-| GET | `/streams/{camera_id}` | viewer+ | 回傳 WebRTC(WHEP) / HLS URL + 短效 stream token |
+| GET | `/cameras/{camera_id}/stream?type=ai\|original` | viewer+ | 回傳 WebRTC(WHEP) / HLS URL + 短效 stream token（不含任何 camera 位址） |
 | POST | `/streams/mediamtx/auth` | MediaMTX | MediaMTX HTTP auth hook |
 | POST | `/edge/register` | provisioning token | Edge 註冊 |
 | GET | `/edge/config` | device key | 攝影機（含 RTSP 帳密）、模型、MQTT topics |
@@ -315,10 +327,11 @@ WebSocket 訊息格式：
 | `edge/{device_id}/status` | Edge → Server | 1 | yes | online/offline（LWT）+ 攝影機狀態 |
 | `edge/{device_id}/events` | Edge → Server | 1 | no | 裝置層級事件 / 未指定攝影機的偵測 |
 | `edge/{device_id}/cameras/{camera_id}/events` | Edge → Server | 1 | no | YOLO 偵測事件（主要路徑） |
+| `edge/{device_id}/cameras/{camera_id}/status` | Edge → Server | 0 | no | 每支 camera 的 RTSP / AI / stream 健康狀態 |
 | `server/{device_id}/command` | Server → Edge | 1 | no | `reload_config`、`restart_camera`、`snapshot`… |
 | `server/{device_id}/config` | Server → Edge | 1 | yes | 設定變更通知（Edge 收到後呼叫 REST 拉最新設定） |
 
-- `{device_id}` = `edge_devices.device_uuid`；`{camera_id}` = `cameras.id`（UUID）。
+- `{device_id}` = `edge_devices.device_uuid`；`{camera_id}` = `cameras.code`（例 `cam01`）。
 - Backend 訂閱使用 shared subscription：`$share/{MQTT_SHARED_GROUP}/edge/+/heartbeat` 等，N 個 backend 實例自動分流。Mosquitto 2.x 與 EMQX 皆支援。
 - Edge 使用 LWT（Last Will）在 `edge/{device_id}/status` 發布 `{"state":"offline"}`，斷線即時反應。
 - 設定檔內容**不**經 MQTT 傳送（避免 RTSP 帳密出現在 broker），`server/{id}/config` 只通知版本，Edge 透過 HTTPS REST 拉取。
@@ -330,15 +343,20 @@ Payloads（完整 schema 見 `shared/schemas/*.json`）：
 { "device_uuid": "edge-001", "timestamp": "2026-01-01T00:00:00Z", "cpu_usage": 12.5, "memory_usage": 40.1,
   "gpu_usage": 30.0, "gpu_memory_usage": 22.0, "temperature": 55.0, "agent_version": "0.1.0" }
 
-// status
-{ "device_uuid": "edge-001", "timestamp": "...", "state": "online",
-  "cameras": [ { "camera_id": "uuid", "state": "online", "fps": 15.0, "error": null } ] }
+// device status (retained; MQTT Last Will = offline)
+{ "device_uuid": "edge01", "timestamp": "...", "state": "online" }
 
-// detection event
-{ "event_id": "uuid", "device_id": "edge-001", "camera_id": "uuid", "timestamp": "...", "model": "yolov8n",
-  "snapshot_key": "2026/01/01/edge-001/<camera_id>/<uuid>.jpg",
-  "detections": [ { "class_id": 0, "class_name": "person", "confidence": 0.95,
-                    "bbox": { "x1": 100, "y1": 120, "x2": 400, "y2": 650 } } ] }
+// camera status  edge/{device}/cameras/{camera}/status
+{ "camera_id": "cam01", "rtsp_status": "online", "ai_status": "running", "stream_status": "streaming",
+  "input_fps": 30, "inference_fps": 5, "output_fps": 25, "resolution": "1920x1080",
+  "last_frame_at": "ISO8601", "dropped_frames": 12, "error": null }
+
+// detection event  edge/{device}/cameras/{camera}/events
+{ "event_id": "uuid", "device_id": "edge01", "camera_id": "cam01", "timestamp": "...", "model": "yolov8n",
+  "frame": { "width": 1920, "height": 1080 },
+  "snapshot_key": "2026/01/01/edge01/<camera uuid>/<uuid>.jpg",
+  "detections": [ { "track_id": 123, "class_id": 0, "class_name": "person", "confidence": 0.95,
+                    "bbox": { "x1": 100, "y1": 120, "x2": 400, "y2": 650 }, "attributes": {} } ] }
 
 // command
 { "command_id": "uuid", "command": "reload_config", "params": {}, "issued_at": "..." }
@@ -350,25 +368,5 @@ Payloads（完整 schema 見 `shared/schemas/*.json`）：
 
 ## 6. Streaming Design
 
-```
-IP Camera ──RTSP(帳密)──► Edge Agent
-                            ├─ OpenCV 讀取 → YOLO（推論用，本地）
-                            └─ FFmpeg -rtsp_transport tcp -i <cam> -c copy -f rtsp
-                                 rtsp://<device_uuid>:<device_key>@mediamtx:8554/<stream_id>
-                                                  │
-                                           ┌──────▼──────┐   authMethod: http
-                                           │  MediaMTX   │──────────────► Backend /streams/mediamtx/auth
-                                           └──┬───────┬──┘
-                                WebRTC (WHEP) │       │ HLS (LL-HLS)
-                                  :8889       │       │ :8888
-                                           Browser (Frontend LivePlayer)
-```
-
-1. **Path 命名**：每支攝影機一個 `stream_id`（例如 `cam-3fa2c1`），即 MediaMTX path。
-2. **推流**：Edge 以 `-c copy` 轉送（不重新編碼，CPU 負擔最小）。推流帳密 = device_uuid / device key，由 Backend 驗證該 device 是否擁有此 stream。
-3. **播放**：前端呼叫 `GET /api/v1/streams/{camera_id}` → 取得
-   `{ webrtc_url: ".../{stream_id}/whep", hls_url: ".../{stream_id}/index.m3u8", token, expires_in }`。
-4. **播放策略**：`LivePlayer` 先以 WHEP 建立 `RTCPeerConnection`（recvonly），在 `WEBRTC_TIMEOUT` 內沒有收到 track 或連線失敗 → 改用 hls.js（Safari 用原生 HLS）。
-5. **授權**：stream token 以 `Authorization: Bearer` 送到 MediaMTX（WHEP fetch 與 hls.js `xhrSetup` 都帶上），同時附在 query 作為備援；MediaMTX 呼叫 Backend auth hook，Backend 驗證 token scope 與 path。
-6. **NAT / ICE**：`MTX_WEBRTCADDITIONALHOSTS` 設定對外 IP；正式環境可加入 TURN server。
-7. **擴充**：多台 MediaMTX 時，Backend 依 stream_id 對應到節點並回傳對應 URL；未來 event clip 可用 MediaMTX `record` 功能寫入後上傳 MinIO。
+v2 串流設計（AI annotated H.264、Edge 主動 push、RTSP/SRT、多攝影機 pipeline、自動重連）
+見 **[`video-architecture.md`](video-architecture.md)**。

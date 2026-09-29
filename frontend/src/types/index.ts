@@ -3,7 +3,10 @@
 export type UUID = string;
 export type Role = "admin" | "operator" | "viewer";
 export type DeviceStatus = "pending" | "online" | "offline";
-export type CameraStatus = "unknown" | "online" | "offline" | "error";
+export type CameraStatus = "unknown" | "connecting" | "online" | "offline" | "error";
+export type StreamStatus = "offline" | "connecting" | "streaming" | "error";
+export type AiStatus = "idle" | "disabled" | "loading" | "running" | "error";
+export type StreamType = "ai" | "original";
 
 export interface Page<T> {
   items: T[];
@@ -32,6 +35,7 @@ export interface User {
 export interface Site {
   id: UUID;
   name: string;
+  code: string;
   address: string | null;
   description: string | null;
   created_at: string;
@@ -64,23 +68,48 @@ export interface EdgeDeviceWithKey extends EdgeDevice {
   api_key: string;
 }
 
+export interface CameraRuntimeStats {
+  input_fps?: number;
+  inference_fps?: number;
+  output_fps?: number;
+  resolution?: string | null;
+  dropped_frames?: number;
+  error?: string | null;
+  reported_at?: string;
+}
+
+/** No camera address / RTSP URL / credentials ever reach the browser. */
 export interface Camera {
   id: UUID;
+  code: string;
   edge_device_id: UUID;
+  edge_device_uuid: string | null;
   edge_device_name: string | null;
   edge_device_status: DeviceStatus | null;
   site_id: UUID | null;
+  site_code: string | null;
   site_name: string | null;
   name: string;
-  rtsp_url_masked: string;
+  source_configured: boolean;
   has_credentials: boolean;
-  onvif_url: string | null;
-  stream_id: string;
   enabled: boolean;
   ai_enabled: boolean;
+  stream_enabled: boolean;
+  annotated_stream_enabled: boolean;
+  original_stream_enabled: boolean;
   ai_model_id: UUID | null;
   ai_model_name: string | null;
+  stream_path: string;
+  resolution: string | null;
+  stream_fps: number;
+  inference_fps: number;
+  bitrate: string;
+  gop_size: number;
   status: CameraStatus;
+  stream_status: StreamStatus;
+  ai_status: AiStatus;
+  last_frame_at: string | null;
+  runtime_stats: CameraRuntimeStats;
   created_at: string;
 }
 
@@ -113,6 +142,7 @@ export interface DetectionEvent {
   site_name: string | null;
   ai_model_id: UUID | null;
   ai_model_name: string | null;
+  track_id: number | null;
   class_name: string;
   confidence: number;
   bbox: BBox;
@@ -132,7 +162,9 @@ export interface DashboardSummary {
 
 export interface StreamInfo {
   camera_id: UUID;
-  stream_id: string;
+  camera_code: string;
+  status: StreamStatus;
+  stream_type: StreamType;
   webrtc_url: string;
   hls_url: string;
   token: string;
@@ -158,8 +190,12 @@ export interface DeviceStatusMessage {
 export interface CameraStatusMessage {
   device_id: UUID;
   camera_id: UUID;
+  camera_code: string;
   status: CameraStatus;
-  error: string | null;
+  stream_status: StreamStatus;
+  ai_status: AiStatus;
+  last_frame_at: string | null;
+  runtime_stats: CameraRuntimeStats;
 }
 
 export interface HeartbeatMessage {

@@ -35,6 +35,7 @@ class DetectionEvent(UUIDPrimaryKeyMixin, Base):
     ai_model_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("ai_models.id", ondelete="SET NULL")
     )
+    track_id: Mapped[int | None] = mapped_column(Integer)
     class_name: Mapped[str] = mapped_column(String(64), index=True)
     confidence: Mapped[float] = mapped_column(Float)
     bbox: Mapped[dict[str, float]] = mapped_column(JSONType)

@@ -30,6 +30,18 @@
     },
     "Detection": {
       "properties": {
+        "track_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Id"
+        },
         "class_id": {
           "title": "Class Id",
           "type": "integer"
@@ -46,6 +58,11 @@
         },
         "bbox": {
           "$ref": "#/$defs/BBox"
+        },
+        "attributes": {
+          "additionalProperties": true,
+          "title": "Attributes",
+          "type": "object"
         }
       },
       "required": [
@@ -55,6 +72,24 @@
         "bbox"
       ],
       "title": "Detection",
+      "type": "object"
+    },
+    "FrameInfo": {
+      "properties": {
+        "width": {
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "title": "Height",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "title": "FrameInfo",
       "type": "object"
     }
   },
@@ -81,6 +116,17 @@
       "title": "Model",
       "type": "string"
     },
+    "frame": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FrameInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "detections": {
       "items": {
         "$ref": "#/$defs/Detection"
@@ -98,32 +144,8 @@
         }
       ],
       "default": null,
-      "description": "MinIO object key of the snapshot",
+      "description": "MinIO object key of the annotated snapshot",
       "title": "Snapshot Key"
-    },
-    "frame_width": {
-      "anyOf": [
-        {
-          "type": "integer"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Frame Width"
-    },
-    "frame_height": {
-      "anyOf": [
-        {
-          "type": "integer"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Frame Height"
     },
     "metadata": {
       "additionalProperties": true,

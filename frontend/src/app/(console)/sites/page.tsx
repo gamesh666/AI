@@ -48,6 +48,7 @@ export default function SitesPage() {
         rows={sites.data ?? []}
         columns={[
           { key: "name", header: "Name", render: (s) => <span className="font-medium">{s.name}</span> },
+          { key: "code", header: "Site ID", render: (s) => <code className="text-xs">{s.code}</code> },
           { key: "address", header: "Address", render: (s) => s.address ?? "—" },
           { key: "devices", header: "Edge devices", render: (s) => s.device_count },
           { key: "created", header: "Created", render: (s) => formatDateTime(s.created_at) },

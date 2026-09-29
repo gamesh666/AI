@@ -1,8 +1,11 @@
 # Edge agent configuration. Point EDGE_CONFIG_FILE at this file.
 # Every key can also be set as an environment variable: EDGE_<KEY> (env wins).
 # Secrets (provisioning_token, mqtt_password, device_key) should be passed via env, not this file.
+#
+# Per-camera settings (RTSP source, stream path, resolution, stream_fps, inference_fps, bitrate,
+# gop_size, …) are managed centrally and fetched from GET /api/v1/edge/config.
 
-device_uuid: edge-001
+device_uuid: edge01
 device_name: Warehouse Gate Edge
 data_dir: /var/lib/aivms-edge
 
@@ -13,13 +16,25 @@ mqtt_port: 1883
 mqtt_username: edge
 mqtt_tls: false
 
-stream_relay_enabled: true
+# annotated stream push (outgoing only). Omit to use what the server hands out.
+stream_protocol: rtsp            # rtsp (LAN / VPN) | srt (across the Internet)
 rtsp_publish_url: rtsp://vms.example.com:8554
+srt_publish_url: srt://vms.example.com:8890
+video_encoder: auto              # auto (NVENC if available) | libx264 | h264_nvenc
 
-detector: mock          # mock | yolo
-inference_fps: 2
+detector: mock                   # mock | yolo (pip install -r requirements-yolo.txt)
+detector_device: cuda:0
+tracker: iou                     # none | iou   (bytetrack / botsort: future)
 min_confidence: 0.5
 event_cooldown_seconds: 5
+detection_hold_seconds: 1.0      # keep drawing the last boxes between inferences
+
+# bounded queues: oldest frame is dropped when full
+inference_queue_size: 1
+render_queue_size: 2
+publish_queue_size: 3
+event_queue_size: 32
 
 snapshot_enabled: true
 heartbeat_interval_seconds: 10
+camera_status_interval_seconds: 10

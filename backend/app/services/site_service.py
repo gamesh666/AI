@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
+from app.messaging import publisher
+from app.models.edge_device import EdgeDevice
 from app.models.site import Site
 from app.repositories.site_repository import SiteRepository
 from app.schemas.common import Page, PageParams
 from app.schemas.site import SiteCreate, SiteRead, SiteUpdate
+from app.services.camera_service import CameraService
 
 
 class SiteService:
@@ -40,16 +44,30 @@ class SiteService:
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise ConflictError("site name already exists") from exc
+            raise ConflictError("site name or code already exists") from exc
         return site
 
     async def update(self, site_id: uuid.UUID, data: SiteUpdate) -> Site:
-        site = self.repo.apply_updates(await self.get(site_id), data.model_dump(exclude_unset=True))
+        site = await self.get(site_id)
+        changes = data.model_dump(exclude_unset=True)
+        code_changed = "code" in changes and changes["code"] != site.code
+        self.repo.apply_updates(site, changes)
+        devices = []
         try:
+            if code_changed:
+                await self.session.flush()
+                devices = list((await self.session.execute(
+                    select(EdgeDevice).where(EdgeDevice.site_id == site.id)
+                )).scalars())
+                cameras = CameraService(self.session)
+                for device in devices:
+                    await cameras.refresh_stream_paths(device)
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise ConflictError("site name already exists") from exc
+            raise ConflictError("site name or code already exists") from exc
+        for device in devices:
+            await publisher.notify_config_changed(device.device_uuid, "site_code_changed")
         await self.session.refresh(site)
         return site
 

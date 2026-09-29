@@ -15,6 +15,8 @@ class Site(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "sites"
 
     name: Mapped[str] = mapped_column(String(128), unique=True)
+    # short slug used in stream paths, e.g. "site01" -> ai/site01/<device>/<camera>
+    code: Mapped[str] = mapped_column(String(32), unique=True)
     address: Mapped[str | None] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text)
 

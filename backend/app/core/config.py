@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     initial_admin_email: str | None = None
     # creates a demo site / edge device / synthetic camera (for the `edge` compose profile)
     seed_demo_data: bool = False
-    demo_device_uuid: str = "edge-demo-001"
+    demo_device_uuid: str = "edge01"
 
     # --- credentials encryption (RTSP passwords) ---
     credential_encryption_key: SecretStr
@@ -85,8 +85,11 @@ class Settings(BaseSettings):
     # --- mediamtx ---
     mediamtx_webrtc_public_url: str = "http://localhost:8889"
     mediamtx_hls_public_url: str = "http://localhost:8888"
-    # address edge agents publish RTSP to
+    # addresses edge agents PUSH annotated streams to (outgoing from the edge; NAT friendly)
     mediamtx_rtsp_publish_url: str = "rtsp://localhost:8554"
+    mediamtx_srt_publish_url: str = "srt://localhost:8890"
+    # default push protocol handed to edge agents: rtsp (LAN/VPN) | srt (across the Internet)
+    edge_stream_protocol: str = "rtsp"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

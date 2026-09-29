@@ -2,19 +2,29 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { streamsApi } from "@/lib/api/streams";
+import { camerasApi } from "@/lib/api/cameras";
 import { WEBRTC_TIMEOUT_MS } from "@/lib/config";
 import { errorMessage } from "@/lib/format";
 import { startHls } from "@/lib/streaming/hls";
 import { startWhep } from "@/lib/streaming/whep";
+import type { StreamType } from "@/types";
 
 type Mode = "connecting" | "webrtc" | "hls" | "error";
 
 /**
- * Live view: WebRTC (WHEP) first; if no media arrives within WEBRTC_TIMEOUT_MS or the
- * peer connection fails, fall back to HLS.
+ * Live view of the AI-annotated stream pushed by the edge (ai/<site>/<device>/<camera>).
+ * WebRTC (WHEP) first; if no media arrives within WEBRTC_TIMEOUT_MS or the peer connection
+ * fails, fall back to HLS. The browser never talks RTSP and never sees the camera address.
  */
-export function LivePlayer({ cameraId, active = true }: { cameraId: string; active?: boolean }) {
+export function LivePlayer({
+  cameraId,
+  active = true,
+  streamType = "ai",
+}: {
+  cameraId: string;
+  active?: boolean;
+  streamType?: StreamType;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mode, setMode] = useState<Mode>("connecting");
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +64,7 @@ export function LivePlayer({ cameraId, active = true }: { cameraId: string; acti
       setError(null);
       let info;
       try {
-        info = await streamsApi.get(cameraId);
+        info = await camerasApi.stream(cameraId, streamType);
       } catch (e) {
         return fail(errorMessage(e));
       }
@@ -93,7 +103,7 @@ export function LivePlayer({ cameraId, active = true }: { cameraId: string; acti
       clearTimeout(fallbackTimer);
       cleanup?.();
     };
-  }, [cameraId, active, attempt]);
+  }, [cameraId, active, attempt, streamType]);
 
   return (
     <div className="relative aspect-video w-full overflow-hidden bg-black">

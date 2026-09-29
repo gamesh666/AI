@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Field";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAsync } from "@/hooks/useAsync";
 import { camerasApi } from "@/lib/api/cameras";
+import { applyCameraStatus } from "@/lib/cameraStatus";
 import { sitesApi } from "@/lib/api/sites";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
 import type { CameraStatusMessage, DeviceStatusMessage } from "@/types";
@@ -25,7 +26,7 @@ export default function MonitorPage() {
   ]);
 
   useRealtime<CameraStatusMessage>("camera.status", (msg) =>
-    cameras.setData((prev) => prev?.map((c) => (c.id === msg.camera_id ? { ...c, status: msg.status } : c)) ?? prev),
+    cameras.setData((prev) => prev?.map((c) => applyCameraStatus(c, msg)) ?? prev),
   );
   useRealtime<DeviceStatusMessage>("device.status", (msg) =>
     cameras.setData(
@@ -45,7 +46,7 @@ export default function MonitorPage() {
     <>
       <PageHeader
         title="Camera Monitor"
-        subtitle={`${all.length} cameras · WebRTC with HLS fallback`}
+        subtitle={`${all.length} cameras · AI-annotated streams from the edge · WebRTC with HLS fallback`}
         actions={
           <>
             <Select value={siteId} onChange={(e) => (setSiteId(e.target.value), setPage(0))} className="w-44">

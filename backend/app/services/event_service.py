@@ -60,11 +60,13 @@ class EventService:
             logger.warning("event from unknown device %s dropped", payload.device_id)
             return 0
 
-        camera = None
-        try:
-            camera = await self.cameras.get(uuid.UUID(payload.camera_id))
-        except ValueError:
-            camera = await self.cameras.get_by_stream_id(payload.camera_id)
+        # camera_id in MQTT is the camera code (unique per device); a UUID is accepted as well
+        camera = await self.cameras.get_by_device_code(device.id, payload.camera_id)
+        if camera is None:
+            try:
+                camera = await self.cameras.get(uuid.UUID(payload.camera_id))
+            except ValueError:
+                camera = None
         if camera is None or camera.edge_device_id != device.id:
             logger.warning("event for unknown/foreign camera %s dropped", payload.camera_id)
             return 0
@@ -84,17 +86,18 @@ class EventService:
                 "camera_id": camera.id,
                 "edge_device_id": device.id,
                 "ai_model_id": model.id if model else None,
+                "track_id": det.track_id,
                 "class_name": det.class_name,
                 "confidence": det.confidence,
                 "bbox": det.bbox.model_dump(),
                 "detected_at": detected_at,
                 "snapshot_url": snapshot_key,
                 "metadata": {
+                    **payload.metadata,
                     "class_id": det.class_id,
                     "model": payload.model,
-                    "frame_width": payload.frame_width,
-                    "frame_height": payload.frame_height,
-                    **payload.metadata,
+                    "frame": payload.frame.model_dump() if payload.frame else None,
+                    "attributes": det.attributes,
                 },
                 "created_at": datetime.now(UTC),
             }

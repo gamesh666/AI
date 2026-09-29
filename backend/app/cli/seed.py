@@ -21,6 +21,7 @@ from app.models.camera import Camera
 from app.models.edge_device import EdgeDevice
 from app.models.site import Site
 from app.models.user import User
+from app.services.camera_service import build_stream_path
 
 logger = logging.getLogger("seed")
 
@@ -71,23 +72,31 @@ async def seed() -> None:
 
 
 async def _seed_demo(session, device_uuid: str) -> None:
-    """Demo site + device + synthetic camera. The device key is issued when the agent registers."""
+    """Demo site + device + two synthetic cameras. The device key is issued when the agent registers."""
     if await session.scalar(select(EdgeDevice).where(EdgeDevice.device_uuid == device_uuid)):
         return
-    site = await session.scalar(select(Site).where(Site.name == "Demo Site"))
+    site = await session.scalar(select(Site).where(Site.code == "site01"))
     if site is None:
-        site = Site(name="Demo Site", address="Localhost", description="Created by SEED_DEMO_DATA")
+        site = Site(name="Demo Site", code="site01", address="Localhost", description="Created by SEED_DEMO_DATA")
         session.add(site)
     model = await session.scalar(select(AIModel).order_by(AIModel.created_at).limit(1))
     device = EdgeDevice(device_uuid=device_uuid, name="Demo Edge", site=site)
     session.add(device)
-    for idx in (1, 2):
+    for idx, name in ((1, "Entrance"), (2, "Parking")):
+        code = f"cam{idx:02d}"
         session.add(
             Camera(
                 edge_device=device,
-                name=f"Demo Camera {idx}",
-                rtsp_url=f"mock://testsrc?pattern={idx}",
-                stream_id=f"demo-cam-{idx}",
+                code=code,
+                name=f"Demo {name}",
+                # synthetic source rendered on the edge; replace with rtsp://<camera-ip>/... for real cameras
+                rtsp_url=f"mock://scene?seed={idx}",
+                stream_path=build_stream_path(site.code, device_uuid, code),
+                resolution="1280x720",
+                stream_fps=25,
+                inference_fps=5,
+                bitrate="2M",
+                gop_size=50,
                 ai_model_id=model.id if model else None,
             )
         )

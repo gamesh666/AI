@@ -1,4 +1,7 @@
-"""Edge agent settings: environment variables (EDGE_*) override an optional YAML file (EDGE_CONFIG_FILE)."""
+"""Local agent settings: environment variables (EDGE_*) override an optional YAML file (EDGE_CONFIG_FILE).
+
+Per-camera settings (stream path, fps, bitrate, …) come from the server — see agent.config.models.
+"""
 
 from __future__ import annotations
 
@@ -51,17 +54,28 @@ class AgentSettings(BaseSettings):
     mqtt_keepalive: int = 30
     mqtt_max_queued_messages: int = 5000
 
-    # streaming
-    stream_relay_enabled: bool = True
+    # streaming: overrides for what the server hands out (outgoing push only)
+    stream_protocol: str | None = None  # rtsp | srt
     rtsp_publish_url: str | None = None
+    srt_publish_url: str | None = None
     ffmpeg_path: str = "ffmpeg"
+    # auto: h264_nvenc when an NVIDIA GPU + NVENC-enabled ffmpeg are available, else libx264
+    video_encoder: str = "auto"  # auto | libx264 | h264_nvenc
 
     # inference
     detector: str = "mock"  # mock | yolo
-    inference_fps: float = 2.0
+    detector_device: str = "cuda:0"  # yolo only; falls back to cpu if CUDA is unavailable
+    tracker: str = "iou"  # none | iou   (bytetrack / botsort: future)
     min_confidence: float = 0.5
     event_cooldown_seconds: float = 5.0
-    mock_detection_probability: float = 0.15
+    # Option A: keep drawing the last detections between two inferences for this long
+    detection_hold_seconds: float = 1.0
+
+    # queues (bounded; oldest frame dropped when full)
+    inference_queue_size: int = 1
+    render_queue_size: int = 2
+    publish_queue_size: int = 3
+    event_queue_size: int = 32
 
     # snapshots
     snapshot_enabled: bool = True
@@ -69,7 +83,7 @@ class AgentSettings(BaseSettings):
 
     # telemetry
     heartbeat_interval_seconds: float = 10.0
-    status_interval_seconds: float = 30.0
+    camera_status_interval_seconds: float = 10.0
     config_poll_interval_seconds: float = 300.0
 
     log_level: str = "INFO"

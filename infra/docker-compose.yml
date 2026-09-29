@@ -98,7 +98,8 @@ services:
       # comma-separated public IPs/hostnames for WebRTC ICE candidates
       MTX_WEBRTCADDITIONALHOSTS: ${MEDIAMTX_WEBRTC_ADDITIONAL_HOSTS:-}
     ports:
-      - "${MEDIAMTX_RTSP_PORT_PUBLISHED:-8554}:8554"      # RTSP publish (edge)
+      - "${MEDIAMTX_RTSP_PORT_PUBLISHED:-8554}:8554"      # RTSP push from edge (LAN/VPN)
+      - "${MEDIAMTX_SRT_PORT_PUBLISHED:-8890}:8890/udp"   # SRT push from edge (Internet)
       - "${MEDIAMTX_HLS_PORT_PUBLISHED:-8888}:8888"       # HLS
       - "${MEDIAMTX_WEBRTC_PORT_PUBLISHED:-8889}:8889"    # WebRTC / WHEP (HTTP)
       - "${MEDIAMTX_WEBRTC_UDP_PORT_PUBLISHED:-8189}:8189/udp"  # WebRTC ICE
@@ -128,7 +129,7 @@ services:
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?INITIAL_ADMIN_PASSWORD is required}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
-      DEMO_DEVICE_UUID: ${EDGE_DEVICE_UUID:-edge-demo-001}
+      DEMO_DEVICE_UUID: ${EDGE_DEVICE_UUID:-edge01}
       MQTT_HOST: mosquitto
       MQTT_PORT: 1883
       MQTT_USERNAME: ${MQTT_BACKEND_USERNAME:-backend}
@@ -146,6 +147,8 @@ services:
       MEDIAMTX_WEBRTC_PUBLIC_URL: ${MEDIAMTX_WEBRTC_PUBLIC_URL:-http://localhost:8889}
       MEDIAMTX_HLS_PUBLIC_URL: ${MEDIAMTX_HLS_PUBLIC_URL:-http://localhost:8888}
       MEDIAMTX_RTSP_PUBLISH_URL: ${MEDIAMTX_RTSP_PUBLISH_URL:-rtsp://localhost:8554}
+      MEDIAMTX_SRT_PUBLISH_URL: ${MEDIAMTX_SRT_PUBLISH_URL:-srt://localhost:8890}
+      EDGE_STREAM_PROTOCOL: ${EDGE_STREAM_PROTOCOL:-rtsp}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -168,8 +171,9 @@ services:
 
   # --------------------------------------------------------------------------- demo edge (optional)
   # docker compose --profile edge up -d
-  # Runs an edge agent in this compose network. With SEED_DEMO_DATA=true the backend creates a demo
-  # site/device/camera (mock://testsrc -> ffmpeg test pattern) and the mock detector emits events.
+  # Runs an edge agent in this compose network. With SEED_DEMO_DATA=true the backend creates
+  # site01 / edge01 / cam01+cam02 with synthetic (mock://scene) sources; the agent runs the full
+  # capture -> mock AI -> overlay -> H.264 -> RTSP push pipeline per camera.
   edge-agent:
     profiles: ["edge"]
     build:
@@ -178,7 +182,7 @@ services:
     image: aivms/edge-agent:dev
     <<: [*restart, *logging]
     environment:
-      EDGE_DEVICE_UUID: ${EDGE_DEVICE_UUID:-edge-demo-001}
+      EDGE_DEVICE_UUID: ${EDGE_DEVICE_UUID:-edge01}
       EDGE_DEVICE_NAME: ${EDGE_DEVICE_NAME:-Demo Edge}
       EDGE_API_URL: http://backend:8000/api/v1
       EDGE_PROVISIONING_TOKEN: ${EDGE_PROVISIONING_TOKEN}
@@ -186,8 +190,12 @@ services:
       EDGE_MQTT_PORT: 1883
       EDGE_MQTT_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
       EDGE_MQTT_PASSWORD: ${MQTT_EDGE_PASSWORD}
+      # inside compose the edge reaches the media server by service name
       EDGE_RTSP_PUBLISH_URL: rtsp://mediamtx:8554
+      EDGE_SRT_PUBLISH_URL: srt://mediamtx:8890
+      EDGE_STREAM_PROTOCOL: ${EDGE_STREAM_PROTOCOL:-rtsp}
       EDGE_DETECTOR: ${EDGE_DETECTOR:-mock}
+      EDGE_VIDEO_ENCODER: ${EDGE_VIDEO_ENCODER:-auto}
     volumes:
       - edge-data:/var/lib/aivms-edge
     depends_on:

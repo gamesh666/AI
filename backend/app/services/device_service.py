@@ -7,10 +7,10 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aivms_shared.payloads import CommandType, DeviceState, Heartbeat
+from aivms_shared.payloads import CameraRuntimeStatus, CommandType, DeviceState, Heartbeat
 from aivms_shared.payloads import DeviceStatus as DeviceStatusPayload
 from app.core.config import get_settings
-from app.core.enums import CameraStatus, DeviceStatus
+from app.core.enums import CameraStatus, DeviceStatus, StreamStatus
 from app.core.exceptions import AuthError, ConflictError, DomainError, NotFoundError
 from app.core.redis import get_redis
 from app.core.security import constant_time_equals, generate_opaque_token, hash_token
@@ -28,9 +28,23 @@ from app.schemas.edge_device import (
     EdgeDeviceUpdate,
     EdgeDeviceWithKey,
 )
+from app.services.camera_service import CameraService
 from app.services.mappers import device_to_read
 
 HEARTBEAT_CACHE_KEY = "aivms:device:{uuid}:heartbeat"
+
+
+def _camera_status_message(device: EdgeDevice, camera) -> dict:
+    return {
+        "device_id": str(device.id),
+        "camera_id": str(camera.id),
+        "camera_code": camera.code,
+        "status": camera.status.value,
+        "stream_status": camera.stream_status.value,
+        "ai_status": camera.ai_status,
+        "last_frame_at": camera.last_frame_at.isoformat() if camera.last_frame_at else None,
+        "runtime_stats": camera.runtime_stats or {},
+    }
 
 
 class DeviceService:
@@ -78,8 +92,17 @@ class DeviceService:
         return EdgeDeviceWithKey(**device_to_read(device).model_dump(), api_key=api_key)
 
     async def update(self, device_id: uuid.UUID, data: EdgeDeviceUpdate) -> EdgeDeviceRead:
-        device = self.repo.apply_updates(await self.get(device_id), data.model_dump(exclude_unset=True))
+        device = await self.get(device_id)
+        changes = data.model_dump(exclude_unset=True)
+        site_changed = "site_id" in changes and changes["site_id"] != device.site_id
+        self.repo.apply_updates(device, changes)
+        if site_changed:
+            await self.session.flush()
+            # stream paths embed the site code: ai/<site>/<device>/<camera>
+            await CameraService(self.session).refresh_stream_paths(device)
         await self.session.commit()
+        if site_changed:
+            await publisher.notify_config_changed(device.device_uuid, "site_changed")
         return await self.get_read(device.id)
 
     async def delete(self, device_id: uuid.UUID) -> None:
@@ -156,41 +179,70 @@ class DeviceService:
         return device
 
     async def ingest_status(self, status: DeviceStatusPayload) -> EdgeDevice | None:
+        """Device-level online/offline (retained message + MQTT Last Will)."""
         device = await self.repo.get_by_device_uuid(status.device_uuid)
         if device is None:
             return None
-        device.status = DeviceStatus.ONLINE if status.state == DeviceState.ONLINE else DeviceStatus.OFFLINE
-        if status.state == DeviceState.ONLINE:
-            device.last_seen = datetime.now(UTC)
-
+        online = status.state == DeviceState.ONLINE
+        device.status = DeviceStatus.ONLINE if online else DeviceStatus.OFFLINE
         changed_cameras = []
-        if status.cameras or status.state == DeviceState.OFFLINE:
-            cams = {str(c.id): c for c in await self.cameras.list_for_device(device.id)}
-            reported = {c.camera_id: c for c in status.cameras}
-            for cam_id, cam in cams.items():
-                if status.state == DeviceState.OFFLINE:
-                    new = CameraStatus.OFFLINE
-                elif cam_id in reported:
-                    new = CameraStatus(reported[cam_id].state.value)
-                else:
-                    continue
-                if cam.status != new:
-                    cam.status = new
-                    changed_cameras.append(
-                        {"camera_id": cam_id, "status": new.value,
-                         "error": reported[cam_id].error if cam_id in reported else None}
-                    )
+        if online:
+            device.last_seen = datetime.now(UTC)
+        else:
+            changed_cameras = await self._mark_cameras_offline(device)
         await self.session.commit()
 
         await self._publish_status(device)
-        for cam in changed_cameras:
-            await broadcaster.publish(RealtimeEventType.CAMERA_STATUS, {"device_id": str(device.id), **cam})
+        for payload in changed_cameras:
+            await broadcaster.publish(RealtimeEventType.CAMERA_STATUS, payload)
         return device
+
+    async def ingest_camera_status(self, device_uuid: str, status: CameraRuntimeStatus) -> bool:
+        """Per-camera health from edge/{device}/cameras/{camera}/status."""
+        device = await self.repo.get_by_device_uuid(device_uuid)
+        if device is None:
+            return False
+        camera = await self.cameras.get_by_device_code(device.id, status.camera_id)
+        if camera is None:
+            return False
+        camera.status = CameraStatus(status.rtsp_status.value)
+        camera.stream_status = StreamStatus(status.stream_status.value)
+        camera.ai_status = status.ai_status.value
+        if status.last_frame_at:
+            camera.last_frame_at = status.last_frame_at
+        camera.runtime_stats = {
+            "input_fps": status.input_fps,
+            "inference_fps": status.inference_fps,
+            "output_fps": status.output_fps,
+            "resolution": status.resolution,
+            "dropped_frames": status.dropped_frames,
+            "error": status.error,
+            "reported_at": status.timestamp.isoformat(),
+        }
+        await self.session.commit()
+        await broadcaster.publish(RealtimeEventType.CAMERA_STATUS, _camera_status_message(device, camera))
+        return True
+
+    async def _mark_cameras_offline(self, device: EdgeDevice) -> list[dict]:
+        changed = []
+        for cam in await self.cameras.list_for_device(device.id):
+            if cam.status != CameraStatus.OFFLINE or cam.stream_status != StreamStatus.OFFLINE:
+                cam.status = CameraStatus.OFFLINE
+                cam.stream_status = StreamStatus.OFFLINE
+                changed.append(_camera_status_message(device, cam))
+        return changed
 
     async def mark_stale_offline(self) -> int:
         cutoff = datetime.now(UTC) - timedelta(seconds=get_settings().device_offline_after_seconds)
         rows = await self.repo.mark_stale_offline(cutoff)
+        camera_updates = []
+        for device_id, _ in rows:
+            device = await self.repo.get(device_id)
+            if device is not None:
+                camera_updates.extend(await self._mark_cameras_offline(device))
         await self.session.commit()
+        for payload in camera_updates:
+            await broadcaster.publish(RealtimeEventType.CAMERA_STATUS, payload)
         for device_id, device_uuid in rows:
             await broadcaster.publish(
                 RealtimeEventType.DEVICE_STATUS,

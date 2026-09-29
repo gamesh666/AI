@@ -37,11 +37,15 @@ def test_credential_encryption_roundtrip():
 
 
 def test_mediamtx_read_auth_is_bound_to_path():
-    token, _ = create_stream_token(uuid.uuid4(), "cam-abc")
-    ok = MediaMTXAuthRequest(action="read", path="cam-abc", token=token, protocol="webrtc")
-    other = MediaMTXAuthRequest(action="read", path="cam-other", token=token, protocol="webrtc")
-    via_query = MediaMTXAuthRequest(action="read", path="cam-abc", query=f"token={token}", protocol="hls")
-    assert StreamService._authorize_read(ok, "cam-abc")
-    assert not StreamService._authorize_read(other, "cam-other")
-    assert StreamService._authorize_read(via_query, "cam-abc")
-    assert not StreamService._authorize_read(MediaMTXAuthRequest(action="read", path="cam-abc"), "cam-abc")
+    path = "ai/site01/edge01/cam01"
+    token, _ = create_stream_token(uuid.uuid4(), path)
+    ok = MediaMTXAuthRequest(action="read", path=path, token=token, protocol="webrtc")
+    other = "ai/site01/edge01/cam02"
+    original = "original/site01/edge01/cam01"
+    via_query = MediaMTXAuthRequest(action="read", path=path, query=f"token={token}", protocol="hls")
+    assert StreamService._authorize_read(ok, path)
+    assert not StreamService._authorize_read(ok, other)
+    # a token for the annotated stream does not grant the original stream
+    assert not StreamService._authorize_read(ok, original)
+    assert StreamService._authorize_read(via_query, path)
+    assert not StreamService._authorize_read(MediaMTXAuthRequest(action="read", path=path), path)

@@ -31,6 +31,7 @@ class DetectionEventRead(ORMModel):
     site_name: str | None = None
     ai_model_id: uuid.UUID | None
     ai_model_name: str | None = None
+    track_id: int | None = None
     class_name: str
     confidence: float
     bbox: dict[str, float]

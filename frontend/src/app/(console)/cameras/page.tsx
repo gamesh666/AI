@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { CameraForm } from "@/components/camera/CameraForm";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
+import { CameraHealth } from "@/components/camera/CameraHealth";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
@@ -15,6 +15,7 @@ import { camerasApi, type CameraInput } from "@/lib/api/cameras";
 import { devicesApi } from "@/lib/api/devices";
 import { modelsApi } from "@/lib/api/models";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { applyCameraStatus } from "@/lib/cameraStatus";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
 import type { Camera, CameraStatusMessage } from "@/types";
 
@@ -28,7 +29,7 @@ export default function CamerasPage() {
   const [editing, setEditing] = useState<Camera | null | "new">(null);
 
   useRealtime<CameraStatusMessage>("camera.status", (msg) =>
-    cameras.setData((prev) => prev?.map((c) => (c.id === msg.camera_id ? { ...c, status: msg.status } : c)) ?? prev),
+    cameras.setData((prev) => prev?.map((c) => applyCameraStatus(c, msg)) ?? prev),
   );
 
   const save = async (body: Partial<CameraInput>) => {
@@ -50,7 +51,7 @@ export default function CamerasPage() {
     <>
       <PageHeader
         title="Cameras"
-        subtitle="RTSP / ONVIF cameras attached to edge devices"
+        subtitle="Identified by site / edge device / camera ID — camera addresses stay on the edge"
         actions={
           canEdit && (
             <Button onClick={() => setEditing("new")} disabled={!devices.data?.length}>
@@ -64,25 +65,30 @@ export default function CamerasPage() {
         loading={cameras.loading}
         rows={cameras.data ?? []}
         columns={[
-          { key: "name", header: "Name", render: (c) => <span className="font-medium">{c.name}</span> },
-          { key: "site", header: "Site", render: (c) => c.site_name ?? "—" },
-          { key: "device", header: "Edge device", render: (c) => c.edge_device_name ?? "—" },
           {
-            key: "rtsp",
-            header: "RTSP",
+            key: "name",
+            header: "Camera",
             render: (c) => (
-              <span className="font-mono text-xs text-slate-400">
-                {c.rtsp_url_masked} {c.has_credentials && <Badge>🔒 auth</Badge>}
+              <div>
+                <div className="font-medium">{c.name}</div>
+                <div className="text-xs text-slate-500">
+                  {c.code} {c.has_credentials && "· 🔒"}
+                </div>
+              </div>
+            ),
+          },
+          { key: "site", header: "Site / Edge", render: (c) => `${c.site_name ?? "—"} / ${c.edge_device_name ?? "—"}` },
+          { key: "path", header: "Stream path", render: (c) => <code className="text-xs">{c.stream_path}</code> },
+          {
+            key: "video",
+            header: "Stream / AI",
+            render: (c) => (
+              <span className="text-xs text-slate-400">
+                {c.resolution ?? "source"} @ {c.stream_fps} fps · {c.bitrate} · AI {c.inference_fps} fps
               </span>
             ),
           },
-          { key: "stream", header: "Stream ID", render: (c) => <code className="text-xs">{c.stream_id}</code> },
-          { key: "status", header: "Status", render: (c) => <StatusBadge status={c.enabled ? c.status : "disabled"} /> },
-          {
-            key: "ai",
-            header: "AI",
-            render: (c) => <Badge tone={c.ai_enabled ? "blue" : "gray"}>{c.ai_enabled ? (c.ai_model_name ?? "on") : "off"}</Badge>,
-          },
+          { key: "health", header: "Health", render: (c) => (c.enabled ? <CameraHealth camera={c} /> : "disabled") },
           {
             key: "actions",
             header: "",

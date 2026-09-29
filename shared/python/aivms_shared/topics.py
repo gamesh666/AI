@@ -5,6 +5,7 @@ Edge -> Server:
     edge/{device_id}/status
     edge/{device_id}/events
     edge/{device_id}/cameras/{camera_id}/events
+    edge/{device_id}/cameras/{camera_id}/status
 
 Server -> Edge:
     server/{device_id}/command
@@ -25,6 +26,7 @@ class TopicKind(StrEnum):
     STATUS = "status"
     DEVICE_EVENTS = "device_events"
     CAMERA_EVENTS = "camera_events"
+    CAMERA_STATUS = "camera_status"
     COMMAND = "command"
     CONFIG = "config"
 
@@ -48,6 +50,10 @@ def camera_events(device_id: str, camera_id: str) -> str:
     return f"{EDGE_PREFIX}/{device_id}/cameras/{camera_id}/events"
 
 
+def camera_status(device_id: str, camera_id: str) -> str:
+    return f"{EDGE_PREFIX}/{device_id}/cameras/{camera_id}/status"
+
+
 def command(device_id: str) -> str:
     return f"{SERVER_PREFIX}/{device_id}/command"
 
@@ -63,6 +69,7 @@ SERVER_SUBSCRIPTIONS: dict[TopicKind, str] = {
     TopicKind.STATUS: f"{EDGE_PREFIX}/+/status",
     TopicKind.DEVICE_EVENTS: f"{EDGE_PREFIX}/+/events",
     TopicKind.CAMERA_EVENTS: f"{EDGE_PREFIX}/+/cameras/+/events",
+    TopicKind.CAMERA_STATUS: f"{EDGE_PREFIX}/+/cameras/+/status",
 }
 
 
@@ -100,8 +107,9 @@ def parse(topic: str) -> ParsedTopic | None:
                 "events": TopicKind.DEVICE_EVENTS,
             }.get(parts[2])
             return ParsedTopic(kind, device_id) if kind else None
-        if len(parts) == 5 and parts[2] == "cameras" and parts[4] == "events" and parts[3]:
-            return ParsedTopic(TopicKind.CAMERA_EVENTS, device_id, parts[3])
+        if len(parts) == 5 and parts[2] == "cameras" and parts[3]:
+            kind = {"events": TopicKind.CAMERA_EVENTS, "status": TopicKind.CAMERA_STATUS}.get(parts[4])
+            return ParsedTopic(kind, device_id, parts[3]) if kind else None
         return None
 
     if prefix == SERVER_PREFIX and len(parts) == 3:

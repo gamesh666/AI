@@ -24,8 +24,13 @@ class CameraRepository(BaseRepository[Camera]):
         stmt = self._with_relations().where(Camera.id == camera_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def get_by_stream_id(self, stream_id: str) -> Camera | None:
-        stmt = self._with_relations().where(Camera.stream_id == stream_id)
+    async def get_by_stream_path(self, stream_path: str) -> Camera | None:
+        """Lookup by the annotated stream path (ai/<site>/<device>/<camera>)."""
+        stmt = self._with_relations().where(Camera.stream_path == stream_path)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def get_by_device_code(self, edge_device_id: uuid.UUID, code: str) -> Camera | None:
+        stmt = self._with_relations().where(Camera.edge_device_id == edge_device_id, Camera.code == code)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
     def list_stmt(

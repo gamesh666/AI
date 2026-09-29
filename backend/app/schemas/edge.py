@@ -34,15 +34,31 @@ class EdgeModelConfig(BaseModel):
     model_path: str
 
 
+class EdgeVideoConfig(BaseModel):
+    video_codec: str = "h264"
+    width: int | None = None  # None = keep source resolution
+    height: int | None = None
+    stream_fps: int = 25
+    inference_fps: float = 5.0
+    bitrate: str = "2M"
+    gop_size: int = 50
+
+
 class EdgeCameraConfig(BaseModel):
     id: uuid.UUID
+    camera_id: str  # camera code, used in MQTT topics and payloads
     name: str
-    # full URL WITH credentials — only served to the owning, authenticated device
+    # full URL WITH credentials — only served to the owning, authenticated device over HTTPS
     rtsp_url: str
     onvif_url: str | None
-    stream_id: str
     enabled: bool
     ai_enabled: bool
+    stream_enabled: bool
+    annotated_stream_enabled: bool
+    original_stream_enabled: bool
+    stream_path: str
+    original_stream_path: str
+    video: EdgeVideoConfig
     ai_model: EdgeModelConfig | None
 
 
@@ -54,7 +70,9 @@ class EdgeMQTTConfig(BaseModel):
 
 
 class EdgeStreamingConfig(BaseModel):
+    protocol: str = "rtsp"  # rtsp | srt
     rtsp_publish_url: str
+    srt_publish_url: str | None = None
 
 
 class EdgeConfig(BaseModel):

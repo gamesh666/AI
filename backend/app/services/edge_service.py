@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aivms_shared import topics
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError
+from app.models.camera import Camera
 from app.models.edge_device import EdgeDevice
 from app.repositories.camera_repository import CameraRepository
 from app.schemas.edge import (
@@ -17,12 +18,48 @@ from app.schemas.edge import (
     EdgeModelConfig,
     EdgeMQTTConfig,
     EdgeStreamingConfig,
+    EdgeVideoConfig,
     PresignResponse,
 )
 from app.services import storage_service
 from app.services.camera_service import build_authenticated_url
 
 PRESIGN_TTL_SECONDS = 300
+
+
+def _parse_resolution(value: str | None) -> tuple[int | None, int | None]:
+    if not value:
+        return None, None
+    w, _, h = value.partition("x")
+    return int(w), int(h)
+
+
+def _camera_config(c: Camera) -> EdgeCameraConfig:
+    width, height = _parse_resolution(c.resolution)
+    return EdgeCameraConfig(
+        id=c.id,
+        camera_id=c.code,
+        name=c.name,
+        rtsp_url=build_authenticated_url(c),
+        onvif_url=c.onvif_url,
+        enabled=c.enabled,
+        ai_enabled=c.ai_enabled,
+        stream_enabled=c.stream_enabled,
+        annotated_stream_enabled=c.annotated_stream_enabled,
+        original_stream_enabled=c.original_stream_enabled,
+        stream_path=c.stream_path,
+        original_stream_path=c.original_stream_path,
+        video=EdgeVideoConfig(
+            video_codec=c.video_codec,
+            width=width,
+            height=height,
+            stream_fps=c.stream_fps,
+            inference_fps=c.inference_fps,
+            bitrate=c.bitrate,
+            gop_size=c.gop_size,
+        ),
+        ai_model=EdgeModelConfig.model_validate(c.ai_model, from_attributes=True) if c.ai_model else None,
+    )
 
 
 class EdgeService:
@@ -38,20 +75,7 @@ class EdgeService:
         return EdgeConfig(
             device_uuid=device.device_uuid,
             version=version,
-            cameras=[
-                EdgeCameraConfig(
-                    id=c.id,
-                    name=c.name,
-                    rtsp_url=build_authenticated_url(c),
-                    onvif_url=c.onvif_url,
-                    stream_id=c.stream_id,
-                    enabled=c.enabled,
-                    ai_enabled=c.ai_enabled,
-                    ai_model=EdgeModelConfig.model_validate(c.ai_model, from_attributes=True)
-                    if c.ai_model else None,
-                )
-                for c in cameras
-            ],
+            cameras=[_camera_config(c) for c in cameras],
             mqtt=EdgeMQTTConfig(
                 host=settings.mqtt_public_host,
                 port=settings.mqtt_public_port,
@@ -61,11 +85,16 @@ class EdgeService:
                     "status": topics.status(device.device_uuid),
                     "events": topics.device_events(device.device_uuid),
                     "camera_events": topics.camera_events(device.device_uuid, "{camera_id}"),
+                    "camera_status": topics.camera_status(device.device_uuid, "{camera_id}"),
                     "command": topics.command(device.device_uuid),
                     "config": topics.config(device.device_uuid),
                 },
             ),
-            streaming=EdgeStreamingConfig(rtsp_publish_url=settings.mediamtx_rtsp_publish_url),
+            streaming=EdgeStreamingConfig(
+                protocol=settings.edge_stream_protocol,
+                rtsp_publish_url=settings.mediamtx_rtsp_publish_url,
+                srt_publish_url=settings.mediamtx_srt_publish_url,
+            ),
         )
 
     async def presign_snapshot(self, device: EdgeDevice, camera_id: uuid.UUID) -> PresignResponse:

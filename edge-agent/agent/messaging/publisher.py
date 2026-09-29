@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from agent.messaging.mqtt_client import EdgeMQTTClient
+from agent.messaging.mqtt import EdgeMQTTClient
 from aivms_shared import topics
-from aivms_shared.payloads import DetectionEvent, DeviceState, DeviceStatus, Heartbeat
+from aivms_shared.payloads import CameraRuntimeStatus, DetectionEvent, DeviceState, DeviceStatus, Heartbeat
 
 
 class EdgePublisher:
@@ -21,6 +21,10 @@ class EdgePublisher:
 
     def status(self, status: DeviceStatus) -> None:
         self._client.publish(topics.status(self._device), status.to_bytes(), qos=1, retain=True)
+
+    def camera_status(self, status: CameraRuntimeStatus) -> None:
+        topic = topics.camera_status(self._device, status.camera_id)
+        self._client.publish(topic, status.to_bytes(), qos=0)
 
     def detection(self, event: DetectionEvent) -> None:
         topic = topics.camera_events(self._device, event.camera_id)

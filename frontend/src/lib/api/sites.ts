@@ -3,6 +3,7 @@ import type { Page, Site } from "@/types";
 
 export interface SiteInput {
   name: string;
+  code: string;
   address?: string | null;
   description?: string | null;
 }

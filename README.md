@@ -1,9 +1,13 @@
 # AI 智慧影像監控與邊緣運算管理平台 (AI VMS) — MVP Framework
 
-一個可執行、模組化、可水平擴充的 MVP：多個地點的 **Edge Device** 在本地以 **YOLO** 推論 RTSP/ONVIF 攝影機影像，
-只把**辨識結果 + 快照**送回中央平台；中央平台提供即時影像（WebRTC / HLS）、即時事件推播與設備/攝影機/模型管理。
+一個可執行、模組化、可水平擴充的 MVP：多個地點的 **Edge Device** 就近連接各自網段內的 RTSP/ONVIF 攝影機，
+在本地以 **YOLO** 推論，然後把兩種資料**主動推送**回中央平台：
 
-> 完整設計（架構、資料庫、API、MQTT、串流）請見 [`docs/architecture.md`](docs/architecture.md)。
+1. **Detection metadata**（JSON，MQTT）→ 資料庫 → 搜尋 / 統計 / 告警 / WebSocket 即時推播
+2. **AI 標註影像**（畫上 BBox / Label / Confidence / Track ID 的 H.264 串流，RTSP 或 SRT push）→ MediaMTX → 瀏覽器 WebRTC（HLS fallback）
+
+> 設計文件：[`docs/architecture.md`](docs/architecture.md)（架構、資料庫、API、MQTT）、
+> [`docs/video-architecture.md`](docs/video-architecture.md)（影像管線、多攝影機、Edge → Server 串流策略）。
 
 ---
 
@@ -16,8 +20,8 @@
 │ IP Cam ─RTSP─┤            │     │        │  WebRTC/HLS              │   │   │    │          │
 │              ▼            │     │        ▼                          │   │   │    ▼          │
 │  Edge Agent (Python)      │     │    MediaMTX ◄──auth hook──────────┘   │   │  PostgreSQL   │
-│   ├ OpenCV → YOLO (local) │─RTSP publish─►                               │   │               │
-│   ├ FFmpeg relay (-c copy)│     │                                       │   └► Redis        │
+│   ├ capture → YOLO (local)│─H.264 annotated, RTSP/SRT push (outgoing)─►  │   │               │
+│   ├ overlay → H.264 encode│     │                                       │   └► Redis        │
 │   ├ MQTT (events/heartbeat)─────────►  Mosquitto / EMQX ───────────────┘      (pub/sub,    │
 │   └ REST (register/config)│     │                                            cache, lock)  │
 │   └ presigned PUT snapshot ─────────►  MinIO (snapshots)                                   │
@@ -28,12 +32,15 @@
 |--------|------|
 | **偵測事件（無 polling）** | Edge YOLO → MQTT `edge/{device}/cameras/{camera}/events` → Backend（共享訂閱）→ PostgreSQL → Redis Pub/Sub → WebSocket → 瀏覽器 |
 | **Heartbeat（10 秒）** | Edge → MQTT `edge/{device}/heartbeat` → Backend 更新狀態/指標 → WebSocket；逾時 30 秒由 monitor 標記 offline；MQTT LWT 即時標記斷線 |
-| **影像** | Camera → Edge FFmpeg（不重編碼）→ MediaMTX → 瀏覽器 WebRTC（WHEP），失敗自動改 HLS |
+| **影像** | Camera → Edge capture → YOLO → overlay（BBox/Label/Conf/Track ID）→ H.264（NVENC / libx264）→ RTSP/SRT push → MediaMTX `ai/{site}/{device}/{camera}` → 瀏覽器 WebRTC（WHEP），失敗自動改 HLS |
+| **攝影機健康** | Edge → MQTT `edge/{device}/cameras/{camera}/status`（RTSP / AI / stream 狀態、input / inference / output FPS）→ Backend → WebSocket |
 | **快照** | Edge 向 Backend 取得 presigned URL → 直接 PUT 到 MinIO；前端以 presigned GET 顯示 |
 
 **關鍵設計**
 
-- **AI 推論只在 Edge**：中央平台不接收原始影像做推論，只收 JSON 結果與快照。
+- **AI 推論只在 Edge**：中央平台不做推論；收到的是 metadata 與已標註好的影像串流。
+- **Camera IP 不出 Site**：中央以 `site / device / camera` ID 管理攝影機，所有連線都由 Edge 對外建立（NAT / Firewall / 重疊網段都可運作）。
+- **每支攝影機獨立 pipeline**：capture / inference / render / publish 分屬不同 worker，以有界 queue（丟最舊 frame）串接；任一支攝影機或串流故障不影響其他攝影機與 AI 推論。
 - **Backend 無狀態 → 水平擴充**：MQTT 使用 `$share/backend/...` 共享訂閱分流、WebSocket 透過 Redis Pub/Sub 跨實例廣播、背景工作以 Redis lock 保證單一執行、migration 以 PostgreSQL advisory lock 序列化。
 - **Broker 可替換**：程式只依賴 `backend/app/messaging/base.py::MessageBroker` 介面與標準 MQTT；換 EMQX 只需改 `MQTT_HOST/PORT/USERNAME/PASSWORD`。
 - **契約集中**：MQTT topic 與 payload 定義在 `shared/python/aivms_shared`，Backend 與 Edge Agent 共用；`shared/schemas/*.json` 為自動產生的 JSON Schema。
@@ -69,13 +76,16 @@
 │       └── types/
 ├── edge-agent/         邊緣代理
 │   └── agent/
-│       ├── core/           Agent 生命週期、device key 儲存
+│       ├── core/           Agent 生命週期、backoff、有界 frame queue、supervised worker、device key 儲存
 │       ├── api_client/     Backend REST client
-│       ├── messaging/      MQTT client（LWT、自動重連、離線佇列）、publisher、command handler
+│       ├── messaging/      mqtt.py（LWT、自動重連、離線佇列）、publisher、command handler
 │       ├── telemetry/      系統指標（CPU/MEM/GPU/溫度）、heartbeat
-│       ├── camera/         RTSP/合成影像來源、FFmpeg relay、worker、manager
-│       ├── inference/      Detector 介面、MockDetector、YoloDetector（stub）、factory
-│       ├── pipeline/       取樣 → 推論 → 過濾 → 節流 → 快照 → 發佈
+│       ├── config/         settings.py（EDGE_* env / YAML）、models.py（Server 下發的 camera 設定）
+│       ├── camera/         capture.py（decoder + 重連）、pipeline.py（每支 camera 一個）、manager.py、synthetic.py
+│       ├── ai/             detector.py、mock_detector.py、yolo_detector.py、tracking.py、inference_worker.py、processor.py
+│       ├── video/          overlay.py、encoder.py（VideoEncoder：FFmpeg / NVENC / GStreamer）、render_worker.py
+│       ├── streaming/      publisher.py（StreamPublisher）、rtsp_publisher.py、srt_publisher.py、publish_worker.py、passthrough.py
+│       ├── monitoring/     health.py（每支 camera 的 fps 與狀態）
 │       └── storage/        快照上傳（presigned PUT）
 ├── shared/
 │   ├── python/aivms_shared/  topics.py、payloads.py（Backend/Edge 共用契約）
@@ -119,7 +129,9 @@ docker compose ps
 | MinIO API / Console | http://localhost:9000 / http://127.0.0.1:9001 |
 | MQTT | localhost:1883 |
 
-Backend 啟動時會自動執行 `alembic upgrade head` 與 seed（初始 admin、預設 `yolov8n` 模型；`SEED_DEMO_DATA=true` 時另建 Demo Site / `edge-demo-001` / 兩支 `mock://` 攝影機）。
+Backend 啟動時會自動執行 `alembic upgrade head` 與 seed（初始 admin、預設 `yolov8n` 模型；`SEED_DEMO_DATA=true` 時另建 `site01` / `edge01` / `cam01`、`cam02` 兩支合成攝影機）。
+Demo edge agent 會對每支攝影機跑完整 pipeline（capture → mock AI → overlay → H.264 → RTSP push），
+Camera Monitor 可直接看到 `ai/site01/edge01/cam01` 的標註影像。
 
 **接上真實的 Edge Device**
 
@@ -135,7 +147,9 @@ Backend 啟動時會自動執行 `alembic upgrade head` 與 seed（初始 admin�
      -e EDGE_MQTT_USERNAME=edge -e EDGE_MQTT_PASSWORD=<mqtt-edge-password> \
      -v aivms-edge:/var/lib/aivms-edge aivms/edge-agent
    ```
-   並把 `.env` 的 `MQTT_PUBLIC_HOST`、`MEDIAMTX_RTSP_PUBLISH_URL`、`MINIO_EDGE_URL` 設成 Edge 可連到的位址；
+   並把 `.env` 的 `MQTT_PUBLIC_HOST`、`MEDIAMTX_RTSP_PUBLISH_URL`（或 `MEDIAMTX_SRT_PUBLISH_URL` + `EDGE_STREAM_PROTOCOL=srt`，跨 Internet 建議）、`MINIO_EDGE_URL` 設成 Edge 可連到的位址；
+   Edge 只需要**對外**連得到中央的 8000 / 1883 / 8554（或 8890/udp）/ 9000，中央不需要連到 Edge 或攝影機。
+   NVIDIA GPU：以 CUDA base image 建置並安裝 `requirements-yolo.txt`，`EDGE_VIDEO_ENCODER=auto` 會自動使用 `h264_nvenc`。
    瀏覽器不在本機時設定 `MEDIAMTX_WEBRTC_ADDITIONAL_HOSTS`、`MEDIAMTX_*_PUBLIC_URL`、`MINIO_PUBLIC_URL`、`NEXT_PUBLIC_API_URL`、`CORS_ORIGINS`。
 
 **水平擴充 Backend**：移除 backend 的固定 port 對外映射、在前面放 LB（nginx/Traefik），`docker compose up -d --scale backend=3`。
@@ -171,8 +185,9 @@ cd backend && alembic revision --autogenerate -m "describe change"
 python scripts/gen_schemas.py
 ```
 
-**實作 YOLO**：`edge-agent/agent/inference/yolo_detector.py` 目前是 interface stub（docstring 內有實作範例）；
-安裝 `edge-agent/requirements-yolo.txt`、完成 `load()/detect()`，並設定 `EDGE_DETECTOR=yolo`。新的推論後端（ONNX、TensorRT）只要實作 `Detector` 介面並註冊到 `inference/factory.py`。
+**使用 YOLO**：安裝 `edge-agent/requirements-yolo.txt`、在 AI Models 設定 `model_path`（.pt / .onnx / .engine），並設定 `EDGE_DETECTOR=yolo`
+（`agent/ai/yolo_detector.py`，Ultralytics）。其他推論後端只要實作 `Detector` 介面並註冊到 `agent/ai/factory.py`；
+ByteTrack / BoT-SORT 實作 `agent/ai/tracking.py::Tracker` 即可替換內建的 `IoUTracker`。
 
 ---
 
@@ -196,8 +211,8 @@ Base `/api/v1`，互動文件：`/docs`。管理 API 以 `Authorization: Bearer 
 | GET | `/events/classes`, `/events/{id}` | viewer | |
 | DELETE | `/events/{id}` | admin | |
 | GET | `/dashboard/summary?since=` | viewer | online/offline devices、camera / active camera、今日事件數 |
-| GET | `/streams/{camera_id}` | viewer | WebRTC(WHEP) / HLS URL + 短效 stream token |
-| POST | `/streams/mediamtx/auth` | MediaMTX | MediaMTX HTTP auth hook（publish：device key；read：stream token） |
+| GET | `/cameras/{camera_id}/stream?type=ai\|original` | viewer | `{camera_id, status, stream_type, webrtc_url, hls_url, token, expires_in}`，不含任何攝影機位址 |
+| POST | `/streams/mediamtx/auth` | MediaMTX | MediaMTX HTTP auth hook（RTSP/SRT publish：device key + 擁有該 path；read：綁定 path 的 stream token） |
 | POST | `/edge/register` | `X-Provisioning-Token` | Edge 註冊 → device key |
 | GET | `/edge/config` | `X-Device-Key` | 攝影機（含解密後 RTSP URL）、模型、MQTT / 串流設定 |
 | POST | `/edge/snapshots/presign` | `X-Device-Key` | MinIO presigned PUT URL |
@@ -210,23 +225,26 @@ Base `/api/v1`，互動文件：`/docs`。管理 API 以 `Authorization: Bearer 
 | Topic | 方向 | QoS | Retain | Payload |
 |-------|------|-----|--------|---------|
 | `edge/{device_id}/heartbeat` | Edge → Server | 0 | – | `Heartbeat`（每 10 秒） |
-| `edge/{device_id}/status` | Edge → Server | 1 | ✓ | `DeviceStatus`（含各攝影機狀態；LWT = offline） |
+| `edge/{device_id}/status` | Edge → Server | 1 | ✓ | `DeviceStatus`（online / offline；LWT = offline） |
 | `edge/{device_id}/events` | Edge → Server | 1 | – | `DetectionEvent`（裝置層級） |
 | `edge/{device_id}/cameras/{camera_id}/events` | Edge → Server | 1 | – | `DetectionEvent`（主要路徑） |
+| `edge/{device_id}/cameras/{camera_id}/status` | Edge → Server | 0 | – | `CameraRuntimeStatus`（RTSP / AI / stream 狀態與 FPS；每 10 秒 + 狀態變化時） |
 | `server/{device_id}/command` | Server → Edge | 1 | – | `Command` |
 | `server/{device_id}/config` | Server → Edge | 1 | ✓ | `ConfigChanged`（只通知，設定經 REST 拉取，RTSP 帳密不經過 broker） |
 
-`device_id` = `edge_devices.device_uuid`，`camera_id` = `cameras.id`。Schema：`shared/schemas/*.schema.json`。
+`device_id` = `edge_devices.device_uuid`（例 `edge01`），`camera_id` = `cameras.code`（例 `cam01`）。Schema：`shared/schemas/*.schema.json`。
+影像**不經過** MQTT / WebSocket，只走 H.264 串流。
 
 Detection event：
 ```json
 {
-  "event_id": "uuid", "device_id": "edge-001", "camera_id": "<camera uuid>",
+  "event_id": "uuid", "device_id": "edge01", "camera_id": "cam01",
   "timestamp": "2026-01-01T00:00:00Z", "model": "yolov8n",
-  "snapshot_key": "2026/01/01/edge-001/<camera uuid>/<uuid>.jpg",
+  "frame": { "width": 1920, "height": 1080 },
+  "snapshot_key": "2026/01/01/edge01/<camera uuid>/<uuid>.jpg",
   "detections": [
-    { "class_id": 0, "class_name": "person", "confidence": 0.95,
-      "bbox": { "x1": 100, "y1": 120, "x2": 400, "y2": 650 } }
+    { "track_id": 123, "class_id": 0, "class_name": "person", "confidence": 0.96,
+      "bbox": { "x1": 300, "y1": 200, "x2": 600, "y2": 900 }, "attributes": {} }
   ]
 }
 ```
@@ -258,14 +276,16 @@ Backend 以 `(event_id, detection_index)` 唯一鍵做冪等寫入（QoS 1 重�
 | `MINIO_PUBLIC_URL` / `MINIO_EDGE_URL` | 瀏覽器下載 / Edge 上傳用的 MinIO 位址（presigned URL 綁定 host） |
 | `MINIO_IMAGE` | MinIO 映像（預設 `alpine/minio`，可改 `quay.io/minio/minio:<tag>`） |
 | `MEDIAMTX_WEBRTC_PUBLIC_URL` / `MEDIAMTX_HLS_PUBLIC_URL` | 瀏覽器播放位址 |
-| `MEDIAMTX_RTSP_PUBLISH_URL` | 遠端 Edge 推流位址 |
+| `MEDIAMTX_RTSP_PUBLISH_URL` / `MEDIAMTX_SRT_PUBLISH_URL` | 遠端 Edge 推送標註影像的位址（RTSP：LAN/VPN；SRT：跨 Internet） |
+| `EDGE_STREAM_PROTOCOL` | 下發給 Edge 的預設推流協定 `rtsp` \| `srt` |
 | `MEDIAMTX_WEBRTC_ADDITIONAL_HOSTS` | WebRTC ICE 對外 IP / hostname |
 | `NEXT_PUBLIC_API_URL` | 前端呼叫的 Backend 位址（build-time） |
 | `CORS_ORIGINS` | 允許的前端來源（逗號分隔） |
 | `SEED_DEMO_DATA` / `EDGE_DEVICE_UUID` / `EDGE_DETECTOR` | Demo 資料與 demo edge agent |
 
 Edge agent 使用 `EDGE_*` 前綴（見 `edge-agent/agent/config.py` 與 `edge-agent/config.example.yaml`）：
-`EDGE_DEVICE_UUID, EDGE_API_URL, EDGE_PROVISIONING_TOKEN | EDGE_DEVICE_KEY, EDGE_MQTT_HOST/PORT/USERNAME/PASSWORD/TLS, EDGE_RTSP_PUBLISH_URL, EDGE_DETECTOR, EDGE_INFERENCE_FPS, EDGE_MIN_CONFIDENCE, EDGE_EVENT_COOLDOWN_SECONDS, EDGE_HEARTBEAT_INTERVAL_SECONDS …`
+`EDGE_DEVICE_UUID, EDGE_API_URL, EDGE_PROVISIONING_TOKEN | EDGE_DEVICE_KEY, EDGE_MQTT_HOST/PORT/USERNAME/PASSWORD/TLS, EDGE_STREAM_PROTOCOL, EDGE_RTSP_PUBLISH_URL, EDGE_SRT_PUBLISH_URL, EDGE_VIDEO_ENCODER, EDGE_DETECTOR, EDGE_TRACKER, EDGE_MIN_CONFIDENCE, EDGE_DETECTION_HOLD_SECONDS, EDGE_*_QUEUE_SIZE …`
+（每支攝影機的 resolution / stream_fps / inference_fps / bitrate / gop_size 由中央 Camera 設定下發。）
 
 ---
 
@@ -276,8 +296,10 @@ Edge agent 使用 `EDGE_*` 前綴（見 `edge-agent/agent/config.py` 與 `edge-a
 | 完整 domain model + Alembic migration | 事件保存期限 / TimescaleDB 或分區表 |
 | JWT + refresh rotation + RBAC | refresh token 改用 httpOnly cookie；SSO/OIDC |
 | MQTT ingest（冪等、共享訂閱）、WebSocket 推播 | EMQX + 每台裝置獨立 MQTT 帳號（HTTP auth / ACL） |
-| Edge：註冊、設定同步、heartbeat、狀態、LWT、指令、快照 | YOLO 實作（Ultralytics / TensorRT）、推論用 sub-stream |
-| WebRTC 優先 + HLS fallback、串流授權 | 事件 clip（MediaMTX record → MinIO）、TURN server |
-| Mock detector 可端到端跑通 | ONVIF 探索 / PTZ、Edge OTA 更新 |
+| Edge：註冊、設定同步、heartbeat、LWT、指令、快照 | ByteTrack / BoT-SORT、Option B（tracker 預測兩次推論間的 bbox） |
+| 每支攝影機獨立 pipeline、有界 queue、supervised workers、backoff 重連 | 多攝影機共用 GPU 的 batched inference service |
+| YOLO（Ultralytics）+ Mock detector、IoU tracker、overlay | GStreamer / NVDEC 解碼、GStreamerEncoder、WebRTC (WHIP) publisher |
+| H.264（NVENC 自動偵測 / libx264）、RTSP + SRT push、每支攝影機健康狀態 | RTSPS / SRT passphrase / mTLS、每裝置 MQTT 帳號（EMQX） |
+| WebRTC 優先 + HLS fallback、以 path 綁定的串流授權 | 事件 clip（MediaMTX record → MinIO）、TURN server、ONVIF 探索 / PTZ |
 
-> 注意：目前 Edge 對同一支攝影機會開兩條 RTSP 連線（OpenCV 推論 + FFmpeg 轉送）。攝影機連線數受限時，可改為推論讀取 sub-stream 或從本地 MediaMTX 讀取。
+> 攝影機只會被 Edge 開一條 RTSP 連線（標註影像由同一條解碼後產生）；只有啟用 `original_stream_enabled`（原始影像 passthrough）時才會多開一條。

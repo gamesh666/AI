@@ -1,55 +1,5 @@
 {
   "$defs": {
-    "CameraState": {
-      "enum": [
-        "online",
-        "offline",
-        "error"
-      ],
-      "title": "CameraState",
-      "type": "string"
-    },
-    "CameraStatus": {
-      "properties": {
-        "camera_id": {
-          "title": "Camera Id",
-          "type": "string"
-        },
-        "state": {
-          "$ref": "#/$defs/CameraState"
-        },
-        "fps": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Fps"
-        },
-        "error": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Error"
-        }
-      },
-      "required": [
-        "camera_id",
-        "state"
-      ],
-      "title": "CameraStatus",
-      "type": "object"
-    },
     "DeviceState": {
       "enum": [
         "online",
@@ -71,13 +21,6 @@
     },
     "state": {
       "$ref": "#/$defs/DeviceState"
-    },
-    "cameras": {
-      "items": {
-        "$ref": "#/$defs/CameraStatus"
-      },
-      "title": "Cameras",
-      "type": "array"
     }
   },
   "required": [

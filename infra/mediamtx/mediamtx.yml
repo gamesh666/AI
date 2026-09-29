@@ -1,8 +1,11 @@
 ###############################################################################
 # MediaMTX configuration for the AI VMS platform
 #
-# Edge agents PUBLISH RTSP to rtsp://mediamtx:8554/<stream_id>
-# Browsers READ via WebRTC/WHEP (:8889) or HLS (:8888)
+# Edge agents PUSH their AI-annotated H.264 stream (outgoing connections only):
+#   RTSP/TCP  rtsp://<device>:<key>@mediamtx:8554/ai/<site>/<device>/<camera>          (LAN / VPN)
+#   SRT       srt://mediamtx:8890?streamid=publish:ai/<site>/<device>/<camera>:<device>:<key>  (Internet)
+# Optional raw passthrough: original/<site>/<device>/<camera>
+# Browsers READ via WebRTC/WHEP (:8889) or HLS (:8888), never RTSP.
 # Every publish/read is authorized by the backend (authMethod: http).
 #
 # Settings can be overridden with env vars: MTX_<KEY> (e.g. MTX_WEBRTCADDITIONALHOSTS)
@@ -36,8 +39,11 @@ rtspTransports: [tcp]
 rtspAddress: :8554
 
 rtmp: no
-srt: no
 moq: no
+
+# ---- SRT (edge publish across the Internet) ---------------------------------
+srt: yes
+srtAddress: :8890
 
 # ---- HLS (fallback playback) -------------------------------------------------
 hls: yes
@@ -64,5 +70,6 @@ pathDefaults:
   # future: event clips -> record: yes, recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
 
 paths:
-  # any path name (stream_id); authorization is enforced by the backend hook
+  # ai/<site>/<device>/<camera> and original/<site>/<device>/<camera>;
+  # the backend hook decides who may publish / read each path
   all_others:

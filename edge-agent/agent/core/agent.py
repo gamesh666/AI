@@ -1,10 +1,10 @@
 """Edge agent lifecycle.
 
     register (provisioning token -> device key, cached)
-      -> fetch config (REST)
-      -> MQTT connect (LWT = offline status)
-      -> start camera workers
-      -> heartbeat every 10s, status on change / every 30s
+      -> fetch config (REST, HTTPS)
+      -> MQTT connect (LWT = offline)                          outgoing
+      -> CameraManager: one CameraPipeline per camera           camera RTSP in, annotated H.264 out (push)
+      -> heartbeat every 10 s, per-camera health every 10 s + on state change
       -> react to server/{id}/command and server/{id}/config
 """
 
@@ -12,23 +12,27 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 
 from agent.api_client.client import ApiError, BackendClient
-from agent.api_client.models import DeviceConfig
 from agent.camera.manager import CameraManager
-from agent.config import AgentSettings
+from agent.camera.pipeline import PipelineContext
+from agent.config.models import DeviceConfig
+from agent.config.settings import AgentSettings
 from agent.core.credentials import CredentialStore
 from agent.messaging.command_handler import CommandHandler
-from agent.messaging.mqtt_client import EdgeMQTTClient
+from agent.messaging.mqtt import EdgeMQTTClient
 from agent.messaging.publisher import EdgePublisher
-from agent.pipeline.camera_pipeline import PipelineDeps
 from agent.storage.snapshot_uploader import SnapshotUploader
+from agent.streaming.factory import PublishEndpoint
 from agent.telemetry.heartbeat import HeartbeatReporter
 from agent.telemetry.system_metrics import SystemMetrics
 from aivms_shared import topics
 from aivms_shared.payloads import Command, CommandType, ConfigChanged, DeviceState, DeviceStatus
 
 logger = logging.getLogger(__name__)
+
+LOOP_SECONDS = 2.0
 
 
 class EdgeAgent:
@@ -41,7 +45,8 @@ class EdgeAgent:
         self.config: DeviceConfig | None = None
         self._stop = threading.Event()
         self._reload = threading.Event()
-        self._last_status: list | None = None
+        self._last_states: dict[str, tuple] = {}
+        self._last_status_report = 0.0
 
         self.mqtt: EdgeMQTTClient | None = None
         self.publisher: EdgePublisher | None = None
@@ -96,14 +101,21 @@ class EdgeAgent:
             except Exception as exc:
                 logger.error("bootstrap failed (%s); retrying in %.0fs", exc, delay)
                 self._stop.wait(delay)
-                delay = min(delay * 2, 60)
+                delay = min(delay * 2, 30)
 
     # ---- runtime ---------------------------------------------------------------
 
-    def _relay_base(self) -> str | None:
-        if self.settings.rtsp_publish_url:
-            return self.settings.rtsp_publish_url
-        return self.config.streaming.rtsp_publish_url if self.config else None
+    def _endpoint(self) -> PublishEndpoint:
+        s, cfg = self.settings, self.config
+        assert cfg is not None
+        protocol = s.stream_protocol or cfg.streaming.protocol
+        if protocol == "srt":
+            base = s.srt_publish_url or cfg.streaming.srt_publish_url
+            if not base:
+                raise RuntimeError("SRT selected but no srt_publish_url configured")
+        else:
+            base = s.rtsp_publish_url or cfg.streaming.rtsp_publish_url
+        return PublishEndpoint(protocol=protocol, base_url=base, username=s.device_uuid, password=self.device_key)
 
     def _setup_mqtt(self) -> None:
         s, cfg = self.settings, self.config
@@ -122,16 +134,21 @@ class EdgeAgent:
         self.publisher.configure_last_will()
         self.mqtt.subscribe(topics.command(s.device_uuid), self.commands.handle_command)
         self.mqtt.subscribe(topics.config(s.device_uuid), self.commands.handle_config)
-        self.mqtt.on_connected(lambda: self._publish_status(force=True))
+        self.mqtt.on_connected(self._on_mqtt_connected)
 
         self.commands.register(CommandType.RELOAD_CONFIG, lambda _: self._reload.set())
         self.commands.register(CommandType.RESTART_CAMERA, self._cmd_restart_camera)
-        self.commands.register(CommandType.PING, lambda _: self._publish_status(force=True))
+        self.commands.register(CommandType.PING, lambda _: self._report_cameras(force=True))
         self.commands.on_config_changed(self._on_config_changed)
+
+    def _on_mqtt_connected(self) -> None:
+        assert self.publisher is not None
+        self.publisher.status(DeviceStatus(device_uuid=self.settings.device_uuid, state=DeviceState.ONLINE))
+        self._report_cameras(force=True)
 
     def _cmd_restart_camera(self, cmd: Command) -> None:
         cam_id = str(cmd.params.get("camera_id", ""))
-        if self.cameras and not self.cameras.restart(cam_id, self._relay_base()):
+        if self.cameras and not self.cameras.restart(cam_id):
             logger.warning("restart_camera: unknown camera %s", cam_id)
 
     def _on_config_changed(self, msg: ConfigChanged) -> None:
@@ -140,25 +157,30 @@ class EdgeAgent:
 
     def _apply_config(self) -> None:
         assert self.cameras is not None and self.config is not None
-        self.cameras.apply(self.config.cameras, self._relay_base())
+        self.cameras.set_endpoint(self._endpoint())
+        self.cameras.apply(self.config.cameras)
         if self.heartbeat:
             self.heartbeat.interval = self.config.heartbeat_interval_seconds or self.settings.heartbeat_interval_seconds
-        self._publish_status(force=True)
+        self._report_cameras(force=True)
 
-    def _publish_status(self, force: bool = False) -> None:
-        if not self.publisher or not self.cameras:
+    def _report_cameras(self, force: bool = False) -> None:
+        """Per-camera health → edge/{device}/cameras/{camera}/status (periodic + on state change)."""
+        if not self.publisher or not self.cameras or not (self.mqtt and self.mqtt.connected):
             return
-        cams = self.cameras.statuses()
-        snapshot = [(c.camera_id, c.state) for c in cams]
-        if not force and snapshot == self._last_status:
-            return
-        self._last_status = snapshot
-        self.publisher.status(DeviceStatus(device_uuid=self.settings.device_uuid, state=DeviceState.ONLINE,
-                                           cameras=cams))
+        periodic = time.monotonic() - self._last_status_report >= self.settings.camera_status_interval_seconds
+        statuses = self.cameras.statuses()
+        for status in statuses:
+            key = (status.rtsp_status, status.ai_status, status.stream_status)
+            if force or periodic or self._last_states.get(status.camera_id) != key:
+                self._last_states[status.camera_id] = key
+                self.publisher.camera_status(status)
+        if force or periodic:
+            self._last_status_report = time.monotonic()
 
     def run(self) -> None:
         s = self.settings
-        logger.info("edge agent starting (device=%s detector=%s)", s.device_uuid, s.detector)
+        logger.info("edge agent starting (device=%s detector=%s encoder=%s)", s.device_uuid, s.detector,
+                    s.video_encoder)
         self._bootstrap()
         if self._stop.is_set():
             return
@@ -166,21 +188,24 @@ class EdgeAgent:
         assert self.mqtt is not None and self.publisher is not None
 
         uploader = SnapshotUploader(self.api, s.snapshot_jpeg_quality) if s.snapshot_enabled else None
-        self.cameras = CameraManager(PipelineDeps(s, self.publisher, uploader, self.device_key))
+        ctx = PipelineContext(settings=s, device_id=s.device_uuid, publisher=self.publisher, uploader=uploader,
+                              endpoint=self._endpoint())
+        self.cameras = CameraManager(ctx)
         self.heartbeat = HeartbeatReporter(s.device_uuid, self.publisher, self.metrics, s.heartbeat_interval_seconds)
 
         self.mqtt.start()
         self.heartbeat.start()
         self._apply_config()
 
-        ticks = 0.0
+        last_poll = time.monotonic()
         while not self._stop.is_set():
-            if self._reload.wait(timeout=5):
+            if self._reload.wait(timeout=LOOP_SECONDS):
                 self._reload.clear()
                 self._reload_config()
-            ticks += 5
-            self._publish_status(force=ticks % s.status_interval_seconds < 5)
-            if ticks % s.config_poll_interval_seconds < 5:
+            self.cameras.supervise()
+            self._report_cameras()
+            if time.monotonic() - last_poll >= s.config_poll_interval_seconds:
+                last_poll = time.monotonic()
                 self._reload_config()  # safety net if a config notification was missed
 
     def _reload_config(self) -> None:

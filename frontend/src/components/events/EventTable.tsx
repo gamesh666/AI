@@ -36,7 +36,16 @@ export function EventTable({ events, loading }: { events: DetectionEvent[]; load
         </div>
       ),
     },
-    { key: "class", header: "Detection class", render: (e) => <span className="font-medium text-brand-400">{e.class_name}</span> },
+    {
+      key: "class",
+      header: "Detection class",
+      render: (e) => (
+        <span>
+          <span className="font-medium text-brand-400">{e.class_name}</span>
+          {e.track_id != null && <span className="ml-1 text-xs text-slate-500">#{e.track_id}</span>}
+        </span>
+      ),
+    },
     {
       key: "confidence",
       header: "Confidence",

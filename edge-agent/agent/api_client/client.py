@@ -8,7 +8,7 @@ import time
 import httpx
 
 from agent import __version__
-from agent.api_client.models import DeviceConfig, PresignedUpload
+from agent.config.models import DeviceConfig, PresignedUpload
 
 logger = logging.getLogger(__name__)
 
