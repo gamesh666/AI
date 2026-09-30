@@ -23,7 +23,9 @@ video, detection events, device telemetry and per-camera health.
 | `demo-seed` | One-shot: creates sites / devices / cameras via the **public REST API** | an operator using the UI / API |
 
 Core services (frontend, backend, postgres, redis, mosquitto, mediamtx, minio) are the unchanged
-production services.
+production services. The service definitions are in `docker-compose.demo.yml` at the repository root
+(root-relative paths, so it resolves the same via `include` or `-f`); the code they run lives here.
+On a VM accessed from another computer, see `docs/deploy-vm.md`.
 
 ```
             camera-lan (internal network)                 default network (central platform)

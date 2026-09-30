@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     monitor = DeviceMonitor()
+    if placeholders := settings.placeholder_secrets():
+        logger.warning("placeholder secrets in use (development only!): %s — run ./scripts/generate-secrets.sh",
+                       ", ".join(placeholders))
 
     try:
         await storage_service.ensure_buckets()

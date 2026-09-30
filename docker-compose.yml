@@ -4,11 +4,11 @@
 #   docker compose --profile demo up -d   + fake cameras, simulated edge devices, demo data
 #
 # infra/docker-compose.yml          production stack
-# simulation/docker-compose.demo.yml development / simulation environment (profile "demo" only)
+# docker-compose.demo.yml          development / simulation environment (profile "demo" only)
 name: aivms
 
 include:
   - path: infra/docker-compose.yml
     env_file: .env
-  - path: simulation/docker-compose.demo.yml
+  - path: docker-compose.demo.yml
     env_file: .env

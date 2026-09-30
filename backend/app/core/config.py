@@ -5,7 +5,8 @@ from __future__ import annotations
 from functools import lru_cache
 from urllib.parse import quote
 
-from pydantic import Field, SecretStr, computed_field
+from cryptography.fernet import Fernet
+from pydantic import Field, SecretStr, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,6 +48,20 @@ class Settings(BaseSettings):
 
     # --- credentials encryption (RTSP passwords) ---
     credential_encryption_key: SecretStr
+
+    @field_validator("credential_encryption_key")
+    @classmethod
+    def _valid_fernet_key(cls, v: SecretStr) -> SecretStr:
+        # fail at startup instead of a 500 on the first camera with RTSP credentials
+        try:
+            Fernet(v.get_secret_value().encode())
+        except (ValueError, TypeError):
+            raise ValueError(
+                "CREDENTIAL_ENCRYPTION_KEY is not a valid Fernet key (32 url-safe base64 bytes). Generate one with: "
+                "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\" "
+                "or run ./scripts/generate-secrets.sh"
+            ) from None
+        return v
 
     # --- edge provisioning ---
     edge_provisioning_token: SecretStr
@@ -105,6 +120,21 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    def placeholder_secrets(self) -> list[str]:
+        """Names of secrets still set to the .env.example placeholders ("change-me…")."""
+        names = []
+        for name in type(self).model_fields:
+            value = getattr(self, name)
+            if isinstance(value, SecretStr) and value.get_secret_value().startswith("change-me"):
+                names.append(name.upper())
+        return names
+
+    @model_validator(mode="after")
+    def _no_placeholders_in_production(self) -> Settings:
+        if self.is_production and (names := self.placeholder_secrets()):
+            raise ValueError(f"placeholder secrets are not allowed in production: {', '.join(names)}")
+        return self
 
 
 @lru_cache

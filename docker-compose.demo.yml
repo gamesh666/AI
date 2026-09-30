@@ -2,6 +2,10 @@
 #
 #   docker compose --profile demo up -d
 #
+# This file lives in the REPOSITORY ROOT on purpose: all paths below are relative to the repo root, so
+# they resolve identically whether it is loaded through `include` (root docker-compose.yml) or with
+# `-f docker-compose.demo.yml`. Code for these services lives in simulation/.
+#
 # Adds to the core platform (frontend, backend, postgres, redis, mosquitto, mediamtx, minio):
 #
 #   fake-camera01..04  FFmpeg test pattern / looped mp4 -> RTSP  (H.264, default 1920x1080@30)
@@ -22,19 +26,19 @@ x-sim-logging: &sim-logging
     options: { max-size: "5m", max-file: "2" }
 
 x-fake-camera: &fake-camera
-  build: ./fake-camera
+  build: ./simulation/fake-camera
   image: aivms/fake-camera:dev
   profiles: ["demo"]
   restart: unless-stopped
   <<: *sim-logging
   networks: [camera-lan]
   volumes:
-    - ./media:/media:ro
+    - ./simulation/media:/media:ro
   depends_on: [sim-rtsp]
 
 x-sim-edge: &sim-edge
   build:
-    context: ..
+    context: .
     dockerfile: simulation/edge/Dockerfile
   image: aivms/edge-sim:dev
   profiles: ["demo"]
@@ -69,7 +73,7 @@ services:
     <<: *sim-logging
     networks: [camera-lan]
     volumes:
-      - ./rtsp-server/mediamtx.yml:/mediamtx.yml:ro
+      - ./simulation/rtsp-server/mediamtx.yml:/mediamtx.yml:ro
     environment:
       MTX_AUTHINTERNALUSERS_0_USER: publisher
       MTX_AUTHINTERNALUSERS_0_PASS: ${SIM_CAMERA_PUBLISH_PASSWORD:-}
@@ -149,7 +153,7 @@ services:
   # ----------------------------------------------------------------- demo data (public API only)
   demo-seed:
     build:
-      context: ..
+      context: .
       dockerfile: simulation/edge/Dockerfile
     image: aivms/edge-sim:dev
     profiles: ["demo"]

@@ -90,8 +90,8 @@
 ├── shared/
 │   ├── python/aivms_shared/  topics.py、payloads.py（Backend/Edge 共用契約）
 │   └── schemas/              自動產生的 JSON Schema
-├── simulation/         Development / Simulation Mode（production 不依賴）
-│   ├── docker-compose.demo.yml   profile "demo"：fake cameras、模擬 camera LAN、2 台模擬 edge、demo seeder
+├── docker-compose.demo.yml  profile "demo"：fake cameras、模擬 camera LAN、2 台模擬 edge、demo seeder
+├── simulation/         Development / Simulation Mode 程式碼（production 不依賴）
 │   ├── fake-camera/              FFmpeg test pattern / loop mp4 → RTSP
 │   ├── edge/Dockerfile           production edge agent + simulation plugin
 │   └── python/aivms_sim/         edge plugin（MockDetector、file:// / mock:// source、模擬 GPU）、demo seeder
@@ -110,7 +110,8 @@
 
 ## 3. How to start
 
-需求：Docker 24+、Docker Compose v2.20+（支援 `include`）。
+需求：Docker 24+、Docker Compose v2.24+（支援 `include`）。
+在 VM 上部署、從其他電腦操作：請看 **[`docs/deploy-vm.md`](docs/deploy-vm.md)**（含常見問題與 `scripts/doctor.sh`）。
 
 ```bash
 # 1) 產生 .env（所有 secret 自動隨機產生）
