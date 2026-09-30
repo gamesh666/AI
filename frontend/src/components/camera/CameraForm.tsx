@@ -101,9 +101,10 @@ export function CameraForm({
         <legend className="px-1 text-xs uppercase text-slate-400">{t("cameras.sourceLegend")}</legend>
         <Field label={t("cameras.rtspUrl")} hint={t("cameras.rtspUrlHint")}>
           <Input
-            required={!initial}
             value={v.rtsp_url}
-            placeholder={initial ? unchanged : "rtsp://192.168.1.101:554/stream1"}
+            placeholder={
+              initial ? (initial.source_configured ? unchanged : t("cameras.edgeManaged")) : "rtsp://192.168.1.101:554/stream1"
+            }
             onChange={(e) => set("rtsp_url", e.target.value)}
             autoComplete="off"
           />

@@ -48,8 +48,9 @@ class EdgeCameraConfig(BaseModel):
     id: uuid.UUID
     camera_id: str  # camera code, used in MQTT topics and payloads
     name: str
-    # full URL WITH credentials — only served to the owning, authenticated device over HTTPS
-    rtsp_url: str
+    # full URL WITH credentials — only served to the owning, authenticated device over HTTPS.
+    # None = the edge manages this camera's source itself.
+    rtsp_url: str | None
     onvif_url: str | None
     enabled: bool
     ai_enabled: bool
@@ -85,8 +86,16 @@ class EdgeConfig(BaseModel):
 
 
 class PresignRequest(BaseModel):
-    camera_id: uuid.UUID
+    # either the camera UUID (from /edge/config) or its code; neither = device-level snapshot
+    camera_id: uuid.UUID | None = None
+    camera_code: str | None = Field(default=None, max_length=64)
     content_type: str = "image/jpeg"
+
+
+class EdgeCameraDeclare(BaseModel):
+    """A camera an edge announces itself (its source stays on the edge)."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class PresignResponse(BaseModel):

@@ -28,7 +28,10 @@ class CameraManager:
 
     def apply(self, cameras: list[CameraConfig]) -> None:
         """Diff by config fingerprint: only added/changed/removed cameras are (re)started."""
-        desired = {c.camera_id: c for c in cameras if c.enabled}
+        desired = {c.camera_id: c for c in cameras if c.enabled and c.rtsp_url}
+        for c in cameras:
+            if c.enabled and not c.rtsp_url:
+                logger.info("camera %s: source managed outside this agent; skipped", c.camera_id)
         with self._lock:
             for cam_id in list(self._pipelines):
                 pipeline = self._pipelines[cam_id]

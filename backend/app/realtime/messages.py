@@ -14,6 +14,8 @@ class RealtimeEventType(StrEnum):
     DEVICE_HEARTBEAT = "device.heartbeat"
     DEVICE_STATUS = "device.status"
     CAMERA_STATUS = "camera.status"
+    LOG_CREATED = "log.created"
+    LOG_UPDATED = "log.updated"
 
 
 class RealtimeMessage(BaseModel):

@@ -32,7 +32,8 @@ class CameraConfig(_M):
     id: str  # backend UUID (REST calls)
     camera_id: str  # camera code (MQTT topics / payloads)
     name: str
-    rtsp_url: str
+    # None = this camera's source is managed by another program on the edge (not this agent)
+    rtsp_url: str | None = None
     onvif_url: str | None = None
     enabled: bool = True
     ai_enabled: bool = True

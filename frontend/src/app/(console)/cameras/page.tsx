@@ -75,6 +75,7 @@ export default function CamerasPage() {
                 <div className="font-medium">{c.name}</div>
                 <div className="text-xs text-slate-500">
                   {c.code} {c.has_credentials && "· 🔒"}
+                  {!c.source_configured && ` · ${t("cameras.edgeManagedShort")}`}
                 </div>
               </div>
             ),

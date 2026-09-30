@@ -2,17 +2,20 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Path
 
 from app.api.deps import CurrentDevice, DBSession
 from app.core.exceptions import AuthError
 from app.schemas.edge import (
+    EdgeCameraConfig,
+    EdgeCameraDeclare,
     EdgeConfig,
     EdgeRegisterRequest,
     EdgeRegisterResponse,
     PresignRequest,
     PresignResponse,
 )
+from app.schemas.site import SLUG_PATTERN
 from app.services.device_service import DeviceService
 from app.services.edge_service import EdgeService
 
@@ -38,4 +41,18 @@ async def get_config(device: CurrentDevice, db: DBSession) -> EdgeConfig:
 
 @router.post("/snapshots/presign", response_model=PresignResponse)
 async def presign_snapshot(body: PresignRequest, device: CurrentDevice, db: DBSession) -> PresignResponse:
-    return await EdgeService(db).presign_snapshot(device, body.camera_id)
+    return await EdgeService(db).presign_snapshot(device, body.camera_id, body.camera_code)
+
+
+@router.put("/cameras/{code}", response_model=EdgeCameraConfig)
+async def declare_camera(
+    body: EdgeCameraDeclare,
+    device: CurrentDevice,
+    db: DBSession,
+    code: Annotated[str, Path(pattern=SLUG_PATTERN)],
+) -> EdgeCameraConfig:
+    """For edges that manage their own cameras: announce one so its logs and live stream show up.
+
+    Idempotent. Returns the camera's platform config, including the stream path to publish to.
+    """
+    return await EdgeService(db).declare_camera(device, code, body.name)

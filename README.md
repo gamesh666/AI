@@ -232,13 +232,17 @@ Base `/api/v1`，互動文件：`/docs`。管理 API 以 `Authorization: Bearer 
 | GET | `/events` | viewer | 篩選 `start,end,site_id,camera_id,edge_device_id,class_name,min_confidence,max_confidence`，分頁 |
 | GET | `/events/classes`, `/events/{id}` | viewer | |
 | DELETE | `/events/{id}` | admin | |
-| GET | `/dashboard/summary?since=` | viewer | online/offline devices、camera / active camera、今日事件數 |
+| GET | `/logs` | viewer | Edge 紀錄（任何辨識結果）。篩選 `start,end,site_id,edge_device_id,camera_id,event_type,severity,status,q`，分頁 |
+| GET | `/logs/types`, `/logs/{id}` | viewer | |
+| DELETE | `/logs/{id}` | admin | |
+| GET | `/dashboard/summary?since=` | viewer | online/offline devices、camera / active camera、今日事件數、今日 Edge 紀錄數 |
 | GET | `/cameras/{camera_id}/stream?type=ai\|original` | viewer | `{camera_id, status, stream_type, webrtc_url, hls_url, token, expires_in}`，不含任何攝影機位址 |
 | POST | `/streams/mediamtx/auth` | MediaMTX | MediaMTX HTTP auth hook（RTSP/SRT publish：device key + 擁有該 path；read：綁定 path 的 stream token） |
 | POST | `/edge/register` | `X-Provisioning-Token` | Edge 註冊 → device key |
 | GET | `/edge/config` | `X-Device-Key` | 攝影機（含解密後 RTSP URL）、模型、MQTT / 串流設定 |
-| POST | `/edge/snapshots/presign` | `X-Device-Key` | MinIO presigned PUT URL |
-| WS | `/ws?token=<access_token>[&types=...]` | user | 即時推播 `detection.created`, `device.heartbeat`, `device.status`, `camera.status` |
+| POST | `/edge/snapshots/presign` | `X-Device-Key` | MinIO presigned PUT URL（`camera_id` 或 `camera_code`） |
+| PUT | `/edge/cameras/{code}` | `X-Device-Key` | 第三方 Edge 自行宣告攝影機（來源留在 Edge），回傳 stream path |
+| WS | `/ws?token=<access_token>[&types=...]` | user | 即時推播 `detection.created`, `log.created`, `log.updated`, `device.heartbeat`, `device.status`, `camera.status` |
 
 ---
 
@@ -251,11 +255,14 @@ Base `/api/v1`，互動文件：`/docs`。管理 API 以 `Authorization: Bearer 
 | `edge/{device_id}/events` | Edge → Server | 1 | – | `DetectionEvent`（裝置層級） |
 | `edge/{device_id}/cameras/{camera_id}/events` | Edge → Server | 1 | – | `DetectionEvent`（主要路徑） |
 | `edge/{device_id}/cameras/{camera_id}/status` | Edge → Server | 0 | – | `CameraRuntimeStatus`（RTSP / AI / stream 狀態與 FPS；每 10 秒 + 狀態變化時） |
+| `edge/{device_id}/logs` · `edge/{device_id}/cameras/{camera_id}/logs` | Edge → Server | 1 | – | `EdgeLog`：任何辨識結果 / 紀錄，`event_type` 與 `data` 自訂；同一 `event_id` 再送 = 更新 |
 | `server/{device_id}/command` | Server → Edge | 1 | – | `Command` |
 | `server/{device_id}/config` | Server → Edge | 1 | ✓ | `ConfigChanged`（只通知，設定經 REST 拉取，RTSP 帳密不經過 broker） |
 
 `device_id` = `edge_devices.device_uuid`（例 `edge01`），`camera_id` = `cameras.code`（例 `cam01`）。Schema：`shared/schemas/*.schema.json`。
 影像**不經過** MQTT / WebSocket，只走 H.264 串流。
+
+**第三方 Edge**（不使用本 repo 的 edge-agent，辨識內容自訂，平台只接收與顯示）：見 [`docs/edge-integration.md`](docs/edge-integration.md) 與可執行範例 [`examples/third-party-edge/`](examples/third-party-edge/)。
 
 Detection event：
 ```json

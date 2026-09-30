@@ -1,0 +1,216 @@
+{
+  "$defs": {
+    "BBox": {
+      "properties": {
+        "x1": {
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "title": "Y1",
+          "type": "number"
+        },
+        "x2": {
+          "title": "X2",
+          "type": "number"
+        },
+        "y2": {
+          "title": "Y2",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x1",
+        "y1",
+        "x2",
+        "y2"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "Detection": {
+      "properties": {
+        "track_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Id"
+        },
+        "class_id": {
+          "title": "Class Id",
+          "type": "integer"
+        },
+        "class_name": {
+          "title": "Class Name",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "bbox": {
+          "$ref": "#/$defs/BBox"
+        },
+        "attributes": {
+          "additionalProperties": true,
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "class_id",
+        "class_name",
+        "confidence",
+        "bbox"
+      ],
+      "title": "Detection",
+      "type": "object"
+    },
+    "FrameInfo": {
+      "properties": {
+        "width": {
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "title": "Height",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "title": "FrameInfo",
+      "type": "object"
+    },
+    "LogSeverity": {
+      "enum": [
+        "debug",
+        "info",
+        "warning",
+        "error",
+        "critical"
+      ],
+      "title": "LogSeverity",
+      "type": "string"
+    }
+  },
+  "description": "Anything an edge recognises or wants to report, whatever its AI does.\n\nThe platform does not interpret `event_type` or `data`: it stores, filters and displays them.\nRe-sending the same `event_id` updates that log (e.g. a \"leave\" that later gets a return time):\n`status` / `message` / `severity` / `detections` / `snapshot_key` are replaced when given and\n`data` is shallow-merged, while the first `timestamp` is kept.",
+  "properties": {
+    "event_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:\\-]{0,63}$",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "device_id": {
+      "title": "Device Id",
+      "type": "string"
+    },
+    "camera_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Camera Id"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "event_type": {
+      "description": "free-form, e.g. office.leave, ppe.no_helmet",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:\\-]{0,63}$",
+      "title": "Event Type",
+      "type": "string"
+    },
+    "severity": {
+      "$ref": "#/$defs/LogSeverity",
+      "default": "info"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "maxLength": 32,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Status"
+    },
+    "message": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "data": {
+      "additionalProperties": true,
+      "title": "Data",
+      "type": "object"
+    },
+    "detections": {
+      "items": {
+        "$ref": "#/$defs/Detection"
+      },
+      "maxItems": 200,
+      "title": "Detections",
+      "type": "array"
+    },
+    "frame": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FrameInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "snapshot_key": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Snapshot Key"
+    }
+  },
+  "required": [
+    "device_id",
+    "event_type"
+  ],
+  "title": "EdgeLog",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

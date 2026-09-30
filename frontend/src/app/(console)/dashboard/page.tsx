@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DeviceStatusList } from "@/components/devices/DeviceStatusList";
 import { LiveEventFeed } from "@/components/events/LiveEventFeed";
+import { LiveLogFeed } from "@/components/logs/LiveLogFeed";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAsync } from "@/hooks/useAsync";
@@ -30,13 +31,16 @@ export default function DashboardPage() {
   useRealtime("detection.created", () =>
     summary.setData((s: DashboardSummary | null) => (s ? { ...s, events_today: s.events_today + 1 } : s)),
   );
+  useRealtime("log.created", () =>
+    summary.setData((s: DashboardSummary | null) => (s ? { ...s, logs_today: s.logs_today + 1 } : s)),
+  );
 
   const s = summary.data;
   return (
     <>
       <PageHeader title={t("nav.dashboard")} subtitle={t("dashboard.subtitle")} />
       <ErrorBanner error={summary.error ?? devices.error} />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
         <StatCard label={t("dashboard.onlineDevices")} value={s?.online_devices} tone="good" />
         <StatCard
           label={t("dashboard.offlineDevices")}
@@ -46,10 +50,12 @@ export default function DashboardPage() {
         />
         <StatCard label={t("common.cameras")} value={s?.camera_count} />
         <StatCard label={t("dashboard.activeCameras")} value={s?.active_camera_count} tone="info" />
+        <StatCard label={t("dashboard.logsToday")} value={s?.logs_today} tone="info" />
         <StatCard label={t("dashboard.detectionsToday")} value={s?.events_today} tone="info" />
       </div>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <DeviceStatusList devices={devices.data ?? []} />
+        <LiveLogFeed />
         <LiveEventFeed />
       </div>
     </>

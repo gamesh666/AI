@@ -52,8 +52,10 @@ def split_credentials(url: str) -> tuple[str, str | None, str | None]:
     return clean, user, password
 
 
-def build_authenticated_url(camera: Camera) -> str:
+def build_authenticated_url(camera: Camera) -> str | None:
     """Rebuild the full RTSP URL (with credentials). Only for the owning edge device."""
+    if not camera.rtsp_url:
+        return None
     if not camera.rtsp_username and not camera.rtsp_password_encrypted:
         return camera.rtsp_url
     parts = urlsplit(camera.rtsp_url)
@@ -104,7 +106,7 @@ class CameraService:
         device = await self._device(data.edge_device_id)
         await self._check_model(data.ai_model_id)
 
-        clean_url, url_user, url_pass = split_credentials(data.rtsp_url)
+        clean_url, url_user, url_pass = split_credentials(data.rtsp_url) if data.rtsp_url else (None, None, None)
         username = data.rtsp_username or url_user
         password = data.rtsp_password or url_pass
         camera = Camera(
@@ -144,6 +146,11 @@ class CameraService:
         if changes.get("edge_device_id") and changes["edge_device_id"] != camera.edge_device_id:
             device = await self._device(changes["edge_device_id"])
 
+        if changes.get("rtsp_url") == "":
+            changes.pop("rtsp_url")
+            camera.rtsp_url = None
+            camera.rtsp_username = None
+            camera.rtsp_password_encrypted = None
         if changes.get("rtsp_url"):
             clean_url, url_user, url_pass = split_credentials(changes.pop("rtsp_url"))
             camera.rtsp_url = clean_url

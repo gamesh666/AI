@@ -23,7 +23,7 @@ def _validate_rtsp(v: str | None) -> str | None:
 
     The platform only stores and forwards it; which schemes are supported is decided on the edge.
     """
-    if v is not None and not _SOURCE_URL.match(v):
+    if v and not _SOURCE_URL.match(v):
         raise ValueError("rtsp_url must be a URL such as rtsp://host:554/stream")
     return v
 
@@ -45,7 +45,8 @@ class CameraCreate(_StreamSettings):
     name: str = Field(min_length=1, max_length=128)
     # write-only. Credentials may be embedded (rtsp://user:pass@host/...) or given separately;
     # either way they are stripped from the URL and stored encrypted.
-    rtsp_url: str = Field(max_length=512)
+    # None = the edge manages the camera source itself (e.g. a third-party edge)
+    rtsp_url: str | None = Field(default=None, max_length=512)
     rtsp_username: str | None = Field(default=None, max_length=128)
     rtsp_password: str | None = Field(default=None, max_length=256)
     onvif_url: str | None = Field(default=None, max_length=512)
@@ -59,6 +60,7 @@ class CameraCreate(_StreamSettings):
 class CameraUpdate(_StreamSettings):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     code: str | None = Field(default=None, pattern=SLUG_PATTERN)
+    # empty string clears the source (and its credentials): the edge manages it
     rtsp_url: str | None = Field(default=None, max_length=512)
     rtsp_username: str | None = Field(default=None, max_length=128)
     # empty string clears the password

@@ -12,6 +12,7 @@ from app.core.exceptions import NotFoundError
 from app.models.camera import Camera
 from app.models.edge_device import EdgeDevice
 from app.repositories.camera_repository import CameraRepository
+from app.schemas.camera import CameraCreate
 from app.schemas.edge import (
     EdgeCameraConfig,
     EdgeConfig,
@@ -22,7 +23,7 @@ from app.schemas.edge import (
     PresignResponse,
 )
 from app.services import storage_service
-from app.services.camera_service import build_authenticated_url
+from app.services.camera_service import CameraService, build_authenticated_url
 
 PRESIGN_TTL_SECONDS = 300
 
@@ -86,6 +87,8 @@ class EdgeService:
                     "events": topics.device_events(device.device_uuid),
                     "camera_events": topics.camera_events(device.device_uuid, "{camera_id}"),
                     "camera_status": topics.camera_status(device.device_uuid, "{camera_id}"),
+                    "logs": topics.device_logs(device.device_uuid),
+                    "camera_logs": topics.camera_logs(device.device_uuid, "{camera_id}"),
                     "command": topics.command(device.device_uuid),
                     "config": topics.config(device.device_uuid),
                 },
@@ -97,13 +100,39 @@ class EdgeService:
             ),
         )
 
-    async def presign_snapshot(self, device: EdgeDevice, camera_id: uuid.UUID) -> PresignResponse:
-        camera = await self.cameras.get(camera_id)
-        if camera is None or camera.edge_device_id != device.id:
-            raise NotFoundError("camera not found for this device")
-        key = storage_service.build_snapshot_key(device.device_uuid, camera_id)
+    async def presign_snapshot(
+        self, device: EdgeDevice, camera_id: uuid.UUID | None = None, camera_code: str | None = None
+    ) -> PresignResponse:
+        part: uuid.UUID | str = "device"
+        if camera_id is not None or camera_code is not None:
+            camera = (
+                await self.cameras.get(camera_id)
+                if camera_id is not None
+                else await self.cameras.get_by_device_code(device.id, camera_code or "")
+            )
+            if camera is None or camera.edge_device_id != device.id:
+                raise NotFoundError("camera not found for this device")
+            part = camera.id
+        key = storage_service.build_snapshot_key(device.device_uuid, part)
         return PresignResponse(
             object_key=key,
             upload_url=storage_service.presign_upload(key, PRESIGN_TTL_SECONDS),
             expires_in=PRESIGN_TTL_SECONDS,
         )
+
+    async def declare_camera(self, device: EdgeDevice, code: str, name: str | None) -> EdgeCameraConfig:
+        """Create (or rename) a camera announced by the edge itself; its source stays on the edge."""
+        camera = await self.cameras.get_by_device_code(device.id, code)
+        if camera is None:
+            created = await CameraService(self.session).create(
+                CameraCreate(edge_device_id=device.id, code=code, name=name or code)
+            )
+            camera_id = created.id
+        else:
+            camera_id = camera.id
+            if name and camera.name != name:
+                camera.name = name
+                await self.session.commit()
+        full = await self.cameras.get_full(camera_id)
+        assert full is not None
+        return _camera_config(full)

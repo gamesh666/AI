@@ -36,7 +36,8 @@ class Camera(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(128))
 
     # ---- source (edge-side only; never returned to the frontend) ----
-    rtsp_url: Mapped[str] = mapped_column(String(512))  # stored WITHOUT credentials
+    # stored WITHOUT credentials; NULL = the edge manages its own source (third-party edges)
+    rtsp_url: Mapped[str | None] = mapped_column(String(512))
     rtsp_username: Mapped[str | None] = mapped_column(String(128))
     rtsp_password_encrypted: Mapped[str | None] = mapped_column(Text)
     onvif_url: Mapped[str | None] = mapped_column(String(512))

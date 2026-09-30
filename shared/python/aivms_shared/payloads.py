@@ -136,6 +136,43 @@ class DetectionEvent(_Payload):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+# ---- generic edge log -------------------------------------------------------
+
+LOG_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:\-]{0,63}$"
+LOG_TYPE_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:\-]{0,63}$"
+
+
+class LogSeverity(StrEnum):
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
+class EdgeLog(_Payload):
+    """Anything an edge recognises or wants to report, whatever its AI does.
+
+    The platform does not interpret `event_type` or `data`: it stores, filters and displays them.
+    Re-sending the same `event_id` updates that log (e.g. a "leave" that later gets a return time):
+    `status` / `message` / `severity` / `detections` / `snapshot_key` are replaced when given and
+    `data` is shallow-merged, while the first `timestamp` is kept.
+    """
+
+    event_id: str = Field(default_factory=lambda: uuid.uuid4().hex, pattern=LOG_ID_PATTERN)
+    device_id: str
+    camera_id: str | None = None
+    timestamp: datetime = Field(default_factory=utcnow)
+    event_type: str = Field(pattern=LOG_TYPE_PATTERN, description="free-form, e.g. office.leave, ppe.no_helmet")
+    severity: LogSeverity = LogSeverity.INFO
+    status: str | None = Field(default=None, max_length=32)
+    message: str | None = Field(default=None, max_length=1000)
+    data: dict[str, Any] = Field(default_factory=dict)
+    detections: list[Detection] = Field(default_factory=list, max_length=200)
+    frame: FrameInfo | None = None
+    snapshot_key: str | None = Field(default=None, max_length=512)
+
+
 # ---- server -> edge --------------------------------------------------------
 
 
@@ -166,6 +203,7 @@ ALL_PAYLOADS: dict[str, type[BaseModel]] = {
     "device_status": DeviceStatus,
     "camera_status": CameraRuntimeStatus,
     "detection_event": DetectionEvent,
+    "edge_log": EdgeLog,
     "command": Command,
     "config_changed": ConfigChanged,
 }

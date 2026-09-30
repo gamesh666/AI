@@ -56,7 +56,7 @@ def edge_client() -> Minio:
     return _client_for(s.minio_edge_url, s.minio_secure)
 
 
-def build_snapshot_key(device_uuid: str, camera_id: uuid.UUID, ext: str = "jpg") -> str:
+def build_snapshot_key(device_uuid: str, camera_id: uuid.UUID | str, ext: str = "jpg") -> str:
     now = datetime.now(UTC)
     # bucket is already "snapshots": key = yyyy/mm/dd/<device>/<camera>/<uuid>.jpg
     return f"{now:%Y/%m/%d}/{device_uuid}/{camera_id}/{uuid.uuid4().hex}.{ext}"

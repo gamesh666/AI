@@ -6,6 +6,8 @@ Edge -> Server:
     edge/{device_id}/events
     edge/{device_id}/cameras/{camera_id}/events
     edge/{device_id}/cameras/{camera_id}/status
+    edge/{device_id}/logs                          generic edge log / recognition result
+    edge/{device_id}/cameras/{camera_id}/logs
 
 Server -> Edge:
     server/{device_id}/command
@@ -27,6 +29,8 @@ class TopicKind(StrEnum):
     DEVICE_EVENTS = "device_events"
     CAMERA_EVENTS = "camera_events"
     CAMERA_STATUS = "camera_status"
+    DEVICE_LOGS = "device_logs"
+    CAMERA_LOGS = "camera_logs"
     COMMAND = "command"
     CONFIG = "config"
 
@@ -54,6 +58,14 @@ def camera_status(device_id: str, camera_id: str) -> str:
     return f"{EDGE_PREFIX}/{device_id}/cameras/{camera_id}/status"
 
 
+def device_logs(device_id: str) -> str:
+    return f"{EDGE_PREFIX}/{device_id}/logs"
+
+
+def camera_logs(device_id: str, camera_id: str) -> str:
+    return f"{EDGE_PREFIX}/{device_id}/cameras/{camera_id}/logs"
+
+
 def command(device_id: str) -> str:
     return f"{SERVER_PREFIX}/{device_id}/command"
 
@@ -70,6 +82,8 @@ SERVER_SUBSCRIPTIONS: dict[TopicKind, str] = {
     TopicKind.DEVICE_EVENTS: f"{EDGE_PREFIX}/+/events",
     TopicKind.CAMERA_EVENTS: f"{EDGE_PREFIX}/+/cameras/+/events",
     TopicKind.CAMERA_STATUS: f"{EDGE_PREFIX}/+/cameras/+/status",
+    TopicKind.DEVICE_LOGS: f"{EDGE_PREFIX}/+/logs",
+    TopicKind.CAMERA_LOGS: f"{EDGE_PREFIX}/+/cameras/+/logs",
 }
 
 
@@ -105,10 +119,15 @@ def parse(topic: str) -> ParsedTopic | None:
                 "heartbeat": TopicKind.HEARTBEAT,
                 "status": TopicKind.STATUS,
                 "events": TopicKind.DEVICE_EVENTS,
+                "logs": TopicKind.DEVICE_LOGS,
             }.get(parts[2])
             return ParsedTopic(kind, device_id) if kind else None
         if len(parts) == 5 and parts[2] == "cameras" and parts[3]:
-            kind = {"events": TopicKind.CAMERA_EVENTS, "status": TopicKind.CAMERA_STATUS}.get(parts[4])
+            kind = {
+                "events": TopicKind.CAMERA_EVENTS,
+                "status": TopicKind.CAMERA_STATUS,
+                "logs": TopicKind.CAMERA_LOGS,
+            }.get(parts[4])
             return ParsedTopic(kind, device_id, parts[3]) if kind else None
         return None
 

@@ -158,6 +158,40 @@ export interface DashboardSummary {
   camera_count: number;
   active_camera_count: number;
   events_today: number;
+  logs_today: number;
+}
+
+export type LogSeverity = "debug" | "info" | "warning" | "error" | "critical";
+
+/** Anything an edge reports. The platform does not interpret event_type / data. */
+export interface EdgeLog {
+  id: UUID;
+  event_id: string;
+  edge_device_id: UUID;
+  edge_device_uuid: string | null;
+  edge_device_name: string | null;
+  site_id: UUID | null;
+  site_name: string | null;
+  camera_id: UUID | null;
+  camera_code: string | null;
+  camera_name: string | null;
+  event_type: string;
+  severity: LogSeverity;
+  status: string | null;
+  message: string | null;
+  data: Record<string, unknown>;
+  detections: {
+    track_id?: number | null;
+    class_id?: number;
+    class_name: string;
+    confidence: number;
+    bbox: BBox;
+    attributes?: Record<string, unknown>;
+  }[];
+  frame: { width: number; height: number } | null;
+  snapshot_url: string | null;
+  occurred_at: string;
+  updated_at: string;
 }
 
 export interface StreamInfo {
@@ -172,7 +206,13 @@ export interface StreamInfo {
 }
 
 // ---- realtime ----
-export type RealtimeType = "detection.created" | "device.heartbeat" | "device.status" | "camera.status";
+export type RealtimeType =
+  | "detection.created"
+  | "device.heartbeat"
+  | "device.status"
+  | "camera.status"
+  | "log.created"
+  | "log.updated";
 
 export interface RealtimeMessage<T = Record<string, unknown>> {
   type: RealtimeType;
