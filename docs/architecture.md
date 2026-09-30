@@ -160,7 +160,7 @@ project-root/
 │       ├── telemetry/           # system metrics (CPU/MEM/GPU/溫度), heartbeat loop
 │       ├── config/              # settings (env/YAML) + server config models
 │       ├── camera/              # capture (decoder + reconnect), pipeline, manager, synthetic source
-│       ├── ai/                  # Detector 介面, Mock/YOLO detector, tracking, inference worker, event processor
+│       ├── ai/                  # Detector 介面 + registry, YOLO detector, tracking, inference worker, event processor
 │       ├── video/               # overlay renderer, VideoEncoder (FFmpeg/NVENC/GStreamer), render worker
 │       ├── streaming/           # StreamPublisher (RTSP / SRT), publish worker, original passthrough
 │       ├── monitoring/          # per-camera health (fps, rtsp/ai/stream status)
@@ -168,6 +168,7 @@ project-root/
 ├── shared/
 │   ├── python/aivms_shared/     # 共用：MQTT topics、payload models（Backend/Edge 共用）
 │   └── schemas/                 # 由 Pydantic 產生的 JSON Schema（給其他語言/文件使用）
+├── simulation/                  # Development / Simulation Mode（見 simulation/README.md；production 不依賴）
 ├── infra/
 │   ├── docker-compose.yml
 │   ├── mosquitto/               # mosquitto.conf, acl, entrypoint（由 env 產生密碼檔）

@@ -128,8 +128,6 @@ services:
       INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-admin}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?INITIAL_ADMIN_PASSWORD is required}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
-      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
-      DEMO_DEVICE_UUID: ${EDGE_DEVICE_UUID:-edge01}
       MQTT_HOST: mosquitto
       MQTT_PORT: 1883
       MQTT_USERNAME: ${MQTT_BACKEND_USERNAME:-backend}
@@ -169,43 +167,8 @@ services:
     ports:
       - "${FRONTEND_PORT_PUBLISHED:-3000}:3000"
 
-  # --------------------------------------------------------------------------- demo edge (optional)
-  # docker compose --profile edge up -d
-  # Runs an edge agent in this compose network. With SEED_DEMO_DATA=true the backend creates
-  # site01 / edge01 / cam01+cam02 with synthetic (mock://scene) sources; the agent runs the full
-  # capture -> mock AI -> overlay -> H.264 -> RTSP push pipeline per camera.
-  edge-agent:
-    profiles: ["edge"]
-    build:
-      context: ..
-      dockerfile: edge-agent/Dockerfile
-    image: aivms/edge-agent:dev
-    <<: [*restart, *logging]
-    environment:
-      EDGE_DEVICE_UUID: ${EDGE_DEVICE_UUID:-edge01}
-      EDGE_DEVICE_NAME: ${EDGE_DEVICE_NAME:-Demo Edge}
-      EDGE_API_URL: http://backend:8000/api/v1
-      EDGE_PROVISIONING_TOKEN: ${EDGE_PROVISIONING_TOKEN}
-      EDGE_MQTT_HOST: mosquitto
-      EDGE_MQTT_PORT: 1883
-      EDGE_MQTT_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
-      EDGE_MQTT_PASSWORD: ${MQTT_EDGE_PASSWORD}
-      # inside compose the edge reaches the media server by service name
-      EDGE_RTSP_PUBLISH_URL: rtsp://mediamtx:8554
-      EDGE_SRT_PUBLISH_URL: srt://mediamtx:8890
-      EDGE_STREAM_PROTOCOL: ${EDGE_STREAM_PROTOCOL:-rtsp}
-      EDGE_DETECTOR: ${EDGE_DETECTOR:-mock}
-      EDGE_VIDEO_ENCODER: ${EDGE_VIDEO_ENCODER:-auto}
-    volumes:
-      - edge-data:/var/lib/aivms-edge
-    depends_on:
-      - backend
-      - mosquitto
-      - mediamtx
-
 volumes:
   postgres-data:
   redis-data:
   minio-data:
   mosquitto-data:
-  edge-data:

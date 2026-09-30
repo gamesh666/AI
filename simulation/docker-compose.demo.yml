@@ -1,0 +1,179 @@
+# Development / Simulation environment — no IP cameras, no GPU, no edge hardware required.
+#
+#   docker compose --profile demo up -d
+#
+# Adds to the core platform (frontend, backend, postgres, redis, mosquitto, mediamtx, minio):
+#
+#   fake-camera01..04  FFmpeg test pattern / looped mp4 -> RTSP  (H.264, default 1920x1080@30)
+#   sim-rtsp           the simulated "camera LAN": an RTSP server hosting test/camera01..04
+#   edge01, edge02     simulated edge devices = the production edge agent + simulation plugin
+#                      (mock detector, simulated GPU telemetry), EDGE001 / EDGE002
+#   demo-seed          one-shot: creates sites / devices / cameras through the public REST API
+#
+# Simulation variables are optional at the compose level (production installs never need them);
+# the fake cameras and the demo seeder refuse to start without their credentials.
+#
+# Network layout mirrors production: cameras and the edges share "camera-lan"; the central platform is
+# NOT on it, so it can never reach a camera — the edges push everything out.
+
+x-sim-logging: &sim-logging
+  logging:
+    driver: json-file
+    options: { max-size: "5m", max-file: "2" }
+
+x-fake-camera: &fake-camera
+  build: ./fake-camera
+  image: aivms/fake-camera:dev
+  profiles: ["demo"]
+  restart: unless-stopped
+  <<: *sim-logging
+  networks: [camera-lan]
+  volumes:
+    - ./media:/media:ro
+  depends_on: [sim-rtsp]
+
+x-sim-edge: &sim-edge
+  build:
+    context: ..
+    dockerfile: simulation/edge/Dockerfile
+  image: aivms/edge-sim:dev
+  profiles: ["demo"]
+  restart: unless-stopped
+  <<: *sim-logging
+  networks: [default, camera-lan]
+  depends_on: [backend, mosquitto, mediamtx, sim-rtsp]
+
+x-sim-edge-env: &sim-edge-env
+  EDGE_API_URL: http://backend:8000/api/v1
+  EDGE_PROVISIONING_TOKEN: ${EDGE_PROVISIONING_TOKEN:?EDGE_PROVISIONING_TOKEN is required}
+  EDGE_MQTT_HOST: mosquitto
+  EDGE_MQTT_PORT: "1883"
+  EDGE_MQTT_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
+  EDGE_MQTT_PASSWORD: ${MQTT_EDGE_PASSWORD:?MQTT_EDGE_PASSWORD is required}
+  EDGE_STREAM_PROTOCOL: ${EDGE_STREAM_PROTOCOL:-rtsp}
+  EDGE_RTSP_PUBLISH_URL: rtsp://mediamtx:8554
+  EDGE_SRT_PUBLISH_URL: srt://mediamtx:8890
+  EDGE_VIDEO_ENCODER: ${EDGE_VIDEO_ENCODER:-auto}
+  # --- the only simulation-specific settings: swap these for real hardware ---
+  EDGE_PLUGINS: aivms_sim.edge.plugin
+  DETECTOR_TYPE: ${DEMO_DETECTOR_TYPE:-mock}           # yolo on a real edge (falls back to mock if no model)
+  EDGE_DETECTOR_FALLBACK: mock
+  EDGE_METRICS_PROVIDER: simulated                      # system on a real edge
+
+services:
+  # ----------------------------------------------------------------- simulated camera LAN
+  sim-rtsp:
+    image: bluenviron/mediamtx:1.21.1
+    profiles: ["demo"]
+    restart: unless-stopped
+    <<: *sim-logging
+    networks: [camera-lan]
+    volumes:
+      - ./rtsp-server/mediamtx.yml:/mediamtx.yml:ro
+    environment:
+      MTX_AUTHINTERNALUSERS_0_USER: publisher
+      MTX_AUTHINTERNALUSERS_0_PASS: ${SIM_CAMERA_PUBLISH_PASSWORD:-}
+      MTX_AUTHINTERNALUSERS_1_USER: ${SIM_CAMERA_USERNAME:-admin}
+      MTX_AUTHINTERNALUSERS_1_PASS: ${SIM_CAMERA_PASSWORD:-}
+
+  fake-camera01:
+    <<: *fake-camera
+    environment:
+      CAMERA_ID: CAM001
+      RTSP_URL: rtsp://publisher:${SIM_CAMERA_PUBLISH_PASSWORD:-}@sim-rtsp:8554/test/camera01
+      SOURCE: ${FAKE_CAMERA01_SOURCE:-testsrc}
+      PATTERN: testsrc2
+      VIDEO_FILE: ${FAKE_CAMERA01_VIDEO:-}
+      WIDTH: ${SIM_CAMERA_WIDTH:-1920}
+      HEIGHT: ${SIM_CAMERA_HEIGHT:-1080}
+      FPS: ${SIM_CAMERA_FPS:-30}
+
+  fake-camera02:
+    <<: *fake-camera
+    environment:
+      CAMERA_ID: CAM002
+      RTSP_URL: rtsp://publisher:${SIM_CAMERA_PUBLISH_PASSWORD:-}@sim-rtsp:8554/test/camera02
+      SOURCE: ${FAKE_CAMERA02_SOURCE:-testsrc}
+      PATTERN: smptehdbars
+      VIDEO_FILE: ${FAKE_CAMERA02_VIDEO:-}
+      WIDTH: ${SIM_CAMERA_WIDTH:-1920}
+      HEIGHT: ${SIM_CAMERA_HEIGHT:-1080}
+      FPS: ${SIM_CAMERA_FPS:-30}
+
+  fake-camera03:
+    <<: *fake-camera
+    environment:
+      CAMERA_ID: CAM003
+      RTSP_URL: rtsp://publisher:${SIM_CAMERA_PUBLISH_PASSWORD:-}@sim-rtsp:8554/test/camera03
+      SOURCE: ${FAKE_CAMERA03_SOURCE:-testsrc}
+      PATTERN: testsrc
+      VIDEO_FILE: ${FAKE_CAMERA03_VIDEO:-}
+      WIDTH: ${SIM_CAMERA_WIDTH:-1920}
+      HEIGHT: ${SIM_CAMERA_HEIGHT:-1080}
+      FPS: ${SIM_CAMERA_FPS:-30}
+
+  fake-camera04:
+    <<: *fake-camera
+    environment:
+      CAMERA_ID: CAM004
+      RTSP_URL: rtsp://publisher:${SIM_CAMERA_PUBLISH_PASSWORD:-}@sim-rtsp:8554/test/camera04
+      SOURCE: ${FAKE_CAMERA04_SOURCE:-testsrc}
+      PATTERN: rgbtestsrc
+      VIDEO_FILE: ${FAKE_CAMERA04_VIDEO:-}
+      WIDTH: ${SIM_CAMERA_WIDTH:-1920}
+      HEIGHT: ${SIM_CAMERA_HEIGHT:-1080}
+      FPS: ${SIM_CAMERA_FPS:-30}
+
+  # ----------------------------------------------------------------- simulated edge devices
+  edge01:
+    <<: *sim-edge
+    environment:
+      <<: *sim-edge-env
+      EDGE_DEVICE_UUID: EDGE001
+      EDGE_DEVICE_NAME: Edge Gateway 001
+      SIM_GPU_NAME: Simulated NVIDIA T4
+    volumes:
+      - edge01-data:/var/lib/aivms-edge
+
+  edge02:
+    <<: *sim-edge
+    environment:
+      <<: *sim-edge-env
+      EDGE_DEVICE_UUID: EDGE002
+      EDGE_DEVICE_NAME: Edge Gateway 002
+      SIM_GPU_NAME: Simulated NVIDIA Jetson Orin
+      SIM_GPU_MEMORY_MB: "8192"
+    volumes:
+      - edge02-data:/var/lib/aivms-edge
+
+  # ----------------------------------------------------------------- demo data (public API only)
+  demo-seed:
+    build:
+      context: ..
+      dockerfile: simulation/edge/Dockerfile
+    image: aivms/edge-sim:dev
+    profiles: ["demo"]
+    restart: on-failure
+    <<: *sim-logging
+    command: ["python", "-m", "aivms_sim.seed"]
+    environment:
+      DEMO_API_URL: http://backend:8000/api/v1
+      DEMO_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-admin}
+      DEMO_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?INITIAL_ADMIN_PASSWORD is required}
+      DEMO_CAMERA_RTSP_BASE: rtsp://sim-rtsp:8554
+      DEMO_CAMERA_USERNAME: ${SIM_CAMERA_USERNAME:-admin}
+      DEMO_CAMERA_PASSWORD: ${SIM_CAMERA_PASSWORD:-}
+      DEMO_STREAM_RESOLUTION: ${DEMO_STREAM_RESOLUTION:-1280x720}
+      DEMO_STREAM_FPS: ${DEMO_STREAM_FPS:-25}
+      DEMO_INFERENCE_FPS: ${DEMO_INFERENCE_FPS:-5}
+    depends_on:
+      backend: { condition: service_healthy }
+
+networks:
+  # the simulated site network: fake cameras + edges only
+  camera-lan:
+    internal: true
+
+volumes:
+  edge01-data:
+  edge02-data:

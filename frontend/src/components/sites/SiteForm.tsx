@@ -34,7 +34,7 @@ export function SiteForm({
         <Input required value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
       </Field>
       <Field label="Site ID" hint="Slug used in stream paths: ai/<site>/<device>/<camera>, e.g. site01">
-        <Input required pattern="[a-z0-9][a-z0-9_\-]{1,31}" value={v.code} onChange={(e) => setV({ ...v, code: e.target.value })} />
+        <Input required pattern="[A-Za-z0-9][A-Za-z0-9_\-]{1,31}" value={v.code} onChange={(e) => setV({ ...v, code: e.target.value })} />
       </Field>
       <Field label="Address">
         <Input value={v.address ?? ""} onChange={(e) => setV({ ...v, address: e.target.value })} />

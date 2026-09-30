@@ -1,11 +1,8 @@
 import numpy as np
 
 from agent.ai.detector import BoundingBox, Detection
-from agent.ai.mock_detector import MockDetector
 from agent.ai.processor import EventPolicy
 from agent.ai.tracking import IoUTracker
-from agent.camera.synthetic import SyntheticScene
-from agent.core.frame_queue import Frame
 from agent.video.overlay import OverlayRenderer, format_label
 
 
@@ -49,16 +46,6 @@ def test_event_policy_class_cooldown_without_tracking():
     assert p.triggers([det(0)]) == []
     now[0] = 6
     assert len(p.triggers([det(0)])) == 1
-
-
-def test_mock_detector_matches_synthetic_scene():
-    scene = SyntheticScene(seed=3)
-    frame = Frame(image=np.zeros((720, 1280, 3), dtype=np.uint8), seq=1, captured_at=1000.0)
-    objs = scene.objects_at(1000.0, 1280, 720)
-    dets = MockDetector(seed=3).detect(frame)
-    assert [d.class_name for d in dets] == [o.class_name for o in objs]
-    for d, o in zip(dets, objs, strict=True):
-        assert abs(d.bbox.x1 - max(0, o.box[0])) <= 3
 
 
 def test_overlay_draws_box_and_label():

@@ -26,7 +26,7 @@ from agent.messaging.publisher import EdgePublisher
 from agent.storage.snapshot_uploader import SnapshotUploader
 from agent.streaming.factory import PublishEndpoint
 from agent.telemetry.heartbeat import HeartbeatReporter
-from agent.telemetry.system_metrics import SystemMetrics
+from agent.telemetry.system_metrics import create_metrics
 from aivms_shared import topics
 from aivms_shared.payloads import Command, CommandType, ConfigChanged, DeviceState, DeviceStatus
 
@@ -40,7 +40,7 @@ class EdgeAgent:
         self.settings = settings
         self.api = BackendClient(settings.api_url, settings.api_timeout_seconds)
         self.credentials = CredentialStore(settings.data_dir)
-        self.metrics = SystemMetrics()
+        self.metrics = create_metrics(settings.metrics_provider)
         self.commands = CommandHandler()
         self.config: DeviceConfig | None = None
         self._stop = threading.Event()
@@ -179,8 +179,8 @@ class EdgeAgent:
 
     def run(self) -> None:
         s = self.settings
-        logger.info("edge agent starting (device=%s detector=%s encoder=%s)", s.device_uuid, s.detector,
-                    s.video_encoder)
+        logger.info("edge agent starting (device=%s detector=%s fallback=%s encoder=%s metrics=%s)", s.device_uuid,
+                    s.detector, s.detector_fallback, s.video_encoder, s.metrics_provider)
         self._bootstrap()
         if self._stop.is_set():
             return

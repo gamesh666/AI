@@ -8,7 +8,9 @@ import sys
 import threading
 
 from agent.config import get_settings
+from agent.config.settings import plugin_modules
 from agent.core.agent import EdgeAgent
+from agent.plugins import load_plugins
 
 
 def main() -> int:
@@ -20,6 +22,7 @@ def main() -> int:
     )
     # httpx logs full URLs at INFO, which would include presigned upload signatures
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    load_plugins(plugin_modules(settings))
     agent = EdgeAgent(settings)
     stopped = threading.Event()
 

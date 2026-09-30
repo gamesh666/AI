@@ -81,8 +81,8 @@ export function CameraForm({
             <Input required value={v.name} onChange={(e) => set("name", e.target.value)} />
           </Field>
         </div>
-        <Field label="Camera ID" hint="e.g. cam01">
-          <Input required pattern="[a-z0-9][a-z0-9_\-]{1,31}" value={v.code} onChange={(e) => set("code", e.target.value)} />
+        <Field label="Camera ID" hint="e.g. CAM001">
+          <Input required pattern="[A-Za-z0-9][A-Za-z0-9_\-]{1,31}" value={v.code} onChange={(e) => set("code", e.target.value)} />
         </Field>
       </div>
       <Field label="Edge device" hint="The edge device on the camera's network connects to it; the server never does.">
@@ -97,7 +97,7 @@ export function CameraForm({
 
       <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
         <legend className="px-1 text-xs uppercase text-slate-400">Source (edge-side, write-only)</legend>
-        <Field label="RTSP URL" hint="Credentials in the URL are stripped and stored encrypted. mock://scene?seed=1 for a synthetic camera.">
+        <Field label="RTSP URL" hint="Credentials in the URL are stripped and stored encrypted. The edge device connects to this address; the platform never does.">
           <Input
             required={!initial}
             value={v.rtsp_url}

@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 
 import cv2
 import numpy as np
 
-from agent.camera.synthetic import SyntheticScene, parse_mock_url
 from agent.core.backoff import Backoff
 from agent.core.frame_queue import BoundedFrameQueue, Frame
 from agent.core.worker import Worker
@@ -67,33 +66,28 @@ class RTSPSource(FrameSource):
             self._cap = None
 
 
-class SyntheticSource(FrameSource):
-    """mock://scene?seed=N[&width=1280&height=720&fps=25] — paced like a real camera."""
+SourceFactory = Callable[[str], FrameSource]
 
-    def __init__(self, url: str) -> None:
-        params = parse_mock_url(url)
-        self.scene = SyntheticScene(seed=int(params.get("seed", 1)))
-        self._w = int(params.get("width", 1280))
-        self._h = int(params.get("height", 720))
-        self._interval = 1.0 / float(params.get("fps", 25))
-        self._next = 0.0
+# scheme -> factory. Production ships RTSP; other sources (e.g. the simulation package's file / mock
+# sources) are added at startup via agent.plugins, so production code never depends on them.
+_SOURCES: dict[str, SourceFactory] = {"rtsp": RTSPSource, "rtsps": RTSPSource}
 
-    def open(self) -> None:
-        self._next = time.monotonic()
 
-    def read(self) -> np.ndarray | None:
-        delay = self._next - time.monotonic()
-        if delay > 0:
-            time.sleep(delay)
-        self._next = max(self._next + self._interval, time.monotonic() - self._interval)
-        return self.scene.render(time.time(), self._w, self._h)
+def register_source(scheme: str, factory: SourceFactory) -> None:
+    _SOURCES[scheme.lower()] = factory
 
-    def close(self) -> None:
-        pass
+
+def supported_schemes() -> list[str]:
+    return sorted(_SOURCES)
 
 
 def create_source(url: str) -> FrameSource:
-    return SyntheticSource(url) if url.startswith("mock://") else RTSPSource(url)
+    scheme = url.split("://", 1)[0].lower() if "://" in url else ""
+    try:
+        return _SOURCES[scheme](url)
+    except KeyError:
+        raise ValueError(f"unsupported camera source '{scheme}://' (supported: {', '.join(supported_schemes())})") \
+            from None
 
 
 class CaptureWorker(Worker):

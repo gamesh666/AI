@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aivms-sim"
+version = "0.1.0"
+description = "Development / simulation plugins for the AI VMS platform (never installed in production images)"
+requires-python = ">=3.11"
+# the edge plugin runs inside the edge agent (which provides numpy, opencv, psutil, aivms-shared);
+# the seeder only needs the standard library
+
+[tool.setuptools]
+packages = ["aivms_sim", "aivms_sim.edge", "aivms_sim.seed"]

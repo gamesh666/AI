@@ -90,6 +90,11 @@
 ├── shared/
 │   ├── python/aivms_shared/  topics.py、payloads.py（Backend/Edge 共用契約）
 │   └── schemas/              自動產生的 JSON Schema
+├── simulation/         Development / Simulation Mode（production 不依賴）
+│   ├── docker-compose.demo.yml   profile "demo"：fake cameras、模擬 camera LAN、2 台模擬 edge、demo seeder
+│   ├── fake-camera/              FFmpeg test pattern / loop mp4 → RTSP
+│   ├── edge/Dockerfile           production edge agent + simulation plugin
+│   └── python/aivms_sim/         edge plugin（MockDetector、file:// / mock:// source、模擬 GPU）、demo seeder
 ├── infra/
 │   ├── docker-compose.yml    完整 stack
 │   ├── mosquitto/            設定、ACL 範本、由 env 產生密碼檔的 entrypoint
@@ -115,8 +120,9 @@
 # 2) 啟動 Frontend, Backend, PostgreSQL, Redis, Mosquitto, MediaMTX, MinIO
 docker compose up -d
 
-# 3) （可選）加上 demo edge agent：合成攝影機畫面 + mock detector，完整跑通事件與串流
-docker compose --profile edge up -d
+# 3) 沒有實體設備時：完整 Demo / Simulation 環境
+#    4 台 fake camera（FFmpeg → RTSP）+ 2 台模擬 edge（EDGE001 / EDGE002）+ MockDetector + demo 資料
+docker compose --profile demo up -d
 
 docker compose ps
 ```
@@ -129,9 +135,23 @@ docker compose ps
 | MinIO API / Console | http://localhost:9000 / http://127.0.0.1:9001 |
 | MQTT | localhost:1883 |
 
-Backend 啟動時會自動執行 `alembic upgrade head` 與 seed（初始 admin、預設 `yolov8n` 模型；`SEED_DEMO_DATA=true` 時另建 `site01` / `edge01` / `cam01`、`cam02` 兩支合成攝影機）。
-Demo edge agent 會對每支攝影機跑完整 pipeline（capture → mock AI → overlay → H.264 → RTSP push），
-Camera Monitor 可直接看到 `ai/site01/edge01/cam01` 的標註影像。
+Backend 啟動時會自動執行 `alembic upgrade head` 與 seed（初始 admin、預設 `yolov8n` 模型）。
+
+### Development / Simulation Mode（無 IP Camera、無 GPU、無 Edge 硬體）
+
+`docker compose --profile demo up -d` 約一分鐘後，Frontend 即可看到 2 個 Site、2 台 Edge Device、
+4 台 Camera 的 AI 標註即時影像、Detection Event、裝置狀態與攝影機健康狀態。
+
+| Demo 元件 | 模擬 | 接上真實設備時 |
+|-----------|------|---------------|
+| `fake-camera01..04` | FFmpeg test pattern / loop mp4 → H.264 RTSP（1920x1080@30） | IP Camera（在 UI 改 RTSP URL） |
+| `edge01` / `edge02` | **Production edge agent** + simulation plugin（EDGE001 / EDGE002） | 同一個 agent 跑在 edge 硬體上 |
+| MockDetector | 每隔數秒產生 person / car / truck / excavator，格式與 YOLO 完全相同 | `DETECTOR_TYPE=yolo` |
+| 模擬 GPU telemetry | heartbeat 中的 GPU 使用率 / 溫度 | `EDGE_METRICS_PROVIDER=system` |
+| `demo-seed` | 透過公開 REST API 建立 Site / Device / Camera | 管理者在 UI 建立 |
+
+所有模擬程式碼都在 `simulation/`，Production 程式碼與映像檔不依賴它（有測試強制檢查）。
+Backend、Frontend、MQTT、Database、Streaming 架構完全不需修改。詳見 **[`simulation/README.md`](simulation/README.md)**。
 
 **接上真實的 Edge Device**
 
@@ -174,9 +194,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
 npm run typecheck && npm run build
 
 # Edge agent
-pip install -r edge-agent/requirements-dev.txt -e shared/python
+pip install -r edge-agent/requirements-dev.txt -e shared/python -e simulation/python
 ./scripts/dev-edge.sh edge-dev-001          # 需要 PATH 上有 ffmpeg 才會推流
-cd edge-agent && pytest && ruff check .
+cd edge-agent && pytest && ruff check .     # production tests（不含任何 mock）
+cd simulation && pytest                     # production pipeline + simulation plugin
 
 # 產生新的 migration
 cd backend && alembic revision --autogenerate -m "describe change"
@@ -281,10 +302,10 @@ Backend 以 `(event_id, detection_index)` 唯一鍵做冪等寫入（QoS 1 重�
 | `MEDIAMTX_WEBRTC_ADDITIONAL_HOSTS` | WebRTC ICE 對外 IP / hostname |
 | `NEXT_PUBLIC_API_URL` | 前端呼叫的 Backend 位址（build-time） |
 | `CORS_ORIGINS` | 允許的前端來源（逗號分隔） |
-| `SEED_DEMO_DATA` / `EDGE_DEVICE_UUID` / `EDGE_DETECTOR` | Demo 資料與 demo edge agent |
+| `SIM_*` / `FAKE_CAMERA0N_*` / `DEMO_*` | 僅 Demo / Simulation 環境使用（見 `simulation/README.md`）；Production 不需要 |
 
 Edge agent 使用 `EDGE_*` 前綴（見 `edge-agent/agent/config.py` 與 `edge-agent/config.example.yaml`）：
-`EDGE_DEVICE_UUID, EDGE_API_URL, EDGE_PROVISIONING_TOKEN | EDGE_DEVICE_KEY, EDGE_MQTT_HOST/PORT/USERNAME/PASSWORD/TLS, EDGE_STREAM_PROTOCOL, EDGE_RTSP_PUBLISH_URL, EDGE_SRT_PUBLISH_URL, EDGE_VIDEO_ENCODER, EDGE_DETECTOR, EDGE_TRACKER, EDGE_MIN_CONFIDENCE, EDGE_DETECTION_HOLD_SECONDS, EDGE_*_QUEUE_SIZE …`
+`EDGE_DEVICE_UUID, EDGE_API_URL, EDGE_PROVISIONING_TOKEN | EDGE_DEVICE_KEY, DETECTOR_TYPE (= EDGE_DETECTOR, 預設 yolo), EDGE_DETECTOR_FALLBACK, EDGE_PLUGINS, EDGE_MQTT_HOST/PORT/USERNAME/PASSWORD/TLS, EDGE_STREAM_PROTOCOL, EDGE_RTSP_PUBLISH_URL, EDGE_SRT_PUBLISH_URL, EDGE_VIDEO_ENCODER, EDGE_DETECTOR, EDGE_TRACKER, EDGE_MIN_CONFIDENCE, EDGE_DETECTION_HOLD_SECONDS, EDGE_*_QUEUE_SIZE …`
 （每支攝影機的 resolution / stream_fps / inference_fps / bitrate / gop_size 由中央 Camera 設定下發。）
 
 ---

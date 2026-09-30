@@ -17,7 +17,7 @@ import queue
 from dataclasses import dataclass
 
 from agent.ai.detection_store import DetectionStore
-from agent.ai.factory import create_detector
+from agent.ai.factory import DetectorOptions, create_detector
 from agent.ai.inference_worker import InferenceWorker
 from agent.ai.processor import DetectionProcessor, EventDispatcher, EventPolicy
 from agent.ai.tracking import create_tracker
@@ -75,7 +75,9 @@ class CameraPipeline:
             events: queue.Queue = queue.Queue(maxsize=s.event_queue_size)
             model_name = camera.ai_model.name if camera.ai_model else s.detector
             processor = DetectionProcessor(s.min_confidence, EventPolicy(s.event_cooldown_seconds), events)
-            detector = create_detector(s.detector, camera, device=s.detector_device, conf=min(s.min_confidence, 0.25))
+            detector = create_detector(s.detector, camera,
+                                       DetectorOptions(device=s.detector_device, conf=min(s.min_confidence, 0.25)),
+                                       fallback=s.detector_fallback)
             self.workers.append(InferenceWorker(cid, inference_q, detector, tracker, store, processor, self.health,
                                                 camera.video.inference_fps))
             self.workers.append(EventDispatcher(cid, camera.id, ctx.device_id, model_name, events, ctx.publisher,
@@ -99,7 +101,8 @@ class CameraPipeline:
         self.health.track_drops(inference_q, render_q, publish_q)
 
         # ---- optional original passthrough ----
-        if camera.stream_enabled and camera.original_stream_enabled and not camera.rtsp_url.startswith("mock://"):
+        is_rtsp = camera.rtsp_url.startswith(("rtsp://", "rtsps://"))
+        if camera.stream_enabled and camera.original_stream_enabled and is_rtsp:
             self.workers.append(PassthroughWorker(cid, camera.rtsp_url, ctx.endpoint, camera.original_stream_path,
                                                   s.ffmpeg_path))
 

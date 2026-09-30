@@ -6,6 +6,7 @@ import logging
 import shutil
 import socket
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import psutil
@@ -101,3 +102,20 @@ class SystemMetrics:
                 return s.getsockname()[0]
         except OSError:
             return None
+
+
+MetricsFactory = Callable[[], SystemMetrics]
+
+# name -> factory. Production ships the real host metrics; plugins may add others (e.g. simulated GPUs).
+_PROVIDERS: dict[str, MetricsFactory] = {"system": SystemMetrics}
+
+
+def register_metrics_provider(name: str, factory: MetricsFactory) -> None:
+    _PROVIDERS[name] = factory
+
+
+def create_metrics(name: str = "system") -> SystemMetrics:
+    try:
+        return _PROVIDERS[name]()
+    except KeyError:
+        raise ValueError(f"unknown metrics provider '{name}' (available: {', '.join(sorted(_PROVIDERS))})") from None

@@ -1,0 +1,44 @@
+###############################################################################
+# Simulated camera LAN (simulation only).
+#
+# Stands in for the IP cameras of a site: fake-camera containers publish here and the simulated edge
+# devices READ from here with camera credentials, exactly as they would from real cameras:
+#     rtsp://<camera user>:<camera password>@sim-rtsp:8554/test/camera01
+# It lives on the "camera-lan" network only — the central platform cannot reach it.
+#
+# Credentials come from the environment (see docker-compose.demo.yml):
+#   MTX_AUTHINTERNALUSERS_0_USER / _PASS   cameras (publish)
+#   MTX_AUTHINTERNALUSERS_1_USER / _PASS   edge devices (read) = the camera credentials stored in the platform
+###############################################################################
+
+logLevel: info
+logDestinations: [stdout]
+
+authMethod: internal
+authInternalUsers:
+  - user: set-by-env
+    pass: set-by-env
+    ips: []
+    permissions:
+      - action: publish
+        path:
+  - user: set-by-env
+    pass: set-by-env
+    ips: []
+    permissions:
+      - action: read
+        path:
+
+api: no
+metrics: no
+rtsp: yes
+rtspTransports: [tcp]
+rtspAddress: :8554
+rtmp: no
+hls: no
+webrtc: no
+srt: no
+moq: no
+
+paths:
+  all_others:

@@ -44,9 +44,6 @@ class Settings(BaseSettings):
     initial_admin_username: str = "admin"
     initial_admin_password: SecretStr | None = None
     initial_admin_email: str | None = None
-    # creates a demo site / edge device / synthetic camera (for the `edge` compose profile)
-    seed_demo_data: bool = False
-    demo_device_uuid: str = "edge01"
 
     # --- credentials encryption (RTSP passwords) ---
     credential_encryption_key: SecretStr

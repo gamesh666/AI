@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 
@@ -31,7 +31,7 @@ class _YamlSource(PydanticBaseSettingsSource):
 
 
 class AgentSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="EDGE_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="EDGE_", extra="ignore", populate_by_name=True)
 
     # identity
     device_uuid: str = Field(pattern=r"^[A-Za-z0-9_\-]{3,64}$")
@@ -62,8 +62,14 @@ class AgentSettings(BaseSettings):
     # auto: h264_nvenc when an NVIDIA GPU + NVENC-enabled ffmpeg are available, else libx264
     video_encoder: str = "auto"  # auto | libx264 | h264_nvenc
 
-    # inference
-    detector: str = "mock"  # mock | yolo
+    # optional plugin modules imported at startup (comma separated), each exposing register().
+    # Production runs without any; the demo image uses "aivms_sim.edge.plugin".
+    plugins: str = ""
+
+    # inference — which Detector implementation to run; nothing else in the agent knows or cares
+    detector: str = Field(default="yolo", validation_alias=AliasChoices("EDGE_DETECTOR", "DETECTOR_TYPE"))
+    # used when the primary detector cannot load (no model file / ultralytics / GPU); empty = no fallback
+    detector_fallback: str | None = None
     detector_device: str = "cuda:0"  # yolo only; falls back to cpu if CUDA is unavailable
     tracker: str = "iou"  # none | iou   (bytetrack / botsort: future)
     min_confidence: float = 0.5
@@ -82,6 +88,7 @@ class AgentSettings(BaseSettings):
     snapshot_jpeg_quality: int = 80
 
     # telemetry
+    metrics_provider: str = "system"
     heartbeat_interval_seconds: float = 10.0
     camera_status_interval_seconds: float = 10.0
     config_poll_interval_seconds: float = 300.0
@@ -98,6 +105,10 @@ class AgentSettings(BaseSettings):
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return init_settings, env_settings, _YamlSource(settings_cls), file_secret_settings
+
+
+def plugin_modules(settings: AgentSettings) -> list[str]:
+    return [m.strip() for m in settings.plugins.split(",") if m.strip()]
 
 
 @lru_cache

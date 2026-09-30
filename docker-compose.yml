@@ -1,7 +1,14 @@
-# Entry point: `docker compose up -d` from the repository root.
-# The stack definition lives in infra/docker-compose.yml; variables come from ./.env
+# Entry point, from the repository root (variables come from ./.env):
+#
+#   docker compose up -d                  core platform (production services)
+#   docker compose --profile demo up -d   + fake cameras, simulated edge devices, demo data
+#
+# infra/docker-compose.yml          production stack
+# simulation/docker-compose.demo.yml development / simulation environment (profile "demo" only)
 name: aivms
 
 include:
   - path: infra/docker-compose.yml
+    env_file: .env
+  - path: simulation/docker-compose.demo.yml
     env_file: .env

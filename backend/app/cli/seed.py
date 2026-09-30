@@ -1,5 +1,7 @@
 """Idempotent bootstrap: creates the initial admin (from env) and a default AI model.
 
+Demo sites / devices / cameras are NOT created here: see simulation/ (demo-seed, public API only).
+
     python -m app.cli.seed
 """
 
@@ -17,11 +19,7 @@ from app.core.logging import configure_logging
 from app.core.security import hash_password
 from app.db.session import dispose_engine, get_session_factory
 from app.models.ai_model import AIModel
-from app.models.camera import Camera
-from app.models.edge_device import EdgeDevice
-from app.models.site import Site
 from app.models.user import User
-from app.services.camera_service import build_stream_path
 
 logger = logging.getLogger("seed")
 
@@ -55,13 +53,10 @@ async def seed() -> None:
                     model_type="yolov8",
                     labels=COCO_LABELS_HEAD,
                     model_path="models/yolov8n.pt",
-                    description="Default YOLOv8 nano (COCO). Edge agents use the mock detector until YOLO is enabled.",
+                    description="Default YOLOv8 nano (COCO).",
                 )
             )
             logger.info("created default AI model yolov8n")
-        await session.flush()
-        if settings.seed_demo_data:
-            await _seed_demo(session, settings.demo_device_uuid)
         try:
             await session.commit()
         except IntegrityError:
@@ -69,38 +64,6 @@ async def seed() -> None:
             await session.rollback()
             logger.info("seed data already present")
     await dispose_engine()
-
-
-async def _seed_demo(session, device_uuid: str) -> None:
-    """Demo site + device + two synthetic cameras. The device key is issued when the agent registers."""
-    if await session.scalar(select(EdgeDevice).where(EdgeDevice.device_uuid == device_uuid)):
-        return
-    site = await session.scalar(select(Site).where(Site.code == "site01"))
-    if site is None:
-        site = Site(name="Demo Site", code="site01", address="Localhost", description="Created by SEED_DEMO_DATA")
-        session.add(site)
-    model = await session.scalar(select(AIModel).order_by(AIModel.created_at).limit(1))
-    device = EdgeDevice(device_uuid=device_uuid, name="Demo Edge", site=site)
-    session.add(device)
-    for idx, name in ((1, "Entrance"), (2, "Parking")):
-        code = f"cam{idx:02d}"
-        session.add(
-            Camera(
-                edge_device=device,
-                code=code,
-                name=f"Demo {name}",
-                # synthetic source rendered on the edge; replace with rtsp://<camera-ip>/... for real cameras
-                rtsp_url=f"mock://scene?seed={idx}",
-                stream_path=build_stream_path(site.code, device_uuid, code),
-                resolution="1280x720",
-                stream_fps=25,
-                inference_fps=5,
-                bitrate="2M",
-                gop_size=50,
-                ai_model_id=model.id if model else None,
-            )
-        )
-    logger.info("created demo site/device/cameras for %s", device_uuid)
 
 
 if __name__ == "__main__":

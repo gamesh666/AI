@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 
 from app.schemas.common import ORMModel
 
-SLUG_PATTERN = r"^[a-z0-9][a-z0-9_\-]{1,31}$"
+# site / camera IDs used in stream paths, e.g. site01, CAM001
+SLUG_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_\-]{1,31}$"
 
 
 class SiteCreate(BaseModel):

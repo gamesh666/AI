@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 from typing import Any
@@ -14,9 +15,16 @@ RESOLUTION_PATTERN = r"^\d{2,5}x\d{2,5}$"
 BITRATE_PATTERN = r"^\d+(\.\d+)?[kKmM]?$"
 
 
+_SOURCE_URL = re.compile(r"^[a-z][a-z0-9+.\-]*://\S+$")
+
+
 def _validate_rtsp(v: str | None) -> str | None:
-    if v is not None and not v.startswith(("rtsp://", "rtsps://", "mock://")):
-        raise ValueError("rtsp_url must start with rtsp://, rtsps:// or mock://")
+    """Any source URL the edge understands (rtsp://, rtsps://, or a scheme added by an edge plugin).
+
+    The platform only stores and forwards it; which schemes are supported is decided on the edge.
+    """
+    if v is not None and not _SOURCE_URL.match(v):
+        raise ValueError("rtsp_url must be a URL such as rtsp://host:554/stream")
     return v
 
 
