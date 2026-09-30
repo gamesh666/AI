@@ -15,6 +15,7 @@ import { eventsApi, type EventQuery } from "@/lib/api/events";
 import { sitesApi } from "@/lib/api/sites";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
 import type { DetectionEvent } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 const PAGE_SIZE = 50;
 
@@ -46,6 +47,7 @@ function matches(ev: DetectionEvent, f: EventFilterValues): boolean {
 }
 
 export default function EventsPage() {
+  const { t } = useI18n();
   const [filters, setFilters] = useState<EventFilterValues>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [live, setLive] = useState(true);
@@ -70,9 +72,9 @@ export default function EventsPage() {
   return (
     <>
       <PageHeader
-        title="Detection Events"
-        subtitle={`${total} events`}
-        actions={<Checkbox label="Live updates" checked={live} onChange={(e) => setLive(e.target.checked)} />}
+        title={t("nav.events")}
+        subtitle={t("events.subtitle", { n: total })}
+        actions={<Checkbox label={t("events.liveUpdates")} checked={live} onChange={(e) => setLive(e.target.checked)} />}
       />
       <EventFilters
         value={filters}
@@ -87,13 +89,13 @@ export default function EventsPage() {
       <EventTable events={events.data?.items ?? []} loading={events.loading} />
       <div className="mt-4 flex items-center justify-center gap-3 text-sm">
         <Button variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-          ‹ Prev
+          {t("common.prev")}
         </Button>
         <span className="text-slate-400">
-          Page {page} / {pages}
+          {t("common.page", { page, pages })}
         </span>
         <Button variant="secondary" disabled={page >= pages} onClick={() => setPage(page + 1)}>
-          Next ›
+          {t("common.next")}
         </Button>
       </div>
     </>

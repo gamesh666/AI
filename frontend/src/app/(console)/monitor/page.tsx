@@ -14,8 +14,10 @@ import { applyCameraStatus } from "@/lib/cameraStatus";
 import { sitesApi } from "@/lib/api/sites";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
 import type { CameraStatusMessage, DeviceStatusMessage } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function MonitorPage() {
+  const { t } = useI18n();
   const [size, setSize] = useState<GridSize>(2);
   const [siteId, setSiteId] = useState("");
   const [page, setPage] = useState(0);
@@ -45,12 +47,12 @@ export default function MonitorPage() {
   return (
     <>
       <PageHeader
-        title="Camera Monitor"
-        subtitle={`${all.length} cameras · AI-annotated streams from the edge · WebRTC with HLS fallback`}
+        title={t("nav.monitor")}
+        subtitle={t("monitor.subtitle", { n: all.length })}
         actions={
           <>
             <Select value={siteId} onChange={(e) => (setSiteId(e.target.value), setPage(0))} className="w-44">
-              <option value="">All sites</option>
+              <option value="">{t("monitor.allSites")}</option>
               {sites.data?.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -66,13 +68,13 @@ export default function MonitorPage() {
       {pages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-3 text-sm">
           <Button variant="secondary" disabled={current === 0} onClick={() => setPage(current - 1)}>
-            ‹ Prev
+            {t("common.prev")}
           </Button>
           <span className="text-slate-400">
-            Page {current + 1} / {pages}
+            {t("common.page", { page: current + 1, pages })}
           </span>
           <Button variant="secondary" disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
-            Next ›
+            {t("common.next")}
           </Button>
         </div>
       )}

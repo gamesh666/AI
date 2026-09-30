@@ -18,8 +18,10 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { applyCameraStatus } from "@/lib/cameraStatus";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
 import type { Camera, CameraStatusMessage } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function CamerasPage() {
+  const { t } = useI18n();
   const { hasRole } = useAuth();
   const canEdit = hasRole("operator");
   const cameras = useAsync(async () => (await camerasApi.list()).items);
@@ -43,19 +45,19 @@ export default function CamerasPage() {
   };
 
   const remove = async (c: Camera) => {
-    if (!confirm(`Delete camera "${c.name}"?`)) return;
+    if (!confirm(t("cameras.confirmDelete", { name: c.name }))) return;
     if ((await m.run(() => camerasApi.remove(c.id))).ok) cameras.reload();
   };
 
   return (
     <>
       <PageHeader
-        title="Cameras"
-        subtitle="Identified by site / edge device / camera ID — camera addresses stay on the edge"
+        title={t("nav.cameras")}
+        subtitle={t("cameras.subtitle")}
         actions={
           canEdit && (
             <Button onClick={() => setEditing("new")} disabled={!devices.data?.length}>
-              + Add camera
+              {t("cameras.add")}
             </Button>
           )
         }
@@ -67,7 +69,7 @@ export default function CamerasPage() {
         columns={[
           {
             key: "name",
-            header: "Camera",
+            header: t("common.camera"),
             render: (c) => (
               <div>
                 <div className="font-medium">{c.name}</div>
@@ -77,18 +79,18 @@ export default function CamerasPage() {
               </div>
             ),
           },
-          { key: "site", header: "Site / Edge", render: (c) => `${c.site_name ?? "—"} / ${c.edge_device_name ?? "—"}` },
-          { key: "path", header: "Stream path", render: (c) => <code className="text-xs">{c.stream_path}</code> },
+          { key: "site", header: t("cameras.siteEdge"), render: (c) => `${c.site_name ?? "—"} / ${c.edge_device_name ?? "—"}` },
+          { key: "path", header: t("cameras.streamPath"), render: (c) => <code className="text-xs">{c.stream_path}</code> },
           {
             key: "video",
-            header: "Stream / AI",
+            header: t("cameras.streamAi"),
             render: (c) => (
               <span className="text-xs text-slate-400">
-                {c.resolution ?? "source"} @ {c.stream_fps} fps · {c.bitrate} · AI {c.inference_fps} fps
+                {c.resolution ?? t("cameras.source")} @ {c.stream_fps} fps · {c.bitrate} · AI {c.inference_fps} fps
               </span>
             ),
           },
-          { key: "health", header: "Health", render: (c) => (c.enabled ? <CameraHealth camera={c} /> : "disabled") },
+          { key: "health", header: t("cameras.health"), render: (c) => (c.enabled ? <CameraHealth camera={c} /> : t("status.disabled")) },
           {
             key: "actions",
             header: "",
@@ -97,17 +99,17 @@ export default function CamerasPage() {
               canEdit && (
                 <div className="flex justify-end gap-1">
                   <Button variant="ghost" onClick={() => setEditing(c)}>
-                    Edit
+                    {t("common.edit")}
                   </Button>
                   <Button variant="ghost" onClick={() => remove(c)}>
-                    Delete
+                    {t("common.delete")}
                   </Button>
                 </div>
               ),
           },
         ]}
       />
-      <Modal open={editing !== null} title={editing === "new" ? "Add camera" : "Edit camera"} onClose={() => setEditing(null)}>
+      <Modal open={editing !== null} title={editing === "new" ? t("cameras.addTitle") : t("cameras.editTitle")} onClose={() => setEditing(null)}>
         <CameraForm
           initial={editing === "new" ? null : editing}
           devices={devices.data ?? []}

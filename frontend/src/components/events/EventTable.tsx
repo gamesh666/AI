@@ -4,16 +4,17 @@ import { useState } from "react";
 
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
-import { formatDateTime } from "@/lib/format";
 import type { DetectionEvent } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export function EventTable({ events, loading }: { events: DetectionEvent[]; loading?: boolean }) {
   const [preview, setPreview] = useState<DetectionEvent | null>(null);
+  const { t, formatDateTime } = useI18n();
 
   const columns: Column<DetectionEvent>[] = [
     {
       key: "snapshot",
-      header: "Snapshot",
+      header: t("events.snapshot"),
       render: (e) =>
         e.snapshot_url ? (
           <button onClick={() => setPreview(e)}>
@@ -26,7 +27,7 @@ export function EventTable({ events, loading }: { events: DetectionEvent[]; load
     },
     {
       key: "camera",
-      header: "Camera",
+      header: t("common.camera"),
       render: (e) => (
         <div>
           <div>{e.camera_name ?? e.camera_id}</div>
@@ -38,7 +39,7 @@ export function EventTable({ events, loading }: { events: DetectionEvent[]; load
     },
     {
       key: "class",
-      header: "Detection class",
+      header: t("events.detectionClass"),
       render: (e) => (
         <span>
           <span className="font-medium text-brand-400">{e.class_name}</span>
@@ -48,7 +49,7 @@ export function EventTable({ events, loading }: { events: DetectionEvent[]; load
     },
     {
       key: "confidence",
-      header: "Confidence",
+      header: t("events.confidence"),
       render: (e) => (
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-16 rounded bg-surface-600">
@@ -58,12 +59,12 @@ export function EventTable({ events, loading }: { events: DetectionEvent[]; load
         </div>
       ),
     },
-    { key: "time", header: "Detection time", render: (e) => formatDateTime(e.detected_at) },
+    { key: "time", header: t("events.detectionTime"), render: (e) => formatDateTime(e.detected_at) },
   ];
 
   return (
     <>
-      <DataTable columns={columns} rows={events} loading={loading} empty="No detection events match the filters" />
+      <DataTable columns={columns} rows={events} loading={loading} empty={t("events.empty")} />
       <Modal open={!!preview} title={preview ? `${preview.class_name} · ${preview.camera_name}` : ""} onClose={() => setPreview(null)}>
         {preview?.snapshot_url && (
           // eslint-disable-next-line @next/next/no-img-element

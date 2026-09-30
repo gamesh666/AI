@@ -85,6 +85,7 @@ VirtualBox / VMware 請用 **Bridged** 或 **Host-only** 網卡，讓你的電�
 ## 6. 使用
 
 瀏覽器開 `http://<VM IP>:3000`，帳號 `admin`，密碼為 `.env` 的 `INITIAL_ADMIN_PASSWORD`。
+介面語言可在右上角「登出」旁（登入頁右上角）切換：繁體中文 / 简体中文 / English，會記在瀏覽器中。
 
 | 頁面 | 內容 |
 |------|------|

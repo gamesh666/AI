@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
 import type { CameraInput } from "@/lib/api/cameras";
 import type { AIModel, Camera, EdgeDevice } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 /**
  * The camera source (RTSP URL, username, password) is WRITE-ONLY: the API never sends it back,
@@ -24,6 +25,7 @@ export function CameraForm({
   busy: boolean;
   onSubmit: (v: Partial<CameraInput>) => void;
 }) {
+  const { t } = useI18n();
   const [v, setV] = useState({
     edge_device_id: initial?.edge_device_id ?? devices[0]?.id ?? "",
     code: initial?.code ?? "",
@@ -71,33 +73,33 @@ export function CameraForm({
     onSubmit(body);
   };
 
-  const unchanged = initial ? "(unchanged — write-only)" : "";
+  const unchanged = initial ? t("cameras.unchanged") : "";
 
   return (
     <form className="space-y-3" onSubmit={submit}>
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-2">
-          <Field label="Name">
+          <Field label={t("common.name")}>
             <Input required value={v.name} onChange={(e) => set("name", e.target.value)} />
           </Field>
         </div>
-        <Field label="Camera ID" hint="e.g. CAM001">
+        <Field label={t("cameras.cameraId")} hint={t("cameras.cameraIdHint")}>
           <Input required pattern="[A-Za-z0-9][A-Za-z0-9_\-]{1,31}" value={v.code} onChange={(e) => set("code", e.target.value)} />
         </Field>
       </div>
-      <Field label="Edge device" hint="The edge device on the camera's network connects to it; the server never does.">
+      <Field label={t("common.edgeDevice")} hint={t("cameras.edgeDeviceHint")}>
         <Select required value={v.edge_device_id} onChange={(e) => set("edge_device_id", e.target.value)}>
           {devices.map((d) => (
             <option key={d.id} value={d.id}>
-              {d.name} ({d.device_uuid}) · {d.site_name ?? "no site"}
+              {d.name} ({d.device_uuid}) · {d.site_name ?? t("common.noSite")}
             </option>
           ))}
         </Select>
       </Field>
 
       <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
-        <legend className="px-1 text-xs uppercase text-slate-400">Source (edge-side, write-only)</legend>
-        <Field label="RTSP URL" hint="Credentials in the URL are stripped and stored encrypted. The edge device connects to this address; the platform never does.">
+        <legend className="px-1 text-xs uppercase text-slate-400">{t("cameras.sourceLegend")}</legend>
+        <Field label={t("cameras.rtspUrl")} hint={t("cameras.rtspUrlHint")}>
           <Input
             required={!initial}
             value={v.rtsp_url}
@@ -107,10 +109,10 @@ export function CameraForm({
           />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Username">
+          <Field label={t("common.username")}>
             <Input value={v.rtsp_username} placeholder={unchanged} onChange={(e) => set("rtsp_username", e.target.value)} autoComplete="off" />
           </Field>
-          <Field label="Password">
+          <Field label={t("common.password")}>
             <Input
               type="password"
               value={v.rtsp_password}
@@ -125,9 +127,9 @@ export function CameraForm({
       <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
         <legend className="px-1 text-xs uppercase text-slate-400">AI</legend>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="AI model">
+          <Field label={t("cameras.aiModel")}>
             <Select value={v.ai_model_id} onChange={(e) => set("ai_model_id", e.target.value)}>
-              <option value="">— none —</option>
+              <option value="">{t("common.none")}</option>
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name} {m.version}
@@ -135,22 +137,22 @@ export function CameraForm({
               ))}
             </Select>
           </Field>
-          <Field label="Inference FPS">
+          <Field label={t("cameras.inferenceFps")}>
             <Input type="number" min={0.1} max={60} step={0.1} value={v.inference_fps} onChange={(e) => set("inference_fps", Number(e.target.value))} />
           </Field>
         </div>
       </fieldset>
 
       <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
-        <legend className="px-1 text-xs uppercase text-slate-400">Stream (edge → media server, H.264)</legend>
+        <legend className="px-1 text-xs uppercase text-slate-400">{t("cameras.streamLegend")}</legend>
         <div className="grid grid-cols-4 gap-3">
-          <Field label="Resolution" hint="empty = source">
+          <Field label={t("cameras.resolution")} hint={t("cameras.resolutionHint")}>
             <Input pattern="\d{2,5}x\d{2,5}" placeholder="1920x1080" value={v.resolution} onChange={(e) => set("resolution", e.target.value)} />
           </Field>
-          <Field label="Stream FPS">
+          <Field label={t("cameras.streamFps")}>
             <Input type="number" min={1} max={60} value={v.stream_fps} onChange={(e) => set("stream_fps", Number(e.target.value))} />
           </Field>
-          <Field label="Bitrate">
+          <Field label={t("cameras.bitrate")}>
             <Input pattern="\d+(\.\d+)?[kKmM]?" value={v.bitrate} onChange={(e) => set("bitrate", e.target.value)} />
           </Field>
           <Field label="GOP">
@@ -158,14 +160,14 @@ export function CameraForm({
           </Field>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Checkbox label="Streaming" checked={v.stream_enabled} onChange={(e) => set("stream_enabled", e.target.checked)} />
+          <Checkbox label={t("cameras.streaming")} checked={v.stream_enabled} onChange={(e) => set("stream_enabled", e.target.checked)} />
           <Checkbox
-            label="AI annotated stream"
+            label={t("cameras.annotatedStream")}
             checked={v.annotated_stream_enabled}
             onChange={(e) => set("annotated_stream_enabled", e.target.checked)}
           />
           <Checkbox
-            label="Original stream (extra RTSP session)"
+            label={t("cameras.originalStream")}
             checked={v.original_stream_enabled}
             onChange={(e) => set("original_stream_enabled", e.target.checked)}
           />
@@ -173,11 +175,11 @@ export function CameraForm({
       </fieldset>
 
       <div className="flex gap-6">
-        <Checkbox label="Enabled" checked={v.enabled} onChange={(e) => set("enabled", e.target.checked)} />
-        <Checkbox label="AI detection" checked={v.ai_enabled} onChange={(e) => set("ai_enabled", e.target.checked)} />
+        <Checkbox label={t("cameras.enabled")} checked={v.enabled} onChange={(e) => set("enabled", e.target.checked)} />
+        <Checkbox label={t("cameras.aiDetection")} checked={v.ai_enabled} onChange={(e) => set("ai_enabled", e.target.checked)} />
       </div>
       <Button type="submit" disabled={busy || !v.edge_device_id} className="w-full">
-        Save
+        {t("common.save")}
       </Button>
     </form>
   );

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import type { AIModelInput } from "@/lib/api/models";
 import type { AIModel } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export function ModelForm({
   initial,
@@ -16,6 +17,7 @@ export function ModelForm({
   busy: boolean;
   onSubmit: (v: AIModelInput) => void;
 }) {
+  const { t } = useI18n();
   const [v, setV] = useState({
     name: initial?.name ?? "",
     version: initial?.version ?? "",
@@ -41,27 +43,27 @@ export function ModelForm({
       }}
     >
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Name">
+        <Field label={t("common.name")}>
           <Input required value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
         </Field>
-        <Field label="Version">
+        <Field label={t("models.version")}>
           <Input required value={v.version} onChange={(e) => setV({ ...v, version: e.target.value })} />
         </Field>
       </div>
-      <Field label="Model type" hint="yolov8 / yolo11 / onnx / tensorrt">
+      <Field label={t("models.modelType")} hint="yolov8 / yolo11 / onnx / tensorrt">
         <Input required value={v.model_type} onChange={(e) => setV({ ...v, model_type: e.target.value })} />
       </Field>
-      <Field label="Model path (on the edge device)">
+      <Field label={t("models.modelPath")}>
         <Input required value={v.model_path} onChange={(e) => setV({ ...v, model_path: e.target.value })} />
       </Field>
-      <Field label="Labels" hint="Comma separated, index = class_id">
+      <Field label={t("models.labels")} hint={t("models.labelsHint")}>
         <Input value={v.labels} onChange={(e) => setV({ ...v, labels: e.target.value })} />
       </Field>
-      <Field label="Description">
+      <Field label={t("common.description")}>
         <Input value={v.description} onChange={(e) => setV({ ...v, description: e.target.value })} />
       </Field>
       <Button type="submit" disabled={busy} className="w-full">
-        Save
+        {t("common.save")}
       </Button>
     </form>
   );

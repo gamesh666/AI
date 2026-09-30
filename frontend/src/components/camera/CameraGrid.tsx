@@ -3,6 +3,7 @@
 import { CameraCard } from "@/components/camera/CameraCard";
 import type { GridSize } from "@/components/camera/GridSelector";
 import type { Camera } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 const COLS: Record<GridSize, string> = {
   1: "grid-cols-1",
@@ -12,8 +13,9 @@ const COLS: Record<GridSize, string> = {
 };
 
 export function CameraGrid({ cameras, size }: { cameras: Camera[]; size: GridSize }) {
+  const { t } = useI18n();
   if (cameras.length === 0) {
-    return <div className="rounded-lg border border-dashed border-slate-700 p-10 text-center text-slate-500">No cameras</div>;
+    return <div className="rounded-lg border border-dashed border-slate-700 p-10 text-center text-slate-500">{t("monitor.noCameras")}</div>;
   }
   return (
     <div className={`grid gap-3 ${COLS[size]}`}>

@@ -8,6 +8,7 @@ import { errorMessage } from "@/lib/format";
 import { startHls } from "@/lib/streaming/hls";
 import { startWhep } from "@/lib/streaming/whep";
 import type { StreamType } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 type Mode = "connecting" | "webrtc" | "hls" | "error";
 
@@ -26,6 +27,7 @@ export function LivePlayer({
   streamType?: StreamType;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("connecting");
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -113,10 +115,10 @@ export function LivePlayer({
       </span>
       {mode === "error" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-center text-xs text-slate-300">
-          <span>Stream unavailable</span>
+          <span>{t("monitor.streamUnavailable")}</span>
           {error && <span className="max-w-[90%] truncate text-slate-500">{error}</span>}
           <button onClick={retry} className="rounded bg-surface-600 px-2 py-1 hover:bg-surface-700">
-            Retry
+            {t("monitor.retry")}
           </button>
         </div>
       )}

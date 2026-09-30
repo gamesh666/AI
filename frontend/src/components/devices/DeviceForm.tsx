@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import type { DeviceInput } from "@/lib/api/devices";
 import type { EdgeDevice, Site } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export function DeviceForm({
   initial,
@@ -18,6 +19,7 @@ export function DeviceForm({
   busy: boolean;
   onSubmit: (v: DeviceInput) => void;
 }) {
+  const { t } = useI18n();
   const [v, setV] = useState<DeviceInput>({
     device_uuid: initial?.device_uuid ?? "",
     name: initial?.name ?? "",
@@ -31,7 +33,7 @@ export function DeviceForm({
         onSubmit({ ...v, site_id: v.site_id || null });
       }}
     >
-      <Field label="Device ID" hint="Used in MQTT topics, e.g. edge-001">
+      <Field label={t("devices.deviceId")} hint={t("devices.deviceIdHint")}>
         <Input
           required
           disabled={!!initial}
@@ -40,12 +42,12 @@ export function DeviceForm({
           onChange={(e) => setV({ ...v, device_uuid: e.target.value })}
         />
       </Field>
-      <Field label="Name">
+      <Field label={t("common.name")}>
         <Input required value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
       </Field>
-      <Field label="Site">
+      <Field label={t("common.site")}>
         <Select value={v.site_id ?? ""} onChange={(e) => setV({ ...v, site_id: e.target.value })}>
-          <option value="">— none —</option>
+          <option value="">{t("common.none")}</option>
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -54,7 +56,7 @@ export function DeviceForm({
         </Select>
       </Field>
       <Button type="submit" disabled={busy} className="w-full">
-        Save
+        {t("common.save")}
       </Button>
     </form>
   );

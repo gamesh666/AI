@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
 import type { UserInput } from "@/lib/api/users";
 import type { Role, User } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export function UserForm({
   initial,
@@ -16,6 +17,7 @@ export function UserForm({
   busy: boolean;
   onSubmit: (v: UserInput) => void;
 }) {
+  const { t } = useI18n();
   const [v, setV] = useState<UserInput>({
     username: initial?.username ?? "",
     email: initial?.email ?? "",
@@ -35,23 +37,23 @@ export function UserForm({
         onSubmit(body);
       }}
     >
-      <Field label="Username">
+      <Field label={t("common.username")}>
         <Input required disabled={!!initial} value={v.username} onChange={(e) => setV({ ...v, username: e.target.value })} />
       </Field>
-      <Field label="Full name">
+      <Field label={t("users.fullName")}>
         <Input value={v.full_name ?? ""} onChange={(e) => setV({ ...v, full_name: e.target.value })} />
       </Field>
-      <Field label="Email">
+      <Field label={t("users.email")}>
         <Input type="email" value={v.email ?? ""} onChange={(e) => setV({ ...v, email: e.target.value })} />
       </Field>
-      <Field label="Role" hint="admin: everything · operator: manage resources · viewer: read-only">
+      <Field label={t("users.role")} hint={t("users.roleHint")}>
         <Select value={v.role} onChange={(e) => setV({ ...v, role: e.target.value as Role })}>
-          <option value="viewer">viewer</option>
-          <option value="operator">operator</option>
-          <option value="admin">admin</option>
+          <option value="viewer">{t("role.viewer")}</option>
+          <option value="operator">{t("role.operator")}</option>
+          <option value="admin">{t("role.admin")}</option>
         </Select>
       </Field>
-      <Field label={initial ? "New password (optional)" : "Password"} hint="Minimum 8 characters">
+      <Field label={initial ? t("users.newPassword") : t("common.password")} hint={t("users.passwordHint")}>
         <Input
           type="password"
           required={!initial}
@@ -61,9 +63,9 @@ export function UserForm({
           autoComplete="new-password"
         />
       </Field>
-      <Checkbox label="Active" checked={v.is_active} onChange={(e) => setV({ ...v, is_active: e.target.checked })} />
+      <Checkbox label={t("users.active")} checked={v.is_active} onChange={(e) => setV({ ...v, is_active: e.target.checked })} />
       <Button type="submit" disabled={busy} className="w-full">
-        Save
+        {t("common.save")}
       </Button>
     </form>
   );

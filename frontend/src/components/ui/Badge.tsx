@@ -1,4 +1,7 @@
+"use client";
+
 import clsx from "clsx";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 type Tone = "green" | "red" | "yellow" | "gray" | "blue";
 
@@ -12,7 +15,7 @@ const tones: Record<Tone, string> = {
 
 export function Badge({ tone = "gray", children }: { tone?: Tone; children: React.ReactNode }) {
   return (
-    <span className={clsx("inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ring-1", tones[tone])}>
+    <span className={clsx("inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ring-1", tones[tone])}>
       {children}
     </span>
   );
@@ -33,10 +36,12 @@ const STATUS_TONE: Record<string, Tone> = {
 };
 
 export function StatusBadge({ status, label }: { status: string | null | undefined; label?: string }) {
+  const { tEnum } = useI18n();
   const s = status ?? "unknown";
+  const text = tEnum("status", s);
   return (
     <Badge tone={STATUS_TONE[s] ?? "gray"}>
-      {label ? `${label} ${s}` : s}
+      {label ? `${label} ${text}` : text}
     </Badge>
   );
 }

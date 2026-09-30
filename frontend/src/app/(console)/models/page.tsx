@@ -13,8 +13,10 @@ import { useMutation } from "@/hooks/useMutation";
 import { modelsApi, type AIModelInput } from "@/lib/api/models";
 import { useAuth } from "@/lib/auth/AuthContext";
 import type { AIModel } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function ModelsPage() {
+  const { t } = useI18n();
   const { hasRole } = useAuth();
   const canEdit = hasRole("operator");
   const models = useAsync(async () => (await modelsApi.list()).items);
@@ -30,29 +32,29 @@ export default function ModelsPage() {
   };
 
   const remove = async (model: AIModel) => {
-    if (!confirm(`Delete model ${model.name} ${model.version}?`)) return;
+    if (!confirm(t("models.confirmDelete", { name: model.name, version: model.version }))) return;
     if ((await m.run(() => modelsApi.remove(model.id))).ok) models.reload();
   };
 
   return (
     <>
       <PageHeader
-        title="AI Models"
-        subtitle="Models deployed to edge devices (inference always runs on the edge)"
-        actions={canEdit && <Button onClick={() => setEditing("new")}>+ Register model</Button>}
+        title={t("nav.models")}
+        subtitle={t("models.subtitle")}
+        actions={canEdit && <Button onClick={() => setEditing("new")}>{t("models.register")}</Button>}
       />
       <ErrorBanner error={models.error ?? m.error} />
       <DataTable
         loading={models.loading}
         rows={models.data ?? []}
         columns={[
-          { key: "name", header: "Name", render: (x) => <span className="font-medium">{x.name}</span> },
-          { key: "version", header: "Version", render: (x) => x.version },
-          { key: "type", header: "Type", render: (x) => x.model_type },
-          { key: "path", header: "Path", render: (x) => <code className="text-xs">{x.model_path}</code> },
+          { key: "name", header: t("common.name"), render: (x) => <span className="font-medium">{x.name}</span> },
+          { key: "version", header: t("models.version"), render: (x) => x.version },
+          { key: "type", header: t("models.type"), render: (x) => x.model_type },
+          { key: "path", header: t("models.path"), render: (x) => <code className="text-xs">{x.model_path}</code> },
           {
             key: "labels",
-            header: "Labels",
+            header: t("models.labels"),
             render: (x) => (
               <span className="text-xs text-slate-400" title={x.labels.join(", ")}>
                 {x.labels.slice(0, 5).join(", ")}
@@ -68,17 +70,17 @@ export default function ModelsPage() {
               canEdit && (
                 <div className="flex justify-end gap-1">
                   <Button variant="ghost" onClick={() => setEditing(x)}>
-                    Edit
+                    {t("common.edit")}
                   </Button>
                   <Button variant="ghost" onClick={() => remove(x)}>
-                    Delete
+                    {t("common.delete")}
                   </Button>
                 </div>
               ),
           },
         ]}
       />
-      <Modal open={editing !== null} title={editing === "new" ? "Register model" : "Edit model"} onClose={() => setEditing(null)}>
+      <Modal open={editing !== null} title={editing === "new" ? t("models.registerTitle") : t("models.editTitle")} onClose={() => setEditing(null)}>
         <ModelForm initial={editing === "new" ? null : editing} busy={m.busy} onSubmit={save} />
       </Modal>
     </>

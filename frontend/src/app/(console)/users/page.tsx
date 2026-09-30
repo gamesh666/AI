@@ -13,10 +13,11 @@ import { useAsync } from "@/hooks/useAsync";
 import { useMutation } from "@/hooks/useMutation";
 import { usersApi, type UserInput } from "@/lib/api/users";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { formatDateTime } from "@/lib/format";
 import type { User } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function UsersPage() {
+  const { t, tEnum, formatDateTime } = useI18n();
   const { hasRole, user: me } = useAuth();
   const isAdmin = hasRole("admin");
   const users = useAsync(async () => (isAdmin ? (await usersApi.list()).items : []), [isAdmin]);
@@ -24,7 +25,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<User | null | "new">(null);
 
   if (!isAdmin) {
-    return <ErrorBanner error="User management requires the admin role." />;
+    return <ErrorBanner error={t("users.adminRequired")} />;
   }
 
   const save = async (v: UserInput) => {
@@ -40,32 +41,32 @@ export default function UsersPage() {
   };
 
   const remove = async (u: User) => {
-    if (!confirm(`Delete user ${u.username}?`)) return;
+    if (!confirm(t("users.confirmDelete", { name: u.username }))) return;
     if ((await m.run(() => usersApi.remove(u.id))).ok) users.reload();
   };
 
   return (
     <>
       <PageHeader
-        title="Users"
-        subtitle="Role-based access control"
-        actions={<Button onClick={() => setEditing("new")}>+ New user</Button>}
+        title={t("nav.users")}
+        subtitle={t("users.subtitle")}
+        actions={<Button onClick={() => setEditing("new")}>{t("users.new")}</Button>}
       />
       <ErrorBanner error={users.error ?? m.error} />
       <DataTable
         loading={users.loading}
         rows={users.data ?? []}
         columns={[
-          { key: "username", header: "Username", render: (u) => <span className="font-medium">{u.username}</span> },
-          { key: "name", header: "Name", render: (u) => u.full_name ?? "—" },
-          { key: "email", header: "Email", render: (u) => u.email ?? "—" },
+          { key: "username", header: t("common.username"), render: (u) => <span className="font-medium">{u.username}</span> },
+          { key: "name", header: t("common.name"), render: (u) => u.full_name ?? "—" },
+          { key: "email", header: t("users.email"), render: (u) => u.email ?? "—" },
           {
             key: "role",
-            header: "Role",
-            render: (u) => <Badge tone={u.role === "admin" ? "red" : u.role === "operator" ? "blue" : "gray"}>{u.role}</Badge>,
+            header: t("users.role"),
+            render: (u) => <Badge tone={u.role === "admin" ? "red" : u.role === "operator" ? "blue" : "gray"}>{tEnum("role", u.role)}</Badge>,
           },
-          { key: "active", header: "Active", render: (u) => (u.is_active ? "yes" : "no") },
-          { key: "created", header: "Created", render: (u) => formatDateTime(u.created_at) },
+          { key: "active", header: t("users.active"), render: (u) => (u.is_active ? t("common.yes") : t("common.no")) },
+          { key: "created", header: t("common.created"), render: (u) => formatDateTime(u.created_at) },
           {
             key: "actions",
             header: "",
@@ -73,11 +74,11 @@ export default function UsersPage() {
             render: (u) => (
               <div className="flex justify-end gap-1">
                 <Button variant="ghost" onClick={() => setEditing(u)}>
-                  Edit
+                  {t("common.edit")}
                 </Button>
                 {u.id !== me?.id && (
                   <Button variant="ghost" onClick={() => remove(u)}>
-                    Delete
+                    {t("common.delete")}
                   </Button>
                 )}
               </div>
@@ -85,7 +86,7 @@ export default function UsersPage() {
           },
         ]}
       />
-      <Modal open={editing !== null} title={editing === "new" ? "New user" : "Edit user"} onClose={() => setEditing(null)}>
+      <Modal open={editing !== null} title={editing === "new" ? t("users.newTitle") : t("users.editTitle")} onClose={() => setEditing(null)}>
         <UserForm initial={editing === "new" ? null : editing} busy={m.busy} onSubmit={save} />
       </Modal>
     </>

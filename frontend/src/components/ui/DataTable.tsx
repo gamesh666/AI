@@ -1,4 +1,7 @@
+"use client";
+
 import clsx from "clsx";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export interface Column<T> {
   key: string;
@@ -10,7 +13,7 @@ export interface Column<T> {
 export function DataTable<T extends { id: string }>({
   columns,
   rows,
-  empty = "No data",
+  empty,
   loading = false,
 }: {
   columns: Column<T>[];
@@ -18,6 +21,7 @@ export function DataTable<T extends { id: string }>({
   empty?: string;
   loading?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-700/60">
       <table className="min-w-full divide-y divide-slate-700/60 text-sm">
@@ -46,7 +50,7 @@ export function DataTable<T extends { id: string }>({
           {rows.length === 0 && (
             <tr>
               <td colSpan={columns.length} className="px-3 py-8 text-center text-slate-500">
-                {loading ? "Loading…" : empty}
+                {loading ? t("common.loading") : (empty ?? t("common.noData"))}
               </td>
             </tr>
           )}

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import type { Camera, EdgeDevice, Site } from "@/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export interface EventFilterValues {
   start: string; // yyyy-mm-dd (local)
@@ -41,6 +42,7 @@ export function EventFilters({
   devices: EdgeDevice[];
   classes: string[];
 }) {
+  const { t } = useI18n();
   const set = (key: keyof EventFilterValues) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...value, [key]: e.target.value });
 
@@ -51,15 +53,15 @@ export function EventFilters({
 
   return (
     <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-slate-700/60 bg-surface-800 p-4 md:grid-cols-4 xl:grid-cols-8">
-      <Field label="From">
+      <Field label={t("events.from")}>
         <Input type="date" value={value.start} onChange={set("start")} />
       </Field>
-      <Field label="To">
+      <Field label={t("events.to")}>
         <Input type="date" value={value.end} onChange={set("end")} />
       </Field>
-      <Field label="Site">
+      <Field label={t("common.site")}>
         <Select value={value.site_id} onChange={set("site_id")}>
-          <option value="">All</option>
+          <option value="">{t("common.all")}</option>
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -67,9 +69,9 @@ export function EventFilters({
           ))}
         </Select>
       </Field>
-      <Field label="Edge device">
+      <Field label={t("common.edgeDevice")}>
         <Select value={value.edge_device_id} onChange={set("edge_device_id")}>
-          <option value="">All</option>
+          <option value="">{t("common.all")}</option>
           {visibleDevices.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
@@ -77,9 +79,9 @@ export function EventFilters({
           ))}
         </Select>
       </Field>
-      <Field label="Camera">
+      <Field label={t("common.camera")}>
         <Select value={value.camera_id} onChange={set("camera_id")}>
-          <option value="">All</option>
+          <option value="">{t("common.all")}</option>
           {visibleCameras.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -87,9 +89,9 @@ export function EventFilters({
           ))}
         </Select>
       </Field>
-      <Field label="Class">
+      <Field label={t("events.class")}>
         <Select value={value.class_name} onChange={set("class_name")}>
-          <option value="">All</option>
+          <option value="">{t("common.all")}</option>
           {classes.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -97,12 +99,12 @@ export function EventFilters({
           ))}
         </Select>
       </Field>
-      <Field label="Min confidence %">
+      <Field label={t("events.minConfidence")}>
         <Input type="number" min={0} max={100} value={value.min_confidence} onChange={set("min_confidence")} />
       </Field>
       <div className="flex items-end">
         <Button variant="secondary" className="w-full" onClick={onReset}>
-          Reset
+          {t("events.reset")}
         </Button>
       </div>
     </div>
