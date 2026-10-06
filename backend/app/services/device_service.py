@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aivms_shared import topics
 from aivms_shared.payloads import CameraRuntimeStatus, CommandType, DeviceState, Heartbeat
 from aivms_shared.payloads import DeviceStatus as DeviceStatusPayload
 from app.core.config import get_settings
@@ -23,6 +24,7 @@ from app.repositories.device_repository import DeviceRepository
 from app.schemas.common import Page, PageParams
 from app.schemas.edge import EdgeRegisterRequest
 from app.schemas.edge_device import (
+    EdgeConnectionInfo,
     EdgeDeviceCreate,
     EdgeDeviceRead,
     EdgeDeviceUpdate,
@@ -45,6 +47,34 @@ def _camera_status_message(device: EdgeDevice, camera) -> dict:
         "last_frame_at": camera.last_frame_at.isoformat() if camera.last_frame_at else None,
         "runtime_stats": camera.runtime_stats or {},
     }
+
+
+
+def connection_info(device_uuid: str, include_mqtt_password: bool) -> EdgeConnectionInfo:
+    """What to hand to whoever sets up the edge (the device key is returned separately, once)."""
+    s = get_settings()
+    password = s.mqtt_edge_password.get_secret_value() if include_mqtt_password and s.mqtt_edge_password else None
+    return EdgeConnectionInfo(
+        device_id=device_uuid,
+        mqtt_host=s.mqtt_public_host,
+        mqtt_port=s.mqtt_public_port,
+        mqtt_tls=s.mqtt_tls,
+        mqtt_username=s.mqtt_edge_username,
+        mqtt_password=password,
+        stream_protocol=s.edge_stream_protocol,
+        rtsp_publish_url=s.mediamtx_rtsp_publish_url,
+        srt_publish_url=s.mediamtx_srt_publish_url,
+        snapshot_upload_url=s.minio_edge_url,
+        topics={
+            "heartbeat": topics.heartbeat(device_uuid),
+            "status": topics.status(device_uuid),
+            "camera_status": topics.camera_status(device_uuid, "{camera_id}"),
+            "camera_logs": topics.camera_logs(device_uuid, "{camera_id}"),
+            "logs": topics.device_logs(device_uuid),
+            "camera_events": topics.camera_events(device_uuid, "{camera_id}"),
+            "command": topics.command(device_uuid),
+        },
+    )
 
 
 class DeviceService:
@@ -79,7 +109,7 @@ class DeviceService:
         counts = await self.repo.camera_counts([device.id])
         return device_to_read(device, counts.get(device.id, 0))
 
-    async def create(self, data: EdgeDeviceCreate) -> EdgeDeviceWithKey:
+    async def create(self, data: EdgeDeviceCreate, include_mqtt_password: bool = False) -> EdgeDeviceWithKey:
         api_key = generate_opaque_token()
         device = EdgeDevice(**data.model_dump(), api_key_hash=hash_token(api_key), status=DeviceStatus.PENDING)
         try:
@@ -89,7 +119,11 @@ class DeviceService:
             await self.session.rollback()
             raise ConflictError("device_uuid already exists") from exc
         await self.session.refresh(device, ["site"])
-        return EdgeDeviceWithKey(**device_to_read(device).model_dump(), api_key=api_key)
+        return EdgeDeviceWithKey(
+            **device_to_read(device).model_dump(),
+            api_key=api_key,
+            connection=connection_info(device.device_uuid, include_mqtt_password),
+        )
 
     async def update(self, device_id: uuid.UUID, data: EdgeDeviceUpdate) -> EdgeDeviceRead:
         device = await self.get(device_id)
@@ -115,7 +149,14 @@ class DeviceService:
         device.api_key_hash = hash_token(api_key)
         await self.session.commit()
         read = await self.get_read(device_id)
-        return EdgeDeviceWithKey(**read.model_dump(), api_key=api_key)
+        # rotating is admin-only, so the MQTT password may be included
+        return EdgeDeviceWithKey(
+            **read.model_dump(), api_key=api_key, connection=connection_info(device.device_uuid, True)
+        )
+
+    async def connection(self, device_id: uuid.UUID) -> EdgeConnectionInfo:
+        device = await self.get(device_id)
+        return connection_info(device.device_uuid, True)
 
     async def send_command(self, device_id: uuid.UUID, command: str, params: dict) -> dict:
         device = await self.get(device_id)

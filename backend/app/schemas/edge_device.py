@@ -44,10 +44,28 @@ class EdgeDeviceRead(ORMModel):
     created_at: datetime
 
 
+class EdgeConnectionInfo(BaseModel):
+    """Everything an edge needs to connect, except the device key (shown once, separately)."""
+
+    device_id: str
+    mqtt_host: str
+    mqtt_port: int
+    mqtt_tls: bool
+    mqtt_username: str
+    # only for admins; None = ask an administrator
+    mqtt_password: str | None = None
+    stream_protocol: str
+    rtsp_publish_url: str
+    srt_publish_url: str | None = None
+    snapshot_upload_url: str
+    topics: dict[str, str]
+
+
 class EdgeDeviceWithKey(EdgeDeviceRead):
     """Returned only once, when a device is created / its key is rotated."""
 
     api_key: str
+    connection: EdgeConnectionInfo | None = None
 
 
 class DeviceCommandRequest(BaseModel):

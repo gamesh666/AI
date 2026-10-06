@@ -64,8 +64,24 @@ export interface EdgeDevice {
   created_at: string;
 }
 
+export interface EdgeConnectionInfo {
+  device_id: string;
+  mqtt_host: string;
+  mqtt_port: number;
+  mqtt_tls: boolean;
+  mqtt_username: string;
+  /** null for non-admins: ask an administrator */
+  mqtt_password: string | null;
+  stream_protocol: string;
+  rtsp_publish_url: string;
+  srt_publish_url: string | null;
+  snapshot_upload_url: string;
+  topics: Record<string, string>;
+}
+
 export interface EdgeDeviceWithKey extends EdgeDevice {
   api_key: string;
+  connection: EdgeConnectionInfo | null;
 }
 
 export interface CameraRuntimeStats {

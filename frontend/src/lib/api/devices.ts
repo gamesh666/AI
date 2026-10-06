@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/client";
-import type { EdgeDevice, EdgeDeviceWithKey, Page } from "@/types";
+import type { EdgeConnectionInfo, EdgeDevice, EdgeDeviceWithKey, Page } from "@/types";
 
 export interface DeviceInput {
   device_uuid: string;
@@ -14,6 +14,7 @@ export const devicesApi = {
   update: (id: string, body: { name?: string; site_id?: string | null }) =>
     api.patch<EdgeDevice>(`/devices/${id}`, body),
   remove: (id: string) => api.del(`/devices/${id}`),
+  connection: (id: string) => api.get<EdgeConnectionInfo>(`/devices/${id}/connection`),
   rotateKey: (id: string) => api.post<EdgeDeviceWithKey>(`/devices/${id}/rotate-key`),
   command: (id: string, command: string, params: Record<string, unknown> = {}) =>
     api.post<{ command_id: string }>(`/devices/${id}/commands`, { command, params }),

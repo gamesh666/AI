@@ -76,6 +76,7 @@ docker compose logs demo-seed              # 應看到 "demo topology ready: 2 s
 
 ```bash
 sudo ufw allow 3000,8000,8888,8889,9000/tcp
+sudo ufw allow 1883,8554/tcp               # Edge → 平台：MQTT、影像推流（9000 也用於 Edge 上傳快照）
 sudo ufw allow 8189/udp                    # WebRTC；沒開時會自動改用 HLS
 ```
 

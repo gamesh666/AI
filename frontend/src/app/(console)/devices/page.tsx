@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { ApiKeyReveal } from "@/components/devices/ApiKeyReveal";
+import { ConnectionInfoPanel } from "@/components/devices/ConnectionInfoPanel";
 import { DeviceForm } from "@/components/devices/DeviceForm";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +17,7 @@ import { devicesApi, type DeviceInput } from "@/lib/api/devices";
 import { sitesApi } from "@/lib/api/sites";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { pct } from "@/lib/format";
-import type { EdgeDevice, EdgeDeviceWithKey } from "@/types";
+import type { EdgeConnectionInfo, EdgeDevice } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function DevicesPage() {
@@ -29,13 +29,14 @@ export default function DevicesPage() {
   const sites = useAsync(async () => (await sitesApi.list()).items);
   const m = useMutation();
   const [editing, setEditing] = useState<EdgeDevice | null | "new">(null);
-  const [revealed, setRevealed] = useState<EdgeDeviceWithKey | null>(null);
+  // connection info to hand over; apiKey only right after create / rotate (shown once)
+  const [revealed, setRevealed] = useState<{ info: EdgeConnectionInfo; apiKey: string | null } | null>(null);
 
   const save = async (v: DeviceInput) => {
     if (editing === "new") {
       const res = await m.run(() => devicesApi.create(v));
       if (!res.ok) return;
-      setRevealed(res.value);
+      if (res.value.connection) setRevealed({ info: res.value.connection, apiKey: res.value.api_key });
     } else if (editing) {
       const res = await m.run(() => devicesApi.update(editing.id, { name: v.name, site_id: v.site_id }));
       if (!res.ok) return;
@@ -47,7 +48,12 @@ export default function DevicesPage() {
   const rotate = async (d: EdgeDevice) => {
     if (!confirm(t("devices.confirmRotate", { name: d.name }))) return;
     const res = await m.run(() => devicesApi.rotateKey(d.id));
-    if (res.ok) setRevealed(res.value);
+    if (res.ok && res.value.connection) setRevealed({ info: res.value.connection, apiKey: res.value.api_key });
+  };
+
+  const showConnection = async (d: EdgeDevice) => {
+    const res = await m.run(() => devicesApi.connection(d.id));
+    if (res.ok) setRevealed({ info: res.value, apiKey: null });
   };
 
   const remove = async (d: EdgeDevice) => {
@@ -105,6 +111,11 @@ export default function DevicesPage() {
                     {t("common.edit")}
                   </Button>
                   {isAdmin && (
+                    <Button variant="ghost" onClick={() => showConnection(d)}>
+                      {t("sheet.connectionInfo")}
+                    </Button>
+                  )}
+                  {isAdmin && (
                     <Button variant="ghost" onClick={() => rotate(d)}>
                       {t("devices.rotateKey")}
                     </Button>
@@ -129,8 +140,15 @@ export default function DevicesPage() {
           onSubmit={save}
         />
       </Modal>
-      <Modal open={!!revealed} title={t("devices.credentialsTitle")} onClose={() => setRevealed(null)}>
-        {revealed && <ApiKeyReveal device={revealed} onClose={() => setRevealed(null)} />}
+      <Modal
+        open={!!revealed}
+        wide
+        title={revealed ? `${t("devices.credentialsTitle")} · ${revealed.info.device_id}` : ""}
+        onClose={() => setRevealed(null)}
+      >
+        {revealed && (
+          <ConnectionInfoPanel info={revealed.info} apiKey={revealed.apiKey} onClose={() => setRevealed(null)} />
+        )}
       </Modal>
     </>
   );

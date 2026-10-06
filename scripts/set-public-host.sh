@@ -20,6 +20,7 @@ set_var() {  # replace KEY=... or append it
 set_var CORS_ORIGINS "http://$HOST:3000,http://localhost:3000"
 set_var NEXT_PUBLIC_API_URL "http://$HOST:8000"
 set_var MINIO_PUBLIC_URL "http://$HOST:9000"
+set_var MINIO_EDGE_URL "http://$HOST:9000"     # snapshot uploads from edges
 set_var MEDIAMTX_WEBRTC_PUBLIC_URL "http://$HOST:8889"
 set_var MEDIAMTX_HLS_PUBLIC_URL "http://$HOST:8888"
 set_var MEDIAMTX_WEBRTC_ADDITIONAL_HOSTS "$HOST"

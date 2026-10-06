@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # address edge agents use to reach the broker (returned in /edge/config)
     mqtt_public_host: str = "localhost"
     mqtt_public_port: int = 1883
+    # credentials edge devices log in to the broker with; only shown in the connection info
+    mqtt_edge_username: str = "edge"
+    mqtt_edge_password: SecretStr | None = None
 
     # --- minio ---
     minio_endpoint: str = "minio:9000"

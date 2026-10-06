@@ -135,6 +135,9 @@ services:
       MQTT_SHARED_GROUP: ${MQTT_SHARED_GROUP:-backend}
       MQTT_PUBLIC_HOST: ${MQTT_PUBLIC_HOST:-localhost}
       MQTT_PUBLIC_PORT: ${MQTT_PORT_PUBLISHED:-1883}
+      # shown to admins in the device connection info (the broker itself is configured in mosquitto)
+      MQTT_EDGE_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
+      MQTT_EDGE_PASSWORD: ${MQTT_EDGE_PASSWORD:?MQTT_EDGE_PASSWORD is required}
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
