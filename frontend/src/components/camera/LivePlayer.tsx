@@ -21,10 +21,13 @@ export function LivePlayer({
   cameraId,
   active = true,
   streamType = "ai",
+  fill = false,
 }: {
   cameraId: string;
   active?: boolean;
   streamType?: StreamType;
+  /** fill the parent (monitor grid) instead of keeping a 16:9 box */
+  fill?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { t } = useI18n();
@@ -108,7 +111,7 @@ export function LivePlayer({
   }, [cameraId, active, attempt, streamType]);
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden bg-black">
+    <div className={`relative w-full overflow-hidden bg-black ${fill ? "h-full" : "aspect-video"}`}>
       <video ref={videoRef} className="h-full w-full object-contain" muted playsInline autoPlay />
       <span className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] uppercase text-slate-300">
         {mode}

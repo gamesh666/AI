@@ -41,6 +41,8 @@ class EdgeDeviceRead(ORMModel):
     gpu_memory_usage: float | None
     temperature: float | None
     camera_count: int = 0
+    # connection losses in the last 24 h (connection history)
+    disconnects_24h: int = 0
     created_at: datetime
 
 

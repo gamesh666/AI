@@ -22,7 +22,7 @@ class EdgeLogFilter(BaseModel):
 class EdgeLogRead(BaseModel):
     id: uuid.UUID
     event_id: str
-    edge_device_id: uuid.UUID
+    edge_device_id: uuid.UUID | None = None
     edge_device_uuid: str | None = None
     edge_device_name: str | None = None
     site_id: uuid.UUID | None = None

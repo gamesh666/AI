@@ -12,7 +12,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { useLiveDevices } from "@/hooks/useLiveDevices";
 import { dashboardApi } from "@/lib/api/dashboard";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
-import type { DashboardSummary } from "@/types";
+import type { DashboardSummary, EdgeLog } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function DashboardPage() {
@@ -31,8 +31,16 @@ export default function DashboardPage() {
   useRealtime("detection.created", () =>
     summary.setData((s: DashboardSummary | null) => (s ? { ...s, events_today: s.events_today + 1 } : s)),
   );
-  useRealtime("log.created", () =>
-    summary.setData((s: DashboardSummary | null) => (s ? { ...s, logs_today: s.logs_today + 1 } : s)),
+  useRealtime<EdgeLog>("log.created", (log) =>
+    summary.setData((s: DashboardSummary | null) =>
+      s
+        ? {
+            ...s,
+            logs_today: s.logs_today + 1,
+            disconnects_today: s.disconnects_today + (log.event_type === "system.connection" ? 1 : 0),
+          }
+        : s,
+    ),
   );
 
   const s = summary.data;
@@ -40,7 +48,7 @@ export default function DashboardPage() {
     <>
       <PageHeader title={t("nav.dashboard")} subtitle={t("dashboard.subtitle")} />
       <ErrorBanner error={summary.error ?? devices.error} />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
         <StatCard label={t("dashboard.onlineDevices")} value={s?.online_devices} tone="good" />
         <StatCard
           label={t("dashboard.offlineDevices")}
@@ -50,6 +58,11 @@ export default function DashboardPage() {
         />
         <StatCard label={t("common.cameras")} value={s?.camera_count} />
         <StatCard label={t("dashboard.activeCameras")} value={s?.active_camera_count} tone="info" />
+        <StatCard
+          label={t("dashboard.disconnectsToday")}
+          value={s?.disconnects_today}
+          tone={s?.disconnects_today ? "bad" : "default"}
+        />
         <StatCard label={t("dashboard.logsToday")} value={s?.logs_today} tone="info" />
         <StatCard label={t("dashboard.detectionsToday")} value={s?.events_today} tone="info" />
       </div>

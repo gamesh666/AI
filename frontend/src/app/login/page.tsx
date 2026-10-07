@@ -8,6 +8,8 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { Field, Input } from "@/components/ui/Field";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { IDLE_FLAG_KEY } from "@/components/layout/IdleLogout";
+import { IDLE_LOGOUT_MINUTES } from "@/lib/config";
 import { errorMessage } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
@@ -19,6 +21,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [idleNotice, setIdleNotice] = useState(false);
+
+  useEffect(() => {
+    try {
+      const at = Number(localStorage.getItem(IDLE_FLAG_KEY));
+      setIdleNotice(Date.now() - at < 5 * 60_000);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && user) router.replace("/dashboard");
@@ -30,6 +42,11 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(username, password);
+      try {
+        localStorage.removeItem(IDLE_FLAG_KEY);
+      } catch {
+        /* ignore */
+      }
       router.replace("/dashboard");
     } catch (err) {
       setError(errorMessage(err));
@@ -48,6 +65,11 @@ export default function LoginPage() {
           </div>
           <LanguageSwitcher />
         </div>
+        {idleNotice && !error && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            {t("login.idleLoggedOut", { n: IDLE_LOGOUT_MINUTES })}
+          </div>
+        )}
         <ErrorBanner error={error} />
         <Field label={t("common.username")}>
           <Input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />

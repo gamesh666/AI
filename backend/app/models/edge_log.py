@@ -27,10 +27,12 @@ class EdgeLog(UUIDPrimaryKeyMixin, Base):
         Index("ix_edge_logs_occurred_at", "occurred_at"),
         Index("ix_edge_logs_device_time", "edge_device_id", "occurred_at"),
         Index("ix_edge_logs_camera_time", "camera_id", "occurred_at"),
+        Index("ix_edge_logs_type_status", "event_type", "status"),
     )
 
     event_id: Mapped[str] = mapped_column(String(64))
-    edge_device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("edge_devices.id", ondelete="CASCADE"))
+    # NULL = a platform-level record (e.g. system.platform)
+    edge_device_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("edge_devices.id", ondelete="CASCADE"))
     camera_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cameras.id", ondelete="SET NULL"))
     # camera code as reported, kept even if the camera is not (or no longer) registered
     camera_code: Mapped[str | None] = mapped_column(String(64))
@@ -48,4 +50,4 @@ class EdgeLog(UUIDPrimaryKeyMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     camera: Mapped[Camera | None] = relationship()
-    edge_device: Mapped[EdgeDevice] = relationship()
+    edge_device: Mapped[EdgeDevice | None] = relationship()

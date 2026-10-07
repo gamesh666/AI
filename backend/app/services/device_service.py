@@ -21,6 +21,7 @@ from app.realtime.broadcaster import broadcaster
 from app.realtime.messages import RealtimeEventType
 from app.repositories.camera_repository import CameraRepository
 from app.repositories.device_repository import DeviceRepository
+from app.repositories.edge_log_repository import EdgeLogRepository
 from app.schemas.common import Page, PageParams
 from app.schemas.edge import EdgeRegisterRequest
 from app.schemas.edge_device import (
@@ -31,6 +32,12 @@ from app.schemas.edge_device import (
     EdgeDeviceWithKey,
 )
 from app.services.camera_service import CameraService
+from app.services.connection_history import (
+    CONNECTION,
+    REASON_EDGE_REPORTED,
+    REASON_HEARTBEAT_TIMEOUT,
+    ConnectionHistory,
+)
 from app.services.mappers import device_to_read
 
 HEARTBEAT_CACHE_KEY = "aivms:device:{uuid}:heartbeat"
@@ -91,9 +98,13 @@ class DeviceService:
         rows, total = await self.repo.paginate(
             self.repo.list_stmt(site_id, status), params.offset, params.page_size
         )
-        counts = await self.repo.camera_counts([d.id for d in rows])
+        ids = [d.id for d in rows]
+        counts = await self.repo.camera_counts(ids)
+        outages = await EdgeLogRepository(self.session).counts_by_device(
+            CONNECTION, datetime.now(UTC) - timedelta(hours=24), ids
+        )
         return Page(
-            items=[device_to_read(d, counts.get(d.id, 0)) for d in rows],
+            items=[device_to_read(d, counts.get(d.id, 0), outages.get(d.id, 0)) for d in rows],
             total=total, page=params.page, page_size=params.page_size,
         )
 
@@ -197,7 +208,8 @@ class DeviceService:
         device = await self.repo.get_by_device_uuid(hb.device_uuid)
         if device is None:
             return None
-        was_online = device.status == DeviceStatus.ONLINE
+        previous = device.status
+        was_online = previous == DeviceStatus.ONLINE
         device.status = DeviceStatus.ONLINE
         device.last_seen = datetime.now(UTC)
         for field in ("cpu_usage", "memory_usage", "gpu_usage", "gpu_memory_usage", "temperature",
@@ -217,6 +229,8 @@ class DeviceService:
         await broadcaster.publish(RealtimeEventType.DEVICE_HEARTBEAT, payload)
         if not was_online:
             await self._publish_status(device)
+        if previous == DeviceStatus.OFFLINE:
+            await ConnectionHistory(self.session).device_online(device)
         return device
 
     async def ingest_status(self, status: DeviceStatusPayload) -> EdgeDevice | None:
@@ -225,6 +239,7 @@ class DeviceService:
         if device is None:
             return None
         online = status.state == DeviceState.ONLINE
+        previous = device.status
         device.status = DeviceStatus.ONLINE if online else DeviceStatus.OFFLINE
         changed_cameras = []
         if online:
@@ -236,6 +251,11 @@ class DeviceService:
         await self._publish_status(device)
         for payload in changed_cameras:
             await broadcaster.publish(RealtimeEventType.CAMERA_STATUS, payload)
+        history = ConnectionHistory(self.session)
+        if online and previous == DeviceStatus.OFFLINE:
+            await history.device_online(device)
+        elif not online and previous == DeviceStatus.ONLINE:
+            await history.device_offline(device, REASON_EDGE_REPORTED)
         return device
 
     async def ingest_camera_status(self, device_uuid: str, status: CameraRuntimeStatus) -> bool:
@@ -289,6 +309,10 @@ class DeviceService:
                 RealtimeEventType.DEVICE_STATUS,
                 {"device_id": str(device_id), "device_uuid": device_uuid, "status": DeviceStatus.OFFLINE.value},
             )
+        history = ConnectionHistory(self.session)
+        for device_id, _ in rows:
+            if (device := await self.repo.get(device_id)) is not None:
+                await history.device_offline(device, REASON_HEARTBEAT_TIMEOUT)
         return len(rows)
 
     async def _publish_status(self, device: EdgeDevice) -> None:

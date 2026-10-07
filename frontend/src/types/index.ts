@@ -61,6 +61,7 @@ export interface EdgeDevice {
   gpu_memory_usage: number | null;
   temperature: number | null;
   camera_count: number;
+  disconnects_24h: number;
   created_at: string;
 }
 
@@ -175,6 +176,7 @@ export interface DashboardSummary {
   active_camera_count: number;
   events_today: number;
   logs_today: number;
+  disconnects_today: number;
 }
 
 export type LogSeverity = "debug" | "info" | "warning" | "error" | "critical";
@@ -183,7 +185,8 @@ export type LogSeverity = "debug" | "info" | "warning" | "error" | "critical";
 export interface EdgeLog {
   id: UUID;
   event_id: string;
-  edge_device_id: UUID;
+  /** null = platform-level record (system.platform) */
+  edge_device_id: UUID | null;
   edge_device_uuid: string | null;
   edge_device_name: string | null;
   site_id: UUID | null;

@@ -15,15 +15,26 @@ from app.core.config import get_settings
 from app.core.exceptions import DomainError
 from app.core.logging import configure_logging
 from app.core.redis import close_redis
-from app.db.session import dispose_engine
+from app.db.session import dispose_engine, get_session_factory
 from app.messaging.registry import build_broker
 from app.messaging.runtime import set_broker
 from app.realtime.broadcaster import broadcaster
 from app.realtime.router import router as ws_router
 from app.services import storage_service
+from app.services.connection_history import ConnectionHistory
 from app.workers.device_monitor import DeviceMonitor
 
 logger = logging.getLogger(__name__)
+
+
+async def _record_platform(event: str) -> None:
+    """system.platform start / stop record (connection history); never blocks startup or shutdown."""
+    try:
+        async with get_session_factory()() as session:
+            history = ConnectionHistory(session)
+            await (history.platform_started() if event == "started" else history.platform_stopped())
+    except Exception:
+        logger.exception("could not record platform %s", event)
 
 
 @asynccontextmanager
@@ -49,9 +60,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await broker.start()
 
     logger.info("%s started (env=%s)", settings.app_name, settings.environment)
+    await _record_platform("started")
     try:
         yield
     finally:
+        await _record_platform("stopped")
         if broker:
             await broker.stop()
             set_broker(None)

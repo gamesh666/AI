@@ -53,3 +53,13 @@ def test_invalid_values_are_rejected(field, value):
     body = {"device_id": "d", "event_type": "ok.type", field: value}
     with pytest.raises(ValidationError):
         EdgeLog.model_validate(body)
+
+
+async def test_platform_event_types_cannot_be_sent_by_edges():
+    from app.services.connection_history import CONNECTION, PLATFORM
+    from app.services.edge_log_service import RESERVED_EVENT_TYPES, EdgeLogService
+
+    assert {CONNECTION, PLATFORM} == RESERVED_EVENT_TYPES
+    forged = EdgeLog.model_validate({"device_id": "d", "event_type": CONNECTION, "status": "recovered"})
+    # rejected before any database access (the session is never touched)
+    assert await EdgeLogService(session=None).ingest(forged, "d") is None  # type: ignore[arg-type]

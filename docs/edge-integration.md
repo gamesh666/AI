@@ -123,6 +123,9 @@ ff.stdin.write(annotated_frame.tobytes())   # 每一張
   "status": "returned", "severity": "info", "data": { "return_time": "09:20:31", "away_seconds": 321 } }
 ```
 
+`system.connection` 與 `system.platform` 是平台自己寫的連線紀錄（斷線 / 恢復、平台啟動 / 停止），
+Edge 送這兩種類型會被丟棄；其他 `system.*`（例如 `system.camera_offline`）可以正常使用。
+
 整則 MQTT 訊息上限 256 KB；格式錯誤、裝置 ID 不符、未註冊的裝置會被丟棄並記在平台 log。
 
 ### 快照上傳（選用）

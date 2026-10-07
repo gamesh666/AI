@@ -38,13 +38,22 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
   },
 ];
 
-export function Sidebar() {
+/** Fixed column on md+; a slide-in drawer on phones (opened from the top bar). */
+export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const { hasRole } = useAuth();
   const { t } = useI18n();
 
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-slate-800 bg-surface-800 md:block">
+    <>
+    {open && <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={onClose} />}
+    <aside
+      className={clsx(
+        "w-56 shrink-0 border-r border-slate-800 bg-surface-800",
+        open ? "fixed inset-y-0 left-0 z-50 overflow-y-auto" : "hidden",
+        "md:sticky md:top-0 md:block md:h-screen md:overflow-y-auto",
+      )}
+    >
       <div className="px-4 py-4">
         <div className="text-lg font-bold text-white">AI VMS</div>
         <div className="text-xs text-slate-500">{t("app.tagline")}</div>
@@ -76,5 +85,6 @@ export function Sidebar() {
         ))}
       </nav>
     </aside>
+    </>
   );
 }

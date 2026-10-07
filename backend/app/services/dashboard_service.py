@@ -10,6 +10,7 @@ from app.repositories.device_repository import DeviceRepository
 from app.repositories.edge_log_repository import EdgeLogRepository
 from app.repositories.event_repository import EventRepository
 from app.schemas.dashboard import DashboardSummary
+from app.services.connection_history import CONNECTION
 
 
 class DashboardService:
@@ -32,4 +33,5 @@ class DashboardService:
             active_camera_count=await self.cameras.count_active(),
             events_today=await self.events.count_since(since),
             logs_today=await self.logs.count_since(since),
+            disconnects_today=await self.logs.count_type_since(CONNECTION, since),
         )

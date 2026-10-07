@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import { EMPTY_LOG_FILTERS, LogFilters, type LogFilterValues } from "@/components/logs/LogFilters";
 import { LogTable } from "@/components/logs/LogTable";
@@ -45,10 +46,29 @@ function matches(l: EdgeLog, f: LogFilterValues): boolean {
   );
 }
 
+function filtersFrom(params: URLSearchParams): LogFilterValues {
+  const initial = { ...EMPTY_LOG_FILTERS };
+  for (const k of Object.keys(initial) as (keyof LogFilterValues)[]) {
+    initial[k] = params.get(k) ?? "";
+  }
+  return initial;
+}
+
 export default function LogsPage() {
+  // useSearchParams needs a Suspense boundary when the route is prerendered
+  return (
+    <Suspense>
+      <LogsView />
+    </Suspense>
+  );
+}
+
+function LogsView() {
+  const searchParams = useSearchParams();
   const { t } = useI18n();
-  const [filters, setFilters] = useState<LogFilterValues>(EMPTY_LOG_FILTERS);
-  const [query, setQuery] = useState<LogFilterValues>(EMPTY_LOG_FILTERS);
+  // deep links, e.g. /logs?edge_device_id=...&event_type=system.connection from the devices page
+  const [filters, setFilters] = useState<LogFilterValues>(() => filtersFrom(searchParams));
+  const [query, setQuery] = useState<LogFilterValues>(filters);
   const [page, setPage] = useState(1);
   const [live, setLive] = useState(true);
 

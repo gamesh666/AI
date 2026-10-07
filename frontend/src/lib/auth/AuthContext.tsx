@@ -42,6 +42,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadUser();
   }, [loadUser]);
 
+  // signed out in another tab (manually or by the idle timer) -> sign out here too
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || (e.key === "aivms.access" && !e.newValue)) {
+        if (!tokenStorage.getAccess()) setUser(null);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const login = useCallback(async (username: string, password: string) => {
     tokenStorage.set(await authApi.login(username, password));
     setUser(await authApi.me());

@@ -163,6 +163,8 @@ services:
       context: ../frontend
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        # sign out after N minutes without activity (0 = never); baked in at build time
+        NEXT_PUBLIC_IDLE_LOGOUT_MINUTES: ${IDLE_LOGOUT_MINUTES:-10}
     image: aivms/frontend:dev
     <<: [*restart, *logging]
     depends_on:

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { ConnectionInfoPanel } from "@/components/devices/ConnectionInfoPanel";
@@ -86,6 +87,21 @@ export default function DevicesPage() {
           { key: "site", header: t("common.site"), render: (d) => d.site_name ?? "—" },
           { key: "status", header: t("devices.status"), render: (d) => <StatusBadge status={d.status} /> },
           { key: "seen", header: t("devices.lastSeen"), render: (d) => formatRelative(d.last_seen) },
+          {
+            key: "outages",
+            header: t("devices.disconnects24h"),
+            render: (d) =>
+              d.disconnects_24h ? (
+                <Link
+                  href={`/logs?edge_device_id=${d.id}&event_type=system.connection`}
+                  className="text-red-300 underline-offset-2 hover:underline"
+                >
+                  {d.disconnects_24h}
+                </Link>
+              ) : (
+                <span className="text-slate-500">0</span>
+              ),
+          },
           { key: "host", header: t("devices.host"), render: (d) => `${d.hostname ?? "—"} / ${d.ip_address ?? "—"}` },
           { key: "cpu", header: "CPU", render: (d) => pct(d.cpu_usage) },
           { key: "mem", header: t("devices.memory"), render: (d) => pct(d.memory_usage) },

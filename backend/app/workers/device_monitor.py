@@ -33,7 +33,11 @@ class DeviceMonitor:
             logger.info("marked %d device(s) offline", changed)
 
     async def _run(self) -> None:
-        interval = get_settings().device_monitor_interval_seconds
+        settings = get_settings()
+        interval = settings.device_monitor_interval_seconds
+        # after a platform restart every device looks stale until its next heartbeat: give them time
+        # to report in, so the platform's own downtime is not recorded as an outage of every device
+        await asyncio.sleep(settings.device_offline_after_seconds)
         while True:
             try:
                 await self._tick(interval)

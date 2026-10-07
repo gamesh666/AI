@@ -81,3 +81,20 @@ class EdgeLogRepository(BaseRepository[EdgeLog]):
     async def distinct_types(self) -> list[str]:
         stmt = select(EdgeLog.event_type).distinct().order_by(EdgeLog.event_type)
         return list((await self.session.execute(stmt)).scalars().all())
+
+    async def count_type_since(self, event_type: str, since: datetime) -> int:
+        stmt = select(func.count()).select_from(EdgeLog).where(
+            EdgeLog.event_type == event_type, EdgeLog.occurred_at >= since
+        )
+        return (await self.session.execute(stmt)).scalar_one()
+
+    async def counts_by_device(self, event_type: str, since: datetime, device_ids: list) -> dict:
+        if not device_ids:
+            return {}
+        stmt = (
+            select(EdgeLog.edge_device_id, func.count())
+            .where(EdgeLog.event_type == event_type, EdgeLog.occurred_at >= since,
+                   EdgeLog.edge_device_id.in_(device_ids))
+            .group_by(EdgeLog.edge_device_id)
+        )
+        return dict((await self.session.execute(stmt)).all())

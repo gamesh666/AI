@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 # upper bound for the free-form part of one log (the MQTT message itself is capped by the handler)
 MAX_DATA_BYTES = 64 * 1024
+# written only by the platform itself (see connection_history); edges cannot forge them
+RESERVED_EVENT_TYPES = frozenset({"system.connection", "system.platform"})
 
 
 def log_to_read(log: EdgeLog) -> EdgeLogRead:
@@ -84,6 +86,10 @@ class EdgeLogService:
         """MQTT -> DB (insert or update by event_id) -> WebSocket."""
         if payload.device_id != topic_device_id:
             logger.warning("log device mismatch topic=%s payload=%s; dropped", topic_device_id, payload.device_id)
+            return None
+        if payload.event_type in RESERVED_EVENT_TYPES:
+            logger.warning("log type %s is reserved for the platform; dropped (device %s)",
+                           payload.event_type, payload.device_id)
             return None
         device = await self.devices.get_by_device_uuid(payload.device_id)
         if device is None:

@@ -7,10 +7,12 @@ import { SnapshotWithBoxes } from "@/components/logs/SnapshotWithBoxes";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { describeLog, logSource } from "@/lib/logText";
 import type { EdgeLog } from "@/types";
 
 export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean }) {
-  const { t, formatDateTime } = useI18n();
+  const { t, formatDateTime, formatDuration } = useI18n();
+  const text = (l: EdgeLog) => describeLog(l, t, formatDuration);
   const [open, setOpen] = useState<EdgeLog | null>(null);
   // keep the dialog in sync when the open log is updated live
   const current = open ? (logs.find((l) => l.id === open.id) ?? open) : null;
@@ -34,21 +36,22 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
       className: "max-w-md",
       render: (l) => (
         <button className="block max-w-md truncate text-left hover:underline" onClick={() => setOpen(l)}>
-          {l.message || <span className="text-slate-500">{t("logs.viewData")}</span>}
+          {text(l) || <span className="text-slate-500">{t("logs.viewData")}</span>}
         </button>
       ),
     },
     {
       key: "source",
       header: t("logs.source"),
-      render: (l) => (
-        <div>
-          <div>{l.camera_name ?? l.camera_code ?? "—"}</div>
-          <div className="text-xs text-slate-500">
-            {l.site_name ?? "—"} · {l.edge_device_name ?? l.edge_device_uuid}
+      render: (l) => {
+        const src = logSource(l, t);
+        return (
+          <div>
+            <div>{src.primary}</div>
+            <div className="text-xs text-slate-500">{src.secondary}</div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "snapshot",
@@ -74,13 +77,13 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
               {current.status && <span className="text-slate-400">[{current.status}]</span>}
               <span className="text-slate-400">{formatDateTime(current.occurred_at)}</span>
             </div>
-            {current.message && <p className="whitespace-pre-wrap">{current.message}</p>}
+            {text(current) && <p className="whitespace-pre-wrap">{text(current)}</p>}
             <SnapshotWithBoxes log={current} />
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
               <dt className="text-slate-500">{t("logs.eventId")}</dt>
               <dd className="break-all font-mono">{current.event_id}</dd>
               <dt className="text-slate-500">{t("common.edgeDevice")}</dt>
-              <dd>{current.edge_device_name ?? current.edge_device_uuid}</dd>
+              <dd>{current.edge_device_id ? (current.edge_device_name ?? current.edge_device_uuid) : t("syslog.platform")}</dd>
               <dt className="text-slate-500">{t("common.camera")}</dt>
               <dd>{current.camera_name ?? current.camera_code ?? "—"}</dd>
               <dt className="text-slate-500">{t("logs.updated")}</dt>

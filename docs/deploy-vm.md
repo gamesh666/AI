@@ -98,6 +98,15 @@ VirtualBox / VMware 請用 **Bridged** 或 **Host-only** 網卡，讓你的電�
 所有資料都走真實路徑：fake camera → 模擬 Edge（production edge agent + MockDetector）→ MQTT / MediaMTX → Backend → 瀏覽器。
 沒有任何「前端假資料」，因此之後換成真實 Camera / YOLO / Edge 時畫面與 API 都不用改。
 
+### 斷線紀錄與自動登出
+
+- **斷線紀錄**：每次 Edge 斷線，平台會在「Edge 紀錄」寫一筆 `system.connection`（離線時間、原因；恢復後同一筆更新為
+  「已恢復」並記錄中斷多久）。平台本身每次啟動 / 停止寫 `system.platform`（含停機時間、是否非正常停止）。
+  「邊緣裝置」頁的「24h 斷線」可點進該裝置的紀錄，「總覽」有「今日斷線次數」。紀錄存在資料庫，更新程式不會消失。
+- **閒置自動登出**：預設 10 分鐘沒有操作就登出（前 60 秒會跳出提醒，可按「繼續使用」）。
+  要調整：在 `.env` 設 `IDLE_LOGOUT_MINUTES=30`（`0` = 不自動登出，例如監控牆），再
+  `docker compose up -d --build frontend`。
+
 ## 7. 疑難排解
 
 | 狀況 | 指令 |

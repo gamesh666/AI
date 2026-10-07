@@ -9,3 +9,4 @@ class DashboardSummary(BaseModel):
     active_camera_count: int
     events_today: int
     logs_today: int = 0
+    disconnects_today: int = 0

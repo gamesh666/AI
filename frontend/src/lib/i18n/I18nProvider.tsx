@@ -16,6 +16,7 @@ interface I18nState {
   tEnum: (prefix: "status" | "role", value: string) => string;
   formatDateTime: (iso: string | null | undefined) => string;
   formatRelative: (iso: string | null | undefined) => string;
+  formatDuration: (seconds: number) => string;
 }
 
 const I18nContext = createContext<I18nState | null>(null);
@@ -74,6 +75,18 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         if (diff < 3600) return t("time.minutesAgo", { n: Math.round(diff / 60) });
         if (diff < 86400) return t("time.hoursAgo", { n: Math.round(diff / 3600) });
         return t("time.daysAgo", { n: Math.round(diff / 86400) });
+      },
+      formatDuration: (seconds) => {
+        const s = Math.max(0, Math.round(seconds));
+        const d = Math.floor(s / 86400);
+        const h = Math.floor((s % 86400) / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const parts = [];
+        if (d) parts.push(t("time.d", { n: d }));
+        if (h) parts.push(t("time.h", { n: h }));
+        if (m && !d) parts.push(t("time.m", { n: m }));
+        if (!d && !h) parts.push(t("time.s", { n: s % 60 }));
+        return parts.join(" ");
       },
     };
   }, [locale, setLocale]);

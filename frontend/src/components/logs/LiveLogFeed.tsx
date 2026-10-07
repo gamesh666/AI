@@ -5,12 +5,13 @@ import { useState } from "react";
 import { SeverityBadge } from "@/components/logs/SeverityBadge";
 import { Card } from "@/components/ui/Card";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { describeLog, logSource } from "@/lib/logText";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
 import type { EdgeLog } from "@/types";
 
 /** Latest logs from every edge, pushed over WebSocket (updates replace the row in place). */
 export function LiveLogFeed({ limit = 20 }: { limit?: number }) {
-  const { t, formatDateTime } = useI18n();
+  const { t, formatDateTime, formatDuration } = useI18n();
   const [logs, setLogs] = useState<EdgeLog[]>([]);
 
   useRealtime<EdgeLog>("log.created", (log) => setLogs((prev) => [log, ...prev].slice(0, limit)));
@@ -33,11 +34,10 @@ export function LiveLogFeed({ limit = 20 }: { limit?: number }) {
               <div className="truncate text-sm">
                 <code className="text-xs text-brand-400">{l.event_type}</code>
                 {l.status && <span className="ml-1 text-xs text-slate-400">[{l.status}]</span>}{" "}
-                {l.message}
+                {describeLog(l, t, formatDuration)}
               </div>
               <div className="truncate text-xs text-slate-500">
-                {l.camera_name ?? l.camera_code ?? "—"} · {l.edge_device_name ?? l.edge_device_uuid} ·{" "}
-                {formatDateTime(l.occurred_at)}
+                {logSource(l, t).primary} · {formatDateTime(l.occurred_at)}
               </div>
             </div>
           </li>
