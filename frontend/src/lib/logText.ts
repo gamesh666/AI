@@ -37,3 +37,9 @@ export function logSource(log: EdgeLog, t: T): { primary: string; secondary: str
     secondary: `${log.site_name ?? "—"} · ${log.edge_device_name ?? log.edge_device_uuid}`,
   };
 }
+
+/** "Site › Edge device › Camera" — which box and which camera a record came from (empty parts skipped). */
+export function sourcePath(site: string | null | undefined, device: string | null | undefined,
+                           camera: string | null | undefined): string {
+  return [site, device, camera].filter((x) => x && x.trim()).join(" › ") || "—";
+}

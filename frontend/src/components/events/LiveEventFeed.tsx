@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
 import type { DetectionEvent } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { sourcePath } from "@/lib/logText";
 
 /** Pure push: new detections arrive over WebSocket, no polling. */
 export function LiveEventFeed({ limit = 20, cameraId }: { limit?: number; cameraId?: string }) {
@@ -39,7 +40,7 @@ export function LiveEventFeed({ limit = 20, cameraId }: { limit?: number; camera
                 <span className="text-slate-400">{(ev.confidence * 100).toFixed(0)}%</span>
               </div>
               <div className="truncate text-xs text-slate-500">
-                {ev.camera_name} · {ev.site_name ?? "—"} · {formatDateTime(ev.detected_at)}
+                {sourcePath(ev.site_name, ev.edge_device_name, ev.camera_name)} · {formatDateTime(ev.detected_at)}
               </div>
             </div>
           </li>

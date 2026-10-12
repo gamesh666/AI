@@ -5,7 +5,7 @@ import { useState } from "react";
 import { SeverityBadge } from "@/components/logs/SeverityBadge";
 import { Card } from "@/components/ui/Card";
 import { useI18n } from "@/lib/i18n/I18nProvider";
-import { describeLog, logSource } from "@/lib/logText";
+import { describeLog, logSource, sourcePath } from "@/lib/logText";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
 import type { EdgeLog } from "@/types";
 
@@ -37,7 +37,10 @@ export function LiveLogFeed({ limit = 20 }: { limit?: number }) {
                 {describeLog(l, t, formatDuration)}
               </div>
               <div className="truncate text-xs text-slate-500">
-                {logSource(l, t).primary} · {formatDateTime(l.occurred_at)}
+                {l.edge_device_id
+                  ? sourcePath(l.site_name, l.edge_device_name ?? l.edge_device_uuid, l.camera_name ?? l.camera_code)
+                  : logSource(l, t).primary}{" "}
+                · {formatDateTime(l.occurred_at)}
               </div>
             </div>
           </li>
