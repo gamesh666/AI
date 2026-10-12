@@ -56,7 +56,7 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
       )}
     >
       <div className="px-4 py-4">
-        <div className="text-lg font-bold text-white">AI VMS</div>
+        <div className="text-lg font-bold text-white">AIBOX SERVER</div>
         <div className="text-xs text-slate-500">{t("app.tagline")}</div>
       </div>
       <nav className="space-y-5 px-2">

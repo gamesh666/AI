@@ -60,7 +60,7 @@ export default function LoginPage() {
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-lg border border-slate-700 bg-surface-800 p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">AI VMS</h1>
+            <h1 className="text-xl font-semibold">AIBOX SERVER</h1>
             <p className="text-sm text-slate-400">{t("app.loginTagline")}</p>
           </div>
           <LanguageSwitcher />
