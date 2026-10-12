@@ -39,6 +39,32 @@ Edge 端需要的設定：
 
 ## 1. 宣告攝影機（Edge 自己管理來源）
 
+**建議：同步完整清單**（Edge 啟動時、攝影機有增減時呼叫一次）
+
+```http
+PUT /api/v1/edge/cameras
+X-Device-Key: ...
+Content-Type: application/json
+
+{"cameras": [{"code": "bimer-entrance-right", "name": "BIMer 大門右側"},
+             {"code": "bimer-back-left", "name": "BIMer 後左"}]}
+```
+
+回應：
+
+```json
+{ "cameras": [ { "camera_id": "bimer-entrance-right", "stream_path": "ai/bimer-office/REACH01/bimer-entrance-right", ... } ],
+  "added": [], "restored": [], "missing": ["old-cam"] }
+```
+
+- 清單裡有、平台沒有 → 自動新增（`added`）。
+- 平台上有、但這次清單沒有的 **Edge 自管攝影機** → **停用並標示「已不在 Edge 上」，不會刪除**（`missing`），歷史資料保留；
+  之後清單再出現就自動恢復啟用（`restored`）。平台設定來源的攝影機（AIVMS edge-agent）不受影響。
+- 每次有變動，平台會在「Edge 紀錄」寫一筆 `system.camera_sync`。
+- 送空清單 `{"cameras": []}` 代表這台 Edge 目前沒有任何攝影機（全部會被停用）。
+
+**也可以一支一支登記**（只新增 / 更新，不會停用其他攝影機）：
+
 ```http
 PUT /api/v1/edge/cameras/{camera_code}
 X-Device-Key: ...
@@ -123,8 +149,8 @@ ff.stdin.write(annotated_frame.tobytes())   # 每一張
   "status": "returned", "severity": "info", "data": { "return_time": "09:20:31", "away_seconds": 321 } }
 ```
 
-`system.connection` 與 `system.platform` 是平台自己寫的連線紀錄（斷線 / 恢復、平台啟動 / 停止），
-Edge 送這兩種類型會被丟棄；其他 `system.*`（例如 `system.camera_offline`）可以正常使用。
+`system.connection`、`system.platform`、`system.camera_sync` 是平台自己寫的紀錄（斷線 / 恢復、平台啟動 / 停止、攝影機清單變動），
+Edge 送這三種類型會被丟棄；其他 `system.*`（例如 `system.camera_offline`）可以正常使用。
 
 整則 MQTT 訊息上限 256 KB；格式錯誤、裝置 ID 不符、未註冊的裝置會被丟棄並記在平台 log。
 

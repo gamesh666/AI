@@ -54,6 +54,7 @@ def camera_to_read(camera: Camera) -> CameraRead:
         ai_status=camera.ai_status,
         last_frame_at=camera.last_frame_at,
         runtime_stats=camera.runtime_stats or {},
+        missing_from_edge_at=camera.missing_from_edge_at,
         created_at=camera.created_at,
     )
 

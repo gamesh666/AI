@@ -68,6 +68,8 @@ class Camera(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     ai_status: Mapped[str] = mapped_column(String(16), default="idle")
     last_frame_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     runtime_stats: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    # edge-managed cameras the edge no longer lists (camera sync); such a camera is disabled, not deleted
+    missing_from_edge_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     edge_device: Mapped[EdgeDevice] = relationship(back_populates="cameras")
     ai_model: Mapped[AIModel | None] = relationship()

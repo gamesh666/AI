@@ -9,6 +9,8 @@ from app.core.exceptions import AuthError
 from app.schemas.edge import (
     EdgeCameraConfig,
     EdgeCameraDeclare,
+    EdgeCameraSync,
+    EdgeCameraSyncResult,
     EdgeConfig,
     EdgeRegisterRequest,
     EdgeRegisterResponse,
@@ -42,6 +44,15 @@ async def get_config(device: CurrentDevice, db: DBSession) -> EdgeConfig:
 @router.post("/snapshots/presign", response_model=PresignResponse)
 async def presign_snapshot(body: PresignRequest, device: CurrentDevice, db: DBSession) -> PresignResponse:
     return await EdgeService(db).presign_snapshot(device, body.camera_id, body.camera_code)
+
+
+@router.put("/cameras", response_model=EdgeCameraSyncResult)
+async def sync_cameras(body: EdgeCameraSync, device: CurrentDevice, db: DBSession) -> EdgeCameraSyncResult:
+    """Send the edge's COMPLETE camera list (e.g. at startup and whenever it changes).
+
+    Missing edge-managed cameras are disabled and flagged (not deleted) and come back when listed again.
+    """
+    return await EdgeService(db).sync_cameras(device, body)
 
 
 @router.put("/cameras/{code}", response_model=EdgeCameraConfig)

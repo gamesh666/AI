@@ -3,6 +3,7 @@
 - system.connection  one record per outage of a device: status "offline" when it is lost, updated to
                      "recovered" (with the downtime) when the device is back. Same record, same event_id.
 - system.platform    the platform's own start / stop, so outages of the central server are visible too.
+- system.camera_sync an edge's camera list changed (cameras added, back, or no longer on the edge).
 
 They show up in the Edge Logs page (filter by type) and are pushed live like any other log.
 """
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 CONNECTION = "system.connection"
 PLATFORM = "system.platform"
+CAMERA_SYNC = "system.camera_sync"
 
 # why a device was marked offline
 REASON_HEARTBEAT_TIMEOUT = "heartbeat_timeout"
@@ -108,6 +110,28 @@ class ConnectionHistory:
         }
         await self._write(row, {"severity", "status"})
         logger.info("device %s back online after %ds", device.device_uuid, duration)
+
+    async def camera_sync(self, device: EdgeDevice, added: list[str], restored: list[str], missing: list[str]) -> None:
+        """One record per change of the edge's camera list."""
+        now = datetime.now(UTC)
+        row = {
+            "id": uuid.uuid4(),
+            "event_id": f"camsync-{now:%Y%m%d%H%M%S}-{uuid.uuid4().hex[:8]}",
+            "edge_device_id": device.id,
+            "camera_id": None,
+            "camera_code": None,
+            "event_type": CAMERA_SYNC,
+            "severity": "warning" if missing else "info",
+            "status": None,
+            "message": None,
+            "data": {"added": added, "restored": restored, "missing": missing},
+            "detections": [],
+            "frame": None,
+            "snapshot_key": None,
+            "occurred_at": now,
+        }
+        await self._write(row, set())
+        logger.info("device %s cameras: added=%s restored=%s missing=%s", device.device_uuid, added, restored, missing)
 
     # ---- platform ---------------------------------------------------------------
 

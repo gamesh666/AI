@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # upper bound for the free-form part of one log (the MQTT message itself is capped by the handler)
 MAX_DATA_BYTES = 64 * 1024
 # written only by the platform itself (see connection_history); edges cannot forge them
-RESERVED_EVENT_TYPES = frozenset({"system.connection", "system.platform"})
+RESERVED_EVENT_TYPES = frozenset({"system.connection", "system.platform", "system.camera_sync"})
 
 
 def log_to_read(log: EdgeLog) -> EdgeLogRead:

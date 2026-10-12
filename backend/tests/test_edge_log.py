@@ -59,7 +59,19 @@ async def test_platform_event_types_cannot_be_sent_by_edges():
     from app.services.connection_history import CONNECTION, PLATFORM
     from app.services.edge_log_service import RESERVED_EVENT_TYPES, EdgeLogService
 
-    assert {CONNECTION, PLATFORM} == RESERVED_EVENT_TYPES
+    assert {CONNECTION, PLATFORM} <= RESERVED_EVENT_TYPES
     forged = EdgeLog.model_validate({"device_id": "d", "event_type": CONNECTION, "status": "recovered"})
     # rejected before any database access (the session is never touched)
     assert await EdgeLogService(session=None).ingest(forged, "d") is None  # type: ignore[arg-type]
+
+
+def test_camera_sync_rejects_duplicate_codes():
+    from app.schemas.edge import EdgeCameraSync
+
+    assert EdgeCameraSync.model_validate({"cameras": []}).cameras == []
+    ok = EdgeCameraSync.model_validate({"cameras": [{"code": "cam01", "name": "A"}, {"code": "cam02"}]})
+    assert [c.code for c in ok.cameras] == ["cam01", "cam02"]
+    with pytest.raises(ValidationError):
+        EdgeCameraSync.model_validate({"cameras": [{"code": "cam01"}, {"code": "cam01"}]})
+    with pytest.raises(ValidationError):
+        EdgeCameraSync.model_validate({"cameras": [{"code": "bad code"}]})

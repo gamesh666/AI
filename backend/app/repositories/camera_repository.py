@@ -38,8 +38,12 @@ class CameraRepository(BaseRepository[Camera]):
         site_id: uuid.UUID | None = None,
         edge_device_id: uuid.UUID | None = None,
         enabled: bool | None = None,
+        missing: bool | None = None,
     ):
         stmt = self._with_relations().order_by(Camera.name)
+        if missing is not None:
+            flag = Camera.missing_from_edge_at
+            stmt = stmt.where(flag.is_not(None) if missing else flag.is_(None))
         if site_id:
             stmt = stmt.join(EdgeDevice, Camera.edge_device_id == EdgeDevice.id).where(
                 EdgeDevice.site_id == site_id

@@ -127,6 +127,8 @@ export interface Camera {
   ai_status: AiStatus;
   last_frame_at: string | null;
   runtime_stats: CameraRuntimeStats;
+  /** the edge stopped listing this camera (camera sync); it was disabled then */
+  missing_from_edge_at: string | null;
   created_at: string;
 }
 

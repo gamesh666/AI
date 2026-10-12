@@ -68,7 +68,7 @@ AIVMS_SEND_SNAPSHOT=true
 
 | # | 動作 | 方式 | 時機 |
 |---|------|------|------|
-| 3.1 | 登記攝影機 | HTTP `PUT /edge/cameras/{camera_code}` | 啟動時，每支攝影機一次 |
+| 3.1 | 同步攝影機清單 | HTTP `PUT /edge/cameras`（完整清單） | 啟動時，以及攝影機有增減時 |
 | 3.2 | 上線 / 離線狀態 | MQTT `edge/{device}/status`（retained + Last Will） | 連線時 / 斷線時 |
 | 3.3 | 心跳 | MQTT `edge/{device}/heartbeat` | 每 10 秒 |
 | 3.4 | 攝影機狀態 | MQTT `edge/{device}/cameras/{camera_code}/status` | 每 5 秒 |
@@ -81,26 +81,39 @@ AIVMS_SEND_SNAPSHOT=true
 - 所有 HTTP 呼叫都帶 header：`X-Device-Key: <AIVMS_DEVICE_KEY>`
 - 所有時間用 **ISO 8601 且帶時區**，例如 `2026-09-29T09:15:10+08:00`
 
-## 4. 登記攝影機（3.1）
+## 4. 同步攝影機清單（3.1）
+
+啟動時（以及攝影機有增減時）送出 **REACH 目前全部的攝影機**：
 
 ```http
-PUT {AIVMS_API_URL}/edge/cameras/bimer-back-left
+PUT {AIVMS_API_URL}/edge/cameras
 X-Device-Key: ...
 Content-Type: application/json
 
-{"name": "BIMer 後左攝影機"}
+{"cameras": [
+  {"code": "bimer-entrance-right", "name": "BIMer 大門右側攝影機"},
+  {"code": "bimer-back-left",      "name": "BIMer 後左攝影機"}
+]}
 ```
 
 回應（節錄）：
 
 ```json
-{ "camera_id": "bimer-back-left", "name": "BIMer 後左攝影機",
-  "stream_path": "ai/<site>/REACH01/bimer-back-left", "rtsp_url": null }
+{
+  "cameras": [
+    { "camera_id": "bimer-entrance-right", "stream_path": "ai/<site>/REACH01/bimer-entrance-right", "rtsp_url": null },
+    { "camera_id": "bimer-back-left",      "stream_path": "ai/<site>/REACH01/bimer-back-left",      "rtsp_url": null }
+  ],
+  "added": [], "restored": [], "missing": []
+}
 ```
 
-- **推流路徑一律使用回應中的 `stream_path`，不要自己組。**
-- 可重複呼叫（冪等）。失敗時以 1/2/5/10/30 秒退避重試，期間該攝影機不推流。
+- **推流路徑一律使用回應中每支攝影機的 `stream_path`，不要自己組。**
+- 平台上有、但清單裡沒有的攝影機會被**停用並標示「已不在 Edge 上」**（不會刪除），清單再出現時自動恢復。
+  所以清單必須是**完整**的；若 REACH 停用某支攝影機，把它從清單拿掉即可。
+- 可重複呼叫（冪等）。失敗時以 1/2/5/10/30 秒退避重試，期間不推流。
 - 不要送攝影機 RTSP 位址；`rtsp_url: null` 代表來源由 REACH 自己管理，這是正確的。
+- （舊方式 `PUT /edge/cameras/{camera_code}` 仍可用，但不會停用已移除的攝影機。）
 
 ## 5. 上線狀態與心跳（3.2、3.3）
 
@@ -327,7 +340,7 @@ Content-Type: application/json
 | 狀況 | 處理 |
 |------|------|
 | HTTP 401 | 裝置金鑰錯誤：記 error（不印金鑰），每 60 秒重試 |
-| HTTP 404（presign） | 攝影機未登記：重新執行第 4 節登記 |
+| HTTP 404（presign） | 攝影機未登記：重新執行第 4 節同步 |
 | HTTP 5xx / 連線失敗 | 1/2/5/10/30 秒退避重試 |
 | MQTT 連不上 / 斷線 | paho 自動重連；事件進本地佇列（第 8.4 節） |
 | ffmpeg 啟動失敗 / 中斷 | 退避重連；連續失敗時 `stream_status: error` 並附錯誤摘要 |
@@ -354,6 +367,7 @@ Content-Type: application/json
 - [ ] 啟用後平台「邊緣裝置」看到 `REACH01` **在線**，CPU / 記憶體 / GPU 有數值
 - [ ] 停止 REACH 服務後 30 秒內平台顯示**離線**；重啟後恢復在線
 - [ ] 平台「攝影機」看到 `bimer-entrance-right`、`bimer-back-left`，顯示「來源由 Edge 管理」
+- [ ] 從清單拿掉一支攝影機並重啟模組：平台上該攝影機顯示「已不在 Edge 上」並停用；放回清單後自動恢復
 
 ### 即時畫面
 

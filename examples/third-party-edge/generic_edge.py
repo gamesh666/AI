@@ -2,7 +2,8 @@
 
 It does not use the platform's edge-agent. It shows the whole contract with plain JSON:
 
-  1. PUT  /api/v1/edge/cameras/{code}        announce a camera -> get its stream path
+  1. PUT  /api/v1/edge/cameras               the COMPLETE camera list -> stream paths (cameras no longer
+                                              listed are disabled on the platform, not deleted)
   2. MQTT edge/{device}/heartbeat             every 10 s   (device online, CPU/memory)
      MQTT edge/{device}/status                retained, also the Last Will ("offline")
      MQTT edge/{device}/cameras/{cam}/status  camera / AI / stream health
@@ -141,12 +142,14 @@ def fake_recognition(camera: str) -> list[dict]:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-    # 1. announce cameras -> stream paths
-    cams: dict[str, dict] = {}
-    for item in CAMERAS:
-        code, _, name = item.partition(":")
-        cams[code] = api("PUT", f"/edge/cameras/{code}", {"name": name or code})
-        log.info("camera %s -> %s", code, cams[code]["stream_path"])
+    # 1. sync the complete camera list -> stream paths
+    listed = [{"code": c.partition(":")[0], "name": c.partition(":")[2] or c.partition(":")[0]} for c in CAMERAS]
+    result = api("PUT", "/edge/cameras", {"cameras": listed})
+    cams: dict[str, dict] = {c["camera_id"]: c for c in result["cameras"]}
+    for code, cam in cams.items():
+        log.info("camera %s -> %s", code, cam["stream_path"])
+    if result["missing"]:
+        log.info("no longer listed (disabled on the platform): %s", ", ".join(result["missing"]))
     config = api("GET", "/edge/config")
 
     # 2. MQTT with a Last Will so the platform sees us go offline

@@ -21,8 +21,9 @@ async def list_cameras(
     site_id: uuid.UUID | None = None,
     edge_device_id: uuid.UUID | None = None,
     enabled: bool | None = None,
+    missing: bool | None = None,
 ) -> Page[CameraRead]:
-    return await CameraService(db).list(pagination, site_id, edge_device_id, enabled)
+    return await CameraService(db).list(pagination, site_id, edge_device_id, enabled, missing)
 
 
 @router.post("", response_model=CameraRead, status_code=status.HTTP_201_CREATED)

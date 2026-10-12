@@ -14,6 +14,14 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 };
 
 const en = {
+  "cameras.missingBadge": "No longer on the edge",
+  "cameras.missingFilter": "No longer on edge ({n})",
+  "cameras.deleteMissing": "Delete all {n}",
+  "cameras.confirmDeleteMissing": "Delete the {n} cameras that are no longer on their edge? Their detection events are deleted too.",
+  "syslog.camSync": "Camera list updated: ",
+  "syslog.camAdded": "added {list}",
+  "syslog.camRestored": "back {list}",
+  "syslog.camMissing": "no longer on the edge {list} (disabled)",
   "time.d": "{n}d",
   "time.h": "{n}h",
   "time.m": "{n}m",
@@ -274,6 +282,14 @@ export type MessageKey = keyof typeof en;
 export type Messages = Record<MessageKey, string>;
 
 const zhHant: Messages = {
+  "cameras.missingBadge": "已不在 Edge 上",
+  "cameras.missingFilter": "已不在 Edge 上（{n}）",
+  "cameras.deleteMissing": "全部刪除（{n}）",
+  "cameras.confirmDeleteMissing": "確定刪除這 {n} 支已不在 Edge 上的攝影機？其偵測事件也會一併刪除。",
+  "syslog.camSync": "攝影機清單更新：",
+  "syslog.camAdded": "新增 {list}",
+  "syslog.camRestored": "恢復 {list}",
+  "syslog.camMissing": "已不在 Edge 上 {list}（已停用）",
   "time.d": "{n} 天",
   "time.h": "{n} 小時",
   "time.m": "{n} 分",
@@ -530,6 +546,14 @@ const zhHant: Messages = {
 };
 
 const zhHans: Messages = {
+  "cameras.missingBadge": "已不在 Edge 上",
+  "cameras.missingFilter": "已不在 Edge 上（{n}）",
+  "cameras.deleteMissing": "全部删除（{n}）",
+  "cameras.confirmDeleteMissing": "确定删除这 {n} 个已不在 Edge 上的摄像头？其检测事件也会一并删除。",
+  "syslog.camSync": "摄像头列表更新：",
+  "syslog.camAdded": "新增 {list}",
+  "syslog.camRestored": "恢复 {list}",
+  "syslog.camMissing": "已不在 Edge 上 {list}（已停用）",
   "time.d": "{n} 天",
   "time.h": "{n} 小时",
   "time.m": "{n} 分",

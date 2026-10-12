@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { CameraForm } from "@/components/camera/CameraForm";
 import { CameraHealth } from "@/components/camera/CameraHealth";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
@@ -21,7 +22,7 @@ import type { Camera, CameraStatusMessage } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export default function CamerasPage() {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const { hasRole } = useAuth();
   const canEdit = hasRole("operator");
   const cameras = useAsync(async () => (await camerasApi.list()).items);
@@ -29,6 +30,19 @@ export default function CamerasPage() {
   const models = useAsync(async () => (await modelsApi.list()).items);
   const m = useMutation();
   const [editing, setEditing] = useState<Camera | null | "new">(null);
+  const [onlyMissing, setOnlyMissing] = useState(false);
+  const missingCount = cameras.data?.filter((c) => c.missing_from_edge_at).length ?? 0;
+  const rows = onlyMissing ? (cameras.data ?? []).filter((c) => c.missing_from_edge_at) : (cameras.data ?? []);
+
+  const removeMissing = async () => {
+    const targets = (cameras.data ?? []).filter((c) => c.missing_from_edge_at);
+    if (!targets.length || !confirm(t("cameras.confirmDeleteMissing", { n: targets.length }))) return;
+    for (const c of targets) {
+      if (!(await m.run(() => camerasApi.remove(c.id))).ok) break;
+    }
+    setOnlyMissing(false);
+    cameras.reload();
+  };
 
   useRealtime<CameraStatusMessage>("camera.status", (msg) =>
     cameras.setData((prev) => prev?.map((c) => applyCameraStatus(c, msg)) ?? prev),
@@ -55,17 +69,29 @@ export default function CamerasPage() {
         title={t("nav.cameras")}
         subtitle={t("cameras.subtitle")}
         actions={
-          canEdit && (
-            <Button onClick={() => setEditing("new")} disabled={!devices.data?.length}>
-              {t("cameras.add")}
-            </Button>
-          )
+          <>
+            {missingCount > 0 && (
+              <Button variant={onlyMissing ? "primary" : "secondary"} onClick={() => setOnlyMissing(!onlyMissing)}>
+                {t("cameras.missingFilter", { n: missingCount })}
+              </Button>
+            )}
+            {canEdit && onlyMissing && missingCount > 0 && (
+              <Button variant="danger" onClick={removeMissing} disabled={m.busy}>
+                {t("cameras.deleteMissing", { n: missingCount })}
+              </Button>
+            )}
+            {canEdit && (
+              <Button onClick={() => setEditing("new")} disabled={!devices.data?.length}>
+                {t("cameras.add")}
+              </Button>
+            )}
+          </>
         }
       />
       <ErrorBanner error={cameras.error ?? m.error} />
       <DataTable
         loading={cameras.loading}
-        rows={cameras.data ?? []}
+        rows={rows}
         columns={[
           {
             key: "name",
@@ -77,6 +103,11 @@ export default function CamerasPage() {
                   {c.code} {c.has_credentials && "· 🔒"}
                   {!c.source_configured && ` · ${t("cameras.edgeManagedShort")}`}
                 </div>
+                {c.missing_from_edge_at && (
+                  <div className="mt-0.5" title={formatDateTime(c.missing_from_edge_at)}>
+                    <Badge tone="yellow">{t("cameras.missingBadge")}</Badge>
+                  </div>
+                )}
               </div>
             ),
           },

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.edge_device import DEVICE_UUID_PATTERN
+from app.schemas.site import SLUG_PATTERN
 
 
 class EdgeRegisterRequest(BaseModel):
@@ -96,6 +97,31 @@ class EdgeCameraDeclare(BaseModel):
     """A camera an edge announces itself (its source stays on the edge)."""
 
     name: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class EdgeCameraListItem(EdgeCameraDeclare):
+    code: str = Field(pattern=SLUG_PATTERN)
+
+
+class EdgeCameraSync(BaseModel):
+    """The edge's COMPLETE camera list. Edge-managed cameras not in it are disabled (never deleted)."""
+
+    cameras: list[EdgeCameraListItem] = Field(max_length=256)
+
+    @field_validator("cameras")
+    @classmethod
+    def _unique_codes(cls, v: list[EdgeCameraListItem]) -> list[EdgeCameraListItem]:
+        codes = [c.code for c in v]
+        if len(codes) != len(set(codes)):
+            raise ValueError("camera codes must be unique")
+        return v
+
+
+class EdgeCameraSyncResult(BaseModel):
+    cameras: list[EdgeCameraConfig]  # the listed cameras, with the stream path to publish to
+    added: list[str]
+    restored: list[str]  # listed again after having been missing -> re-enabled
+    missing: list[str]  # newly missing -> disabled
 
 
 class PresignResponse(BaseModel):

@@ -24,7 +24,7 @@ export interface CameraInput {
 }
 
 export const camerasApi = {
-  list: (q: { site_id?: string; edge_device_id?: string; enabled?: boolean } = {}) =>
+  list: (q: { site_id?: string; edge_device_id?: string; enabled?: boolean; missing?: boolean } = {}) =>
     api.get<Page<Camera>>("/cameras", { page_size: 500, ...q }),
   create: (body: CameraInput) => api.post<Camera>("/cameras", body),
   update: (id: string, body: Partial<CameraInput>) => api.patch<Camera>(`/cameras/${id}`, body),

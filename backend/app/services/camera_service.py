@@ -78,9 +78,10 @@ class CameraService:
         site_id: uuid.UUID | None = None,
         edge_device_id: uuid.UUID | None = None,
         enabled: bool | None = None,
+        missing: bool | None = None,
     ) -> Page[CameraRead]:
         rows, total = await self.repo.paginate(
-            self.repo.list_stmt(site_id, edge_device_id, enabled), params.offset, params.page_size
+            self.repo.list_stmt(site_id, edge_device_id, enabled, missing), params.offset, params.page_size
         )
         return Page(
             items=[camera_to_read(c) for c in rows], total=total, page=params.page, page_size=params.page_size

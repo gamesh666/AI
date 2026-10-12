@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aivms_shared import topics
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError
+from app.messaging import publisher
 from app.models.camera import Camera
 from app.models.edge_device import EdgeDevice
 from app.repositories.camera_repository import CameraRepository
 from app.schemas.camera import CameraCreate
 from app.schemas.edge import (
     EdgeCameraConfig,
+    EdgeCameraSync,
+    EdgeCameraSyncResult,
     EdgeConfig,
     EdgeModelConfig,
     EdgeMQTTConfig,
@@ -24,6 +28,7 @@ from app.schemas.edge import (
 )
 from app.services import storage_service
 from app.services.camera_service import CameraService, build_authenticated_url
+from app.services.connection_history import ConnectionHistory
 
 PRESIGN_TTL_SECONDS = 300
 
@@ -120,19 +125,71 @@ class EdgeService:
             expires_in=PRESIGN_TTL_SECONDS,
         )
 
-    async def declare_camera(self, device: EdgeDevice, code: str, name: str | None) -> EdgeCameraConfig:
-        """Create (or rename) a camera announced by the edge itself; its source stays on the edge."""
+    async def _announce(self, device: EdgeDevice, code: str, name: str | None) -> tuple[uuid.UUID, str | None]:
+        """Create / rename / restore one edge-managed camera. Returns (camera id, "added" | "restored" | None)."""
         camera = await self.cameras.get_by_device_code(device.id, code)
         if camera is None:
             created = await CameraService(self.session).create(
                 CameraCreate(edge_device_id=device.id, code=code, name=name or code)
             )
-            camera_id = created.id
-        else:
-            camera_id = camera.id
-            if name and camera.name != name:
-                camera.name = name
-                await self.session.commit()
+            return created.id, "added"
+        change = None
+        if name and camera.name != name:
+            camera.name = name
+        if camera.missing_from_edge_at is not None:
+            # listed again: undo what the sync did when it went missing
+            camera.missing_from_edge_at = None
+            camera.enabled = True
+            change = "restored"
+        await self.session.commit()
+        return camera.id, change
+
+    async def declare_camera(self, device: EdgeDevice, code: str, name: str | None) -> EdgeCameraConfig:
+        """Create (or rename) a camera announced by the edge itself; its source stays on the edge."""
+        camera_id, change = await self._announce(device, code, name)
+        if change:
+            await ConnectionHistory(self.session).camera_sync(device, [code] if change == "added" else [],
+                                                              [code] if change == "restored" else [], [])
         full = await self.cameras.get_full(camera_id)
         assert full is not None
         return _camera_config(full)
+
+    async def sync_cameras(self, device: EdgeDevice, body: EdgeCameraSync) -> EdgeCameraSyncResult:
+        """The edge sends its complete camera list.
+
+        Listed cameras are created / renamed / restored. Edge-managed cameras (no source configured on the
+        platform) that are not listed any more are disabled and flagged, never deleted: history is kept and
+        they come back automatically when listed again. Cameras whose source the platform configures (the
+        AIVMS edge-agent) are never touched by a sync.
+        """
+        added: list[str] = []
+        restored: list[str] = []
+        ids: list[uuid.UUID] = []
+        for item in body.cameras:
+            camera_id, change = await self._announce(device, item.code, item.name)
+            ids.append(camera_id)
+            if change == "added":
+                added.append(item.code)
+            elif change == "restored":
+                restored.append(item.code)
+
+        listed = {c.code for c in body.cameras}
+        now = datetime.now(UTC)
+        missing: list[str] = []
+        for camera in await self.cameras.list_for_device(device.id):
+            if camera.code in listed or camera.rtsp_url or camera.missing_from_edge_at is not None:
+                continue
+            camera.missing_from_edge_at = now
+            camera.enabled = False
+            missing.append(camera.code)
+        await self.session.commit()
+
+        if added or restored or missing:
+            await ConnectionHistory(self.session).camera_sync(device, added, restored, missing)
+            await publisher.notify_config_changed(device.device_uuid, "camera_sync")
+        configs = []
+        for camera_id in ids:
+            full = await self.cameras.get_full(camera_id)
+            if full is not None:
+                configs.append(_camera_config(full))
+        return EdgeCameraSyncResult(cameras=configs, added=added, restored=restored, missing=missing)
