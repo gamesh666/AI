@@ -94,6 +94,14 @@ aibox (192.168.89.x) ──Tailscale──► 平台 VM（子網路由 192.168.0
 
 **影像不會走 MQTT，辨識結果也不會走影像串流**——兩者分開，任何一條斷了另一條不受影響。
 
+> **轉換中：MQTT → HTTP。** 平台已提供同樣功能的 HTTP 端點：
+> `POST /edge/heartbeat`、`/edge/status`、`/edge/cameras/{攝影機}/status`、`/edge/logs`。
+> JSON 內容與 MQTT 相同，改用每台自己的裝置金鑰驗證，不再需要共用的 MQTT 帳密。
+>
+> - REACH 要改的地方見 [`04-REACH-改用HTTP回傳規格.md`](04-REACH-改用HTTP回傳規格.md)。
+> - REACH01、REACH02 都改好之後，平台會停用 MQTT 共用帳號，四條通道就只剩 HTTP、RTSP、快照三種連線。
+> - 進度可在「邊緣裝置」頁的**通訊方式**欄位查看。
+
 ### 辨識紀錄如何「更新同一筆」
 
 REACH 的離席事件從「離開」到「回座」會送兩次，**用同一個 `event_id`**：
@@ -189,7 +197,8 @@ docker compose logs -f mediamtx  | grep -i "REACH0[12]"                         
 - 金鑰、MQTT 密碼、佈建權杖只放在設備的 env 檔，不放 Git、不貼群組、不寫進 log。
 - 平台只存金鑰與權杖的 hash；裝置金鑰與權杖都只在產生時顯示一次。
 - 目前測試環境走 Tailscale（WireGuard 加密）＋ HTTP；**正式對外前要改 HTTPS**。
-- MQTT 目前所有 Edge 共用一組帳密；之後外部廠商增加時，建議改為每台設備各自一組。
+- MQTT 目前所有 Edge 共用一組帳密，外流就能冒充任何一台。因此改走 HTTP（每台自己的裝置金鑰），
+  REACH 改好後停用共用帳號（[`04`](04-REACH-改用HTTP回傳規格.md)、[`mqtt-to-http.md`](../../mqtt-to-http.md)）。
 
 ---
 
@@ -199,5 +208,7 @@ docker compose logs -f mediamtx  | grep -i "REACH0[12]"                         
 |------|------|
 | [`01-AIVMS-平台說明與串接訴求.md`](01-AIVMS-平台說明與串接訴求.md) | 平台定位與分工 |
 | [`02-REACH-需新增功能規格.md`](02-REACH-需新增功能規格.md) | REACH 端串接模組的開發與驗收規格 |
+| [`04-REACH-改用HTTP回傳規格.md`](04-REACH-改用HTTP回傳規格.md) | 心跳、狀態、事件從 MQTT 改走 HTTP（REACH 要改的地方） |
+| [`../../mqtt-to-http.md`](../../mqtt-to-http.md) | 平台端停用 MQTT 共用帳號的步驟 |
 | [`../../edge-integration.md`](../../edge-integration.md) | 通用第三方 Edge 串接規格（欄位、topic、範例 JSON） |
 | [`../../reach-edge-register/CLAUDE.md`](../../reach-edge-register/CLAUDE.md) / [`DELIVERY.md`](../../reach-edge-register/DELIVERY.md) | MAC 自動註冊契約與交付清單 |

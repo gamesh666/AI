@@ -53,6 +53,9 @@ class EdgeDevice(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     provisioning_token_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("provisioning_tokens.id", ondelete="SET NULL")
     )
+    # when telemetry (heartbeat) last arrived over each transport; tells when MQTT can be switched off
+    last_mqtt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_http_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

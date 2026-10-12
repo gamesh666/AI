@@ -129,8 +129,14 @@ export interface EdgeDevice {
   /** models the edge reports running (heartbeat); null = never reported */
   reported_models: ReportedModel[] | null;
   reported_models_at: string | null;
+  /** how telemetry arrived in the last minutes */
+  telemetry_transport: TelemetryTransport | null;
+  last_mqtt_at: string | null;
+  last_http_at: string | null;
   created_at: string;
 }
+
+export type TelemetryTransport = "http" | "mqtt" | "both";
 
 export interface EdgeConnectionInfo {
   device_id: string;
@@ -145,6 +151,10 @@ export interface EdgeConnectionInfo {
   srt_publish_url: string | null;
   snapshot_upload_url: string;
   topics: Record<string, string>;
+  /** false once the shared MQTT account is switched off */
+  mqtt_enabled: boolean;
+  /** HTTP telemetry endpoints relative to the API base URL */
+  http_endpoints: Record<string, string>;
 }
 
 export interface EdgeDeviceWithKey extends EdgeDevice {

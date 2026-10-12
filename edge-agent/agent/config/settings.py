@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import AliasChoices, Field, SecretStr
@@ -44,6 +44,13 @@ class AgentSettings(BaseSettings):
     provisioning_token: SecretStr | None = None
     # optional pre-provisioned key (otherwise obtained via /edge/register and cached in data_dir)
     device_key: SecretStr | None = None
+
+    # how heartbeat / status / events reach the platform:
+    #   auto  MQTT while the platform still offers the shared MQTT account and EDGE_MQTT_USERNAME is set,
+    #         otherwise HTTP (switches to HTTP by itself when the platform turns MQTT off)
+    #   http  always HTTPS with the device key (no MQTT account needed)
+    #   mqtt  always MQTT
+    telemetry: Literal["auto", "http", "mqtt"] = "auto"
 
     # MQTT (host/port fall back to what the server returns in /edge/config)
     mqtt_host: str | None = None

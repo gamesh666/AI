@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, status
 
 from app.api.deps import AdminUser, DBSession, OperatorUser, Pagination, ViewerUser
+from app.core.config import get_settings
 from app.core.enums import DeviceStatus, UserRole
 from app.core.exceptions import PermissionDeniedError
 from app.schemas.common import Page
@@ -37,6 +38,12 @@ def _admin_fields(body, user) -> None:
     sensitive = {"mac_address", "owner_id", "admin_state"} & body.model_dump(exclude_unset=True).keys()
     if sensitive and user.role != UserRole.ADMIN:
         raise PermissionDeniedError(f"only administrators may change {', '.join(sorted(sensitive))}")
+
+
+@router.get("/telemetry-settings")
+async def telemetry_settings(_: ViewerUser) -> dict:
+    """Whether the shared edge MQTT account is still on (MQTT_EDGE_ENABLED); for the cut-over status bar."""
+    return {"mqtt_edge_enabled": get_settings().mqtt_edge_enabled}
 
 
 @router.post("", response_model=EdgeDeviceWithKey, status_code=status.HTTP_201_CREATED)

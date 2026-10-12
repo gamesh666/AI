@@ -56,6 +56,11 @@ class MQTTConfig(_M):
     tls: bool = False
 
 
+class TelemetryConfig(_M):
+    mqtt_enabled: bool = True
+    http: dict[str, str] = {}
+
+
 class StreamingConfig(_M):
     protocol: str = "rtsp"
     rtsp_publish_url: str
@@ -68,6 +73,8 @@ class DeviceConfig(_M):
     heartbeat_interval_seconds: int = 10
     cameras: list[CameraConfig] = []
     mqtt: MQTTConfig
+    # absent on older platforms: MQTT only
+    telemetry: TelemetryConfig = TelemetryConfig()
     streaming: StreamingConfig
 
 

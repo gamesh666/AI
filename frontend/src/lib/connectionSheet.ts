@@ -30,16 +30,19 @@ export function buildConnectionSheet(
   const mqttPassword = info.mqtt_password ?? "<MQTT_PASSWORD>";
   const rtsp = hostPort(info.rtsp_publish_url, "8554");
   const srt = info.srt_publish_url ? hostPort(info.srt_publish_url, "8890") : null;
+  const mqtt = info.mqtt_enabled !== false;
   const ports = [
     hostPort(apiBase, "80"),
-    `${info.mqtt_host}:${info.mqtt_port}`,
+    ...(mqtt ? [`${info.mqtt_host}:${info.mqtt_port}`] : []),
     rtsp,
     hostPort(info.snapshot_upload_url, "80"),
   ];
+  const http = (name: string, fallback: string) => `${apiBase}${info.http_endpoints?.[name] ?? fallback}`;
 
   const lines = [`# ${t("sheet.title", { id })}`, `# ${t("sheet.secretWarning")}`];
   if (!apiKey) lines.push(`# ${t("sheet.keyMissing")}`);
-  if (!info.mqtt_password) lines.push(`# ${t("sheet.askAdmin")}`);
+  if (!mqtt) lines.push(`# ${t("sheet.mqttOff")}`);
+  else if (!info.mqtt_password) lines.push(`# ${t("sheet.askAdmin")}`);
   lines.push("");
 
   if (format === "agent") {
@@ -47,8 +50,9 @@ export function buildConnectionSheet(
       `EDGE_DEVICE_UUID=${id}`,
       `EDGE_API_URL=${apiBase}`,
       `EDGE_DEVICE_KEY=${key}`,
-      `EDGE_MQTT_USERNAME=${info.mqtt_username}`,
-      `EDGE_MQTT_PASSWORD=${mqttPassword}`,
+      ...(mqtt
+        ? [`EDGE_MQTT_USERNAME=${info.mqtt_username}`, `EDGE_MQTT_PASSWORD=${mqttPassword}`]
+        : ["EDGE_TELEMETRY=http"]),
       `EDGE_DETECTOR=yolo`,
       "",
       `# ${t("sheet.agentNote")}`,
@@ -62,11 +66,16 @@ export function buildConnectionSheet(
     `AIVMS_API_URL=${apiBase}`,
     `AIVMS_DEVICE_ID=${id}`,
     `AIVMS_DEVICE_KEY=${key}`,
-    `AIVMS_MQTT_HOST=${info.mqtt_host}`,
-    `AIVMS_MQTT_PORT=${info.mqtt_port}`,
-    `AIVMS_MQTT_TLS=${info.mqtt_tls}`,
-    `AIVMS_MQTT_USERNAME=${info.mqtt_username}`,
-    `AIVMS_MQTT_PASSWORD=${mqttPassword}`,
+    "AIVMS_TELEMETRY=http",
+    ...(mqtt
+      ? [
+          `AIVMS_MQTT_HOST=${info.mqtt_host}`,
+          `AIVMS_MQTT_PORT=${info.mqtt_port}`,
+          `AIVMS_MQTT_TLS=${info.mqtt_tls}`,
+          `AIVMS_MQTT_USERNAME=${info.mqtt_username}`,
+          `AIVMS_MQTT_PASSWORD=${mqttPassword}`,
+        ]
+      : []),
     `AIVMS_STREAM_URL=${info.stream_protocol === "srt" && info.srt_publish_url ? info.srt_publish_url : info.rtsp_publish_url}`,
     "",
     `# ${t("sheet.step1")}`,
@@ -77,10 +86,20 @@ export function buildConnectionSheet(
   if (srt) lines.push(`#    srt://${srt}?streamid=publish:<stream_path>:${id}:<DEVICE_KEY>&pkt_size=1316`);
   lines.push(
     `# ${t("sheet.step3")}`,
-    `#    ${info.topics.heartbeat}   (10 s)`,
-    `#    ${info.topics.status}   (retained + Last Will)`,
-    `#    ${info.topics.camera_status}   (5 s)`,
-    `#    ${info.topics.camera_logs}`,
+    `#    POST ${http("heartbeat", "/edge/heartbeat")}   (10 s → config_version, commands)`,
+    `#    POST ${http("camera_status", "/edge/cameras/{camera_id}/status")}   (5 s)`,
+    `#    POST ${http("logs", "/edge/logs")}   (1 log or [≤100])`,
+    `#    POST ${http("status", "/edge/status")}   {"state": "offline"}`,
+  );
+  if (mqtt)
+    lines.push(
+      `# ${t("sheet.step3Mqtt")}`,
+      `#    ${info.topics.heartbeat}   (10 s)`,
+      `#    ${info.topics.status}   (retained + Last Will)`,
+      `#    ${info.topics.camera_status}   (5 s)`,
+      `#    ${info.topics.camera_logs}`,
+    );
+  lines.push(
     `# ${t("sheet.step4")}`,
     `#    POST ${apiBase}/edge/snapshots/presign  {"camera_code": "..."}  →  PUT upload_url`,
     `# ${t("sheet.ports", { ports: ports.join(", ") })}`,

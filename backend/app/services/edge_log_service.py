@@ -82,23 +82,27 @@ class EdgeLogService:
     async def types(self) -> list[str]:
         return await self.repo.distinct_types()
 
+    @staticmethod
+    def rejection(payload: EdgeLogPayload) -> str | None:
+        """Why a well-formed log is still refused; None when it is accepted."""
+        if payload.event_type in RESERVED_EVENT_TYPES:
+            return f"event_type {payload.event_type} is reserved for the platform"
+        data_size = len(payload.model_dump_json(include={"data"}))
+        if data_size > MAX_DATA_BYTES:
+            return f"data too large ({data_size} bytes, max {MAX_DATA_BYTES})"
+        return None
+
     async def ingest(self, payload: EdgeLogPayload, topic_device_id: str) -> EdgeLogRead | None:
-        """MQTT -> DB (insert or update by event_id) -> WebSocket."""
+        """MQTT / HTTP -> DB (insert or update by event_id) -> WebSocket."""
         if payload.device_id != topic_device_id:
             logger.warning("log device mismatch topic=%s payload=%s; dropped", topic_device_id, payload.device_id)
             return None
-        if payload.event_type in RESERVED_EVENT_TYPES:
-            logger.warning("log type %s is reserved for the platform; dropped (device %s)",
-                           payload.event_type, payload.device_id)
+        if reason := self.rejection(payload):
+            logger.warning("log %s from %s dropped: %s", payload.event_id, payload.device_id, reason)
             return None
         device = await self.devices.get_by_device_uuid(payload.device_id)
         if device is None or device.admin_state != "active":
             logger.warning("log from unknown or disabled device %s dropped", payload.device_id)
-            return None
-        data_size = len(payload.model_dump_json(include={"data"}))
-        if data_size > MAX_DATA_BYTES:
-            logger.warning("log %s from %s: data too large (%d bytes); dropped", payload.event_id, device.device_uuid,
-                           data_size)
             return None
 
         # an unknown camera code is kept as text: the log is still worth storing

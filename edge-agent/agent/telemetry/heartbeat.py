@@ -7,7 +7,7 @@ import threading
 from collections.abc import Callable
 
 from agent import __version__
-from agent.messaging.publisher import EdgePublisher
+from agent.messaging.publisher import TelemetryPublisher
 from agent.telemetry.system_metrics import SystemMetrics
 from aivms_shared.payloads import Heartbeat, ReportedModel
 
@@ -18,7 +18,7 @@ ModelsProvider = Callable[[], "list[ReportedModel] | None"]
 
 
 class HeartbeatReporter:
-    def __init__(self, device_uuid: str, publisher: EdgePublisher, metrics: SystemMetrics, interval: float,
+    def __init__(self, device_uuid: str, publisher: TelemetryPublisher, metrics: SystemMetrics, interval: float,
                  models: ModelsProvider | None = None) -> None:
         self._device = device_uuid
         self._models = models

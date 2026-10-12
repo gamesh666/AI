@@ -9,6 +9,7 @@ from aivms_shared import topics
 from aivms_shared.payloads import Command, CommandType, ConfigChanged
 from app.core.exceptions import DomainError
 from app.messaging.runtime import get_broker
+from app.services import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,19 @@ async def send_command(device_uuid: str, command: CommandType, params: dict | No
 
 
 async def notify_config_changed(device_uuid: str, reason: str | None = None) -> None:
-    """Best effort: tell the device to re-fetch its config over REST."""
+    """Best effort: tell the device to re-fetch its config over REST.
+
+    MQTT edges get a retained config message; HTTP edges see the new version in their next heartbeat answer.
+    """
+    msg = ConfigChanged(version=int(datetime.now(UTC).timestamp()), reason=reason)
+    try:
+        await telemetry.bump_config_version(device_uuid, msg.version)
+    except Exception:
+        logger.exception("failed to record config version for %s", device_uuid)
     broker = get_broker()
     if broker is None or not broker.connected:
-        logger.warning("broker offline; config change for %s not pushed", device_uuid)
+        logger.warning("broker offline; config change for %s not pushed over MQTT", device_uuid)
         return
-    msg = ConfigChanged(version=int(datetime.now(UTC).timestamp()), reason=reason)
     try:
         await broker.publish(topics.config(device_uuid), msg.to_bytes(), qos=1, retain=True)
     except Exception:

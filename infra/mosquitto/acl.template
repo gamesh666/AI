@@ -5,9 +5,12 @@ user ${MQTT_BACKEND_USERNAME}
 topic read edge/#
 topic write server/#
 
-# edge agents (shared account in the MVP): publish telemetry, receive commands.
+# --- edge-begin (removed when MQTT_EDGE_ENABLED=false) ---
+# edge agents (shared account): publish telemetry, receive commands.
 # Payload device_id is cross-checked against the topic by the backend.
-# Production: per-device credentials via EMQX HTTP auth / mosquitto-go-auth.
+# Edges can instead send the same telemetry over HTTPS with their own device key; once all do,
+# set MQTT_EDGE_ENABLED=false and the shared account disappears.
 user ${MQTT_EDGE_USERNAME}
 topic write edge/#
 topic read server/#
+# --- edge-end ---

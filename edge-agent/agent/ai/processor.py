@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from agent.ai.detector import Detection
 from agent.core.frame_queue import Frame
 from agent.core.worker import Worker
-from agent.messaging.publisher import EdgePublisher
+from agent.messaging.publisher import TelemetryPublisher
 from agent.storage.snapshot_uploader import SnapshotUploader
 from agent.video.overlay import OverlayRenderer
 from aivms_shared.payloads import BBox, DetectionEvent, FrameInfo
@@ -106,7 +106,7 @@ def to_payload(device_id: str, camera_id: str, model_name: str, job: EventJob,
 
 class EventDispatcher(Worker):
     def __init__(self, camera_id: str, camera_uuid: str, device_id: str, model_name: str,
-                 events: queue.Queue, publisher: EdgePublisher, uploader: SnapshotUploader | None,
+                 events: queue.Queue, publisher: TelemetryPublisher, uploader: SnapshotUploader | None,
                  overlay: OverlayRenderer) -> None:
         super().__init__(f"events-{camera_id}")
         self._camera_id = camera_id
@@ -128,6 +128,6 @@ class EventDispatcher(Worker):
             annotated = self._overlay.draw(job.frame.image.copy(), job.detections)
             snapshot_key = self._uploader.upload(self._camera_uuid, annotated)
         event = to_payload(self._device_id, self._camera_id, self._model_name, job, snapshot_key)
-        self._publisher.detection(event)  # MQTT QoS1; queued by paho while offline
+        self._publisher.detection(event)  # MQTT QoS1 / HTTP: queued while offline
         logger.info("[%s] event %s: %s", self.name, event.event_id,
                     ", ".join(f"{d.class_name}#{d.track_id}:{d.confidence:.2f}" for d in event.detections))

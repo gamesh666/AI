@@ -2,20 +2,23 @@
 
 It does not use the platform's edge-agent. It shows the whole contract with plain JSON:
 
-  1. PUT  /api/v1/edge/cameras               the COMPLETE camera list -> stream paths (cameras no longer
-                                              listed are disabled on the platform, not deleted)
-  2. MQTT edge/{device}/heartbeat             every 10 s   (device online, CPU/memory)
-     MQTT edge/{device}/status                retained, also the Last Will ("offline")
-     MQTT edge/{device}/cameras/{cam}/status  camera / AI / stream health
-  3. RTSP push  <media>/<stream_path>         annotated H.264 video (user = device ID, password = device key)
-  4. MQTT edge/{device}/cameras/{cam}/logs    whatever was recognised; same event_id again = update
-     POST /api/v1/edge/snapshots/presign      optional snapshot upload (HTTP PUT to the returned URL)
+  1. PUT  /api/v1/edge/cameras                 the COMPLETE camera list -> stream paths (cameras no longer
+                                                listed are disabled on the platform, not deleted)
+  2. POST /api/v1/edge/heartbeat                every 10 s (device online, CPU/memory, models); the answer
+                                                carries pending commands and the config version
+     POST /api/v1/edge/cameras/{cam}/status     camera / AI / stream health
+     POST /api/v1/edge/status                   {"state": "offline"} on shutdown
+  3. RTSP push  <media>/<stream_path>           annotated H.264 video (user = device ID, password = device key)
+  4. POST /api/v1/edge/logs                     whatever was recognised; same event_id again = update
+     POST /api/v1/edge/snapshots/presign        optional snapshot upload (HTTP PUT to the returned URL)
+
+Everything authenticates with the device's own key (X-Device-Key). EDGE_TELEMETRY=mqtt sends step 2 and 4
+over the shared MQTT account instead (legacy; needs paho-mqtt >= 2 and EDGE_MQTT_USERNAME / _PASSWORD).
 
 Replace `fake_recognition()` and the FFmpeg test pattern with your own AI output.
-Only dependency: paho-mqtt >= 2 (and an ffmpeg binary for the video part).
+No dependencies besides the Python standard library and an ffmpeg binary for the video part.
 
-    EDGE_API_URL=http://<platform>:8000/api/v1 EDGE_DEVICE_ID=REACH01 EDGE_DEVICE_KEY=... \
-    EDGE_MQTT_USERNAME=edge EDGE_MQTT_PASSWORD=... python generic_edge.py
+    EDGE_API_URL=http://<platform>:8000/api/v1 EDGE_DEVICE_ID=REACH01 EDGE_DEVICE_KEY=... python generic_edge.py
 """
 
 from __future__ import annotations
@@ -32,20 +35,16 @@ import time
 import urllib.request
 import uuid
 from datetime import UTC, datetime
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
-
-import paho.mqtt.client as mqtt
 
 log = logging.getLogger("generic-edge")
 
 API = os.environ.get("EDGE_API_URL", "http://localhost:8000/api/v1").rstrip("/")
 DEVICE = os.environ["EDGE_DEVICE_ID"]
 KEY = os.environ["EDGE_DEVICE_KEY"]
-MQTT_USER = os.environ.get("EDGE_MQTT_USERNAME")
-MQTT_PASS = os.environ.get("EDGE_MQTT_PASSWORD")
-# overrides for when the addresses in /edge/config are not reachable from here (e.g. inside Docker)
-MQTT_HOST = os.environ.get("EDGE_MQTT_HOST")
-MQTT_PORT = os.environ.get("EDGE_MQTT_PORT")
+TELEMETRY = os.environ.get("EDGE_TELEMETRY", "http")  # http | mqtt (legacy)
+# override for when the address in /edge/config is not reachable from here (e.g. inside Docker)
 RTSP_PUBLISH_URL = os.environ.get("EDGE_RTSP_PUBLISH_URL")
 CAMERAS = [c for c in os.environ.get("EDGE_CAMERAS", "cam01:Demo camera").split(",") if c]
 WIDTH, HEIGHT, FPS = 1280, 720, 15
@@ -64,6 +63,86 @@ def api(method: str, path: str, body: dict | None = None) -> dict:
     )
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read() or b"{}")
+
+
+class HttpTelemetry:
+    """Heartbeat / status / logs over HTTPS with the device key."""
+
+    def __init__(self, on_config_changed) -> None:
+        self.config_version: int | None = None
+        self.on_config_changed = on_config_changed
+
+    def _post(self, path: str, body: dict | list) -> dict:
+        try:
+            return api("POST", path, body)
+        except HTTPError as exc:  # 4xx: the platform says why in {"detail": ...}; do not resend as-is
+            log.warning("%s refused (%s): %s", path, exc.code, exc.read()[:300].decode(errors="replace"))
+        except (URLError, TimeoutError) as exc:  # platform unreachable: a real edge would queue and retry
+            log.warning("%s failed: %s", path, exc)
+        return {}
+
+    def heartbeat(self, hb: dict) -> None:
+        ack = self._post("/edge/heartbeat", hb)
+        for cmd in ack.get("commands", []):
+            log.info("command from the platform: %s %s", cmd["command"], cmd.get("params"))
+            if cmd["command"] == "reload_config":
+                self.on_config_changed()
+        version = ack.get("config_version")
+        if version is not None and self.config_version is not None and version != self.config_version:
+            self.on_config_changed()
+        if version is not None:
+            self.config_version = version
+
+    def status(self, state: str) -> None:
+        self._post("/edge/status", {"state": state, "timestamp": now()})
+
+    def camera_status(self, code: str, status: dict) -> None:
+        self._post(f"/edge/cameras/{code}/status", status)
+
+    def log(self, entry: dict) -> None:
+        self._post("/edge/logs", entry)  # also takes a list of up to 100 logs
+
+    def close(self) -> None:
+        self.status("offline")
+
+
+class MqttTelemetry:
+    """Legacy: the same payloads over the shared MQTT account (with a Last Will for "offline")."""
+
+    def __init__(self, config: dict) -> None:
+        import paho.mqtt.client as mqtt
+
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"{DEVICE}-{uuid.uuid4().hex[:6]}")
+        user = os.environ.get("EDGE_MQTT_USERNAME")
+        if user:
+            self.client.username_pw_set(user, os.environ.get("EDGE_MQTT_PASSWORD"))
+        self.status_topic = f"edge/{DEVICE}/status"
+        self.client.will_set(self.status_topic, json.dumps({"device_uuid": DEVICE, "state": "offline"}),
+                             qos=1, retain=True)
+        self.client.on_connect = lambda c, *_: self.status("online")
+        # overrides for when the address in /edge/config is not reachable from here (e.g. inside Docker)
+        self.client.connect(os.environ.get("EDGE_MQTT_HOST") or config["mqtt"]["host"],
+                            int(os.environ.get("EDGE_MQTT_PORT") or config["mqtt"]["port"]))
+        self.client.loop_start()
+
+    def heartbeat(self, hb: dict) -> None:
+        self.client.publish(f"edge/{DEVICE}/heartbeat", json.dumps({"device_uuid": DEVICE, **hb}), qos=0)
+
+    def status(self, state: str) -> None:
+        self.client.publish(self.status_topic, json.dumps({"device_uuid": DEVICE, "state": state, "timestamp": now()}),
+                            qos=1, retain=True)
+
+    def camera_status(self, code: str, status: dict) -> None:
+        self.client.publish(f"edge/{DEVICE}/cameras/{code}/status", json.dumps({"camera_id": code, **status}), qos=0)
+
+    def log(self, entry: dict) -> None:
+        self.client.publish(f"edge/{DEVICE}/cameras/{entry['camera_id']}/logs",
+                            json.dumps({"device_id": DEVICE, **entry}), qos=1)
+
+    def close(self) -> None:
+        self.client.publish(self.status_topic, json.dumps({"device_uuid": DEVICE, "state": "offline",
+                                                           "timestamp": now()}), qos=1, retain=True).wait_for_publish(3)
+        self.client.loop_stop()
 
 
 def upload_snapshot(camera_code: str, jpeg: bytes) -> str | None:
@@ -152,17 +231,14 @@ def main() -> None:
         log.info("no longer listed (disabled on the platform): %s", ", ".join(result["missing"]))
     config = api("GET", "/edge/config")
 
-    # 2. MQTT with a Last Will so the platform sees us go offline
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"{DEVICE}-{uuid.uuid4().hex[:6]}")
-    if MQTT_USER:
-        client.username_pw_set(MQTT_USER, MQTT_PASS)
-    status_topic = f"edge/{DEVICE}/status"
-    client.will_set(status_topic, json.dumps({"device_uuid": DEVICE, "state": "offline"}), qos=1, retain=True)
-    client.on_connect = lambda c, *_: c.publish(
-        status_topic, json.dumps({"device_uuid": DEVICE, "state": "online", "timestamp": now()}), qos=1, retain=True
-    )
-    client.connect(MQTT_HOST or config["mqtt"]["host"], int(MQTT_PORT or config["mqtt"]["port"]))
-    client.loop_start()
+    # 2. telemetry: HTTP with the device key (default), or the legacy shared MQTT account
+    reload = threading.Event()
+    if TELEMETRY == "mqtt":
+        telemetry = MqttTelemetry(config)
+    else:
+        telemetry = HttpTelemetry(on_config_changed=reload.set)
+        telemetry.status("online")
+    log.info("telemetry over %s", TELEMETRY.upper())
 
     # 3. video: rtsp://<device>:<key>@media:8554/<stream_path>
     base = urlsplit(RTSP_PUBLISH_URL or config["streaming"]["rtsp_publish_url"])
@@ -180,54 +256,55 @@ def main() -> None:
     tick = 0
     while not stop.wait(1):
         tick += 1
+        if reload.is_set():
+            reload.clear()
+            config = api("GET", "/edge/config")  # platform-side change (camera renamed, site moved, ...)
+            log.info("config re-fetched: %d camera(s)", len(config["cameras"]))
         if tick % 10 == 0:
             load = os.getloadavg()[0] / (os.cpu_count() or 1) * 100
-            client.publish(f"edge/{DEVICE}/heartbeat", json.dumps({
-                "device_uuid": DEVICE, "timestamp": now(), "cpu_usage": min(100.0, round(load, 1)),
-                "memory_usage": 0, "agent_version": "generic-edge/1.0", "hostname": socket.gethostname(),
+            telemetry.heartbeat({
+                "timestamp": now(), "cpu_usage": min(100.0, round(load, 1)),
+                "memory_usage": 0, "agent_version": "generic-edge/1.1", "hostname": socket.gethostname(),
                 # the models running right now and which cameras use them (shown on the AI Models page)
                 "models": [{"name": "demo-detector", "version": "1.0", "type": "yolo11",
                             "task": "person / helmet / zone intrusion", "cameras": list(cams)}],
-            }), qos=0)
+            })
         if tick % 5 == 0:
             for code, pusher in pushers.items():
-                client.publish(f"edge/{DEVICE}/cameras/{code}/status", json.dumps({
-                    "camera_id": code, "timestamp": now(), "rtsp_status": "online", "ai_status": "running",
+                telemetry.camera_status(code, {
+                    "timestamp": now(), "rtsp_status": "online", "ai_status": "running",
                     "stream_status": "streaming" if pusher.alive else "connecting",
                     "input_fps": FPS, "inference_fps": 5, "output_fps": FPS if pusher.alive else 0,
                     "resolution": f"{WIDTH}x{HEIGHT}", "last_frame_at": now(),
-                }), qos=0)
+                })
         if tick % 7 == 0:
             for code in cams:
                 for entry in fake_recognition(code):
-                    entry.update(event_id=uuid.uuid4().hex, device_id=DEVICE, camera_id=code, timestamp=now(),
+                    entry.update(event_id=uuid.uuid4().hex, camera_id=code, timestamp=now(),
                                  snapshot_key=upload_snapshot(code, grab_test_jpeg()))
-                    client.publish(f"edge/{DEVICE}/cameras/{code}/logs", json.dumps(entry), qos=1)
+                    telemetry.log(entry)
         if tick % 20 == 0:
             # a lifecycle event: opened now, updated (same event_id) a few seconds later
             code = random.choice(list(cams))
             event_id = f"leave-{uuid.uuid4().hex[:12]}"
-            client.publish(f"edge/{DEVICE}/cameras/{code}/logs", json.dumps({
-                "event_id": event_id, "device_id": DEVICE, "camera_id": code, "timestamp": now(),
+            telemetry.log({
+                "event_id": event_id, "camera_id": code, "timestamp": now(),
                 "event_type": "office.leave", "severity": "warning", "status": "open",
                 "message": "S01 left the seat", "data": {"seat_id": "S01", "leave_time": now()},
-            }), qos=1)
+            })
             open_events.append((time.monotonic() + 8, code, event_id))
         for item in [e for e in open_events if e[0] <= time.monotonic()]:
             open_events.remove(item)
             _, code, event_id = item
-            client.publish(f"edge/{DEVICE}/cameras/{code}/logs", json.dumps({
-                "event_id": event_id, "device_id": DEVICE, "camera_id": code, "event_type": "office.leave",
+            telemetry.log({
+                "event_id": event_id, "camera_id": code, "event_type": "office.leave",
                 "severity": "info", "status": "returned", "message": "S01 back at the seat",
                 "data": {"return_time": now(), "away_seconds": 8},
-            }), qos=1)
+            })
 
     for pusher in pushers.values():
         pusher.stop()
-    client.publish(status_topic, json.dumps({"device_uuid": DEVICE, "state": "offline", "timestamp": now()}),
-                   qos=1, retain=True).wait_for_publish(3)
-    client.loop_stop()
-
+    telemetry.close()
 
 if __name__ == "__main__":
     main()

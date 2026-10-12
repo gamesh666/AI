@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aivms_shared import topics
-from aivms_shared.payloads import CameraRuntimeStatus, CommandType, DeviceState, Heartbeat
+from aivms_shared.payloads import CameraRuntimeStatus, Command, CommandType, DeviceState, Heartbeat
 from aivms_shared.payloads import DeviceStatus as DeviceStatusPayload
 from app.core.config import get_settings
 from app.core.enums import CameraStatus, DeviceStatus, StreamStatus
@@ -31,6 +31,7 @@ from app.schemas.edge_device import (
     EdgeDeviceUpdate,
     EdgeDeviceWithKey,
 )
+from app.services import telemetry
 from app.services.camera_service import CameraService
 from app.services.connection_history import (
     CONNECTION,
@@ -61,7 +62,8 @@ def _camera_status_message(device: EdgeDevice, camera) -> dict:
 def connection_info(device_uuid: str, include_mqtt_password: bool) -> EdgeConnectionInfo:
     """What to hand to whoever sets up the edge (the device key is returned separately, once)."""
     s = get_settings()
-    password = s.mqtt_edge_password.get_secret_value() if include_mqtt_password and s.mqtt_edge_password else None
+    password = (s.mqtt_edge_password.get_secret_value()
+                if include_mqtt_password and s.mqtt_edge_password and s.mqtt_edge_enabled else None)
     return EdgeConnectionInfo(
         device_id=device_uuid,
         mqtt_host=s.mqtt_public_host,
@@ -82,6 +84,8 @@ def connection_info(device_uuid: str, include_mqtt_password: bool) -> EdgeConnec
             "camera_events": topics.camera_events(device_uuid, "{camera_id}"),
             "command": topics.command(device_uuid),
         },
+        mqtt_enabled=s.mqtt_edge_enabled,
+        http_endpoints=dict(telemetry.HTTP_PATHS),
     )
 
 
@@ -188,8 +192,14 @@ class DeviceService:
             cmd_type = CommandType(command)
         except ValueError as exc:
             raise DomainError(f"unknown command '{command}'") from exc
-        sent = await publisher.send_command(device.device_uuid, cmd_type, params)
-        return {"command_id": str(sent.command_id), "command": sent.command.value}
+        if telemetry.deliver_over_http(device):
+            sent = Command(command=cmd_type, params=params)
+            await telemetry.queue_command(device.device_uuid, sent)
+            delivery = "next_heartbeat"
+        else:
+            sent = await publisher.send_command(device.device_uuid, cmd_type, params)
+            delivery = "mqtt"
+        return {"command_id": str(sent.command_id), "command": sent.command.value, "delivery": delivery}
 
     # ---- edge-facing ----------------------------------------------------------
 
@@ -201,7 +211,7 @@ class DeviceService:
             raise PermissionDeniedError(f"this device is {device.admin_state} on the platform")
         return device
 
-    async def ingest_heartbeat(self, hb: Heartbeat) -> EdgeDevice | None:
+    async def ingest_heartbeat(self, hb: Heartbeat, transport: str = telemetry.TRANSPORT_MQTT) -> EdgeDevice | None:
         device = await self.repo.get_by_device_uuid(hb.device_uuid)
         if device is None or device.admin_state != "active":
             return None
@@ -209,6 +219,10 @@ class DeviceService:
         was_online = previous == DeviceStatus.ONLINE
         device.status = DeviceStatus.ONLINE
         device.last_seen = datetime.now(UTC)
+        if transport == telemetry.TRANSPORT_HTTP:
+            device.last_http_at = device.last_seen
+        else:
+            device.last_mqtt_at = device.last_seen
         for field in ("cpu_usage", "memory_usage", "gpu_usage", "gpu_memory_usage", "temperature",
                       "agent_version", "hostname", "ip_address", "gpu_name", "gpu_memory"):
             value = getattr(hb, field)

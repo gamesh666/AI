@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
@@ -74,6 +75,14 @@ class EdgeStreamingConfig(BaseModel):
     srt_publish_url: str | None = None
 
 
+class EdgeTelemetryConfig(BaseModel):
+    """How to send heartbeat / status / logs. HTTP works for every edge; MQTT only while mqtt_enabled."""
+
+    mqtt_enabled: bool
+    # API paths (relative to the API base URL) that take the same JSON as the MQTT topics
+    http: dict[str, str]
+
+
 class EdgeConfig(BaseModel):
     device_uuid: str
     site_id: str = ""  # site code, "" when the device has no site
@@ -81,6 +90,7 @@ class EdgeConfig(BaseModel):
     heartbeat_interval_seconds: int = 10
     cameras: list[EdgeCameraConfig]
     mqtt: EdgeMQTTConfig
+    telemetry: EdgeTelemetryConfig
     streaming: EdgeStreamingConfig
     # owner / site / contract data (REACH register contract §3.6); None when unknown
     site_profile: dict[str, Any] | None = None
@@ -128,3 +138,30 @@ class PresignResponse(BaseModel):
     object_key: str
     upload_url: str
     expires_in: int
+
+
+class EdgeHeartbeatAck(BaseModel):
+    """Answer to POST /edge/heartbeat: what MQTT would otherwise push to the edge."""
+
+    # changes whenever the platform-side config changes; re-fetch GET /edge/config when it differs from the last
+    config_version: int
+    # pending commands (oldest first), each {command_id, command, params, issued_at}; delivered once
+    commands: list[dict[str, Any]] = Field(default_factory=list)
+    # false once the shared MQTT account is switched off: HTTP is then the only way in
+    mqtt_enabled: bool
+    server_time: datetime
+
+
+class EdgeLogAck(BaseModel):
+    event_id: str
+    camera_id: str | None = None
+
+
+class EdgeLogRejected(BaseModel):
+    index: int
+    detail: str
+
+
+class EdgeLogBatchAck(BaseModel):
+    accepted: list[EdgeLogAck]
+    rejected: list[EdgeLogRejected]

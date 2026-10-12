@@ -58,8 +58,8 @@
 <text x="775.5" y="615.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">哪一把用在哪</text>
 <rect x="266.0" y="505.0" width="331.2" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
 <text x="281.0" y="530.0" font-size="17" fill="#0f172a">裝置金鑰：每台一把，API + 推流密碼</text>
-<rect x="332.3" y="553.0" width="264.9" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
-<text x="347.3" y="578.0" font-size="17" fill="#0f172a">MQTT 帳密：所有 Edge 共用</text>
+<rect x="264.3" y="553.0" width="332.9" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="279.3" y="578.0" font-size="17" fill="#0f172a">MQTT 帳密：共用，REACH 改好後停用</text>
 <rect x="253.0" y="601.0" width="344.2" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
 <text x="268.0" y="626.0" font-size="17" fill="#0f172a">佈建權杖：每個業主一把，MAC 自動註冊</text>
 <rect x="240.8" y="649.0" width="356.4" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
@@ -102,10 +102,10 @@
 <rect x="1450.0" y="694.0" width="214.1" height="68" rx="16" fill="#1d4ed8"/>
 <text x="1557.0" y="722.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">四條通道</text>
 <text x="1557.0" y="747.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">全部由 REACH 主動連出</text>
-<rect x="1749.3" y="637.0" width="345.9" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
-<text x="1764.3" y="662.0" font-size="17" fill="#0f172a">HTTP 8000：註冊、取設定、同步攝影機</text>
-<rect x="1749.3" y="685.0" width="371.0" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
-<text x="1764.3" y="710.0" font-size="17" fill="#0f172a">MQTT 1883：心跳 10 秒、狀態、辨識紀錄</text>
+<rect x="1749.3" y="637.0" width="447.9" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+<text x="1764.3" y="662.0" font-size="17" fill="#0f172a">HTTP 8000：註冊、設定、攝影機（將含心跳與紀錄）</text>
+<rect x="1749.3" y="685.0" width="426.1" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+<text x="1764.3" y="710.0" font-size="17" fill="#0f172a">MQTT 1883：心跳、狀態、紀錄（改走 HTTP 中）</text>
 <rect x="1749.3" y="733.0" width="317.6" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
 <text x="1764.3" y="758.0" font-size="17" fill="#0f172a">RTSP 8554：已畫框的 H.264 影像</text>
 <rect x="1749.3" y="781.0" width="220.4" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>

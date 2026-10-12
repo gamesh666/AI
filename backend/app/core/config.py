@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     # credentials edge devices log in to the broker with; only shown in the connection info
     mqtt_edge_username: str = "edge"
     mqtt_edge_password: SecretStr | None = None
+    # shared edge MQTT account on/off. Edges can send the same telemetry over HTTPS with their own device
+    # key (POST /api/v1/edge/heartbeat, /logs, ...); once every edge does, set false: Mosquitto then drops
+    # the shared account and the connection info stops handing it out.
+    mqtt_edge_enabled: bool = True
 
     # --- minio ---
     minio_endpoint: str = "minio:9000"

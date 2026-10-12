@@ -5,22 +5,26 @@
 
 | 送什麼 | 怎麼送 | 平台做什麼 |
 |--------|--------|------------|
-| **辨識結果 / LOG**（任何內容） | MQTT JSON | 存進 PostgreSQL、即時推到網頁、可篩選搜尋 |
+| **辨識結果 / LOG**（任何內容） | HTTP POST JSON（建議）或 MQTT | 存進 PostgreSQL、即時推到網頁、可篩選搜尋 |
 | **即時辨識畫面**（已畫好框的影像） | H.264 RTSP（或 SRT）推到 MediaMTX | 瀏覽器用 WebRTC 播放，失敗自動改 HLS |
-| 裝置 / 攝影機健康狀態（建議） | MQTT JSON | 顯示在線 / 離線、FPS、串流狀態 |
+| 裝置 / 攝影機健康狀態（建議） | HTTP POST JSON（建議）或 MQTT | 顯示在線 / 離線、FPS、串流狀態 |
+
+> **HTTP 與 MQTT 兩種送法，JSON 內容完全一樣。** 新串接一律用 HTTP：每台 Edge 只用自己的裝置金鑰，
+> 不需要共用的 MQTT 帳密，金鑰外流也只影響那一台。MQTT 是舊方式，平台在所有 Edge 改好之後會停用
+> （見 [`mqtt-to-http.md`](mqtt-to-http.md)）。
 
 平台不解讀 `event_type` 與 `data` 的內容，所以 Edge 之後改辨識項目，平台**不用改程式**。
 
 可直接執行的參考實作：[`examples/third-party-edge/generic_edge.py`](../examples/third-party-edge/generic_edge.py)
-（只用 JSON + paho-mqtt + ffmpeg，不依賴本平台的 edge-agent）。
+（只用 Python 標準函式庫 + ffmpeg，不依賴本平台的 edge-agent；`EDGE_TELEMETRY=mqtt` 可切回舊的 MQTT 送法）。
 
 ---
 
 ## 0. 在平台上建立 Edge（一次）
 
 管理員在網頁 **邊緣裝置 → + 新增裝置**，填裝置 ID（例如 `REACH01`）並選場域，
-畫面會跳出 **裝置連線資訊**：API 金鑰（只顯示這一次）＋整份可直接貼上的設定（env 格式，含 MQTT 帳密、
-推流位址、topics、需要開通的連線），按「複製全部」或「下載 .env」交給 Edge 端即可。
+畫面會跳出 **裝置連線資訊**：API 金鑰（只顯示這一次）＋整份可直接貼上的設定（env 格式，含 HTTP 端點、
+推流位址、需要開通的連線；MQTT 共用帳號未停用前也會附上 MQTT 帳密與 topics），按「複製全部」或「下載 .env」交給 Edge 端即可。
 上方可切換「第三方 Edge」（`AIVMS_*`）與「AIVMS edge-agent」（`EDGE_*`）兩種格式。
 
 之後要再傳一次：admin 在裝置列按 **連線資訊**（金鑰欄會是 `<DEVICE_KEY>`，金鑰遺失請按「更換金鑰」）。
@@ -33,7 +37,7 @@ Edge 端需要的設定：
 | 平台 API | `http://<平台IP>:8000/api/v1` | |
 | 裝置 ID | `REACH01` | 上一步 |
 | 裝置 API 金鑰 | `EDGE_DEVICE_KEY` | 上一步（只顯示一次） |
-| MQTT 帳密 | `.env` 的 `MQTT_EDGE_USERNAME` / `MQTT_EDGE_PASSWORD` | 平台管理員 |
+| MQTT 帳密（只有舊的 MQTT 送法需要） | `.env` 的 `MQTT_EDGE_USERNAME` / `MQTT_EDGE_PASSWORD` | 平台管理員 |
 
 所有 REST 呼叫都帶 header `X-Device-Key: <API 金鑰>`。
 
@@ -113,8 +117,27 @@ ff.stdin.write(annotated_frame.tobytes())   # 每一張
 
 ## 3. 辨識結果 / LOG
 
-**Topic**：`edge/{裝置ID}/cameras/{camera_code}/logs`（跟某支攝影機有關）
+**HTTP（建議）**：
+
+```http
+POST /api/v1/edge/logs
+X-Device-Key: <裝置金鑰>
+Content-Type: application/json
+
+{ ...一筆 LOG... }            或   [ {...}, {...} ]   （一次最多 100 筆）
+```
+
+- 一筆：成功回 `200 {"event_id": "...", "camera_id": "..."}`；失敗回 4xx `{"detail": "原因"}`，**不要原封不動重送**。
+- 多筆：一律回 `200 {"accepted": [{"event_id", "camera_id"}], "rejected": [{"index", "detail"}]}`，
+  某一筆被拒不影響其他筆。適合斷線後補送累積的紀錄。
+- `device_id` 可以不填（由金鑰決定）；有填就必須和金鑰的裝置相同，否則 `403`。
+- 跟攝影機有關的紀錄把攝影機代碼放在 `camera_id`。
+- 平台無法連線（逾時、5xx）時請在 Edge 端暫存，恢復後再送（同一個 `event_id` 重送不會重複）。
+
+**MQTT（舊）**：`edge/{裝置ID}/cameras/{camera_code}/logs`（跟某支攝影機有關）
 或 `edge/{裝置ID}/logs`（整台 Edge 的事）。QoS 1。
+
+兩種送法的 JSON 相同：
 
 ```json
 {
@@ -138,10 +161,10 @@ ff.stdin.write(annotated_frame.tobytes())   # 每一張
 
 | 欄位 | 必填 | 說明 |
 |------|------|------|
-| `device_id` | ✅ | 必須與 topic 中的裝置 ID 相同 |
+| `device_id` | MQTT ✅ / HTTP 選填 | MQTT：必須與 topic 中的裝置 ID 相同；HTTP：不填 = 金鑰的裝置 |
 | `event_type` | ✅ | 自訂，英數與 `. _ : -`，最多 64 字。例如 `office.leave`、`ppe.no_helmet` |
 | `event_id` | | 自訂唯一 ID（英數與 `. _ : -`，≤ 64 字）；不給則自動產生 |
-| `camera_id` | | 攝影機代碼；用 camera topic 時可省略 |
+| `camera_id` | | 攝影機代碼；用 MQTT camera topic 時可省略 |
 | `timestamp` | | 事件發生時間（ISO 8601，建議帶時區）；不給 = 收到時間 |
 | `severity` | | `debug` / `info`（預設）/ `warning` / `error` / `critical` |
 | `status` | | 自訂狀態，≤ 32 字，例如 `open`、`returned` |
@@ -161,7 +184,8 @@ ff.stdin.write(annotated_frame.tobytes())   # 每一張
 `system.connection`、`system.platform`、`system.camera_sync` 是平台自己寫的紀錄（斷線 / 恢復、平台啟動 / 停止、攝影機清單變動），
 Edge 送這三種類型會被丟棄；其他 `system.*`（例如 `system.camera_offline`）可以正常使用。
 
-整則 MQTT 訊息上限 256 KB；格式錯誤、裝置 ID 不符、未註冊的裝置會被丟棄並記在平台 log。
+一次請求 / 一則 MQTT 訊息上限 256 KB。HTTP 會直接回錯誤原因；MQTT 的格式錯誤、裝置 ID 不符、
+未註冊的裝置則會被丟棄並記在平台 log（Edge 端看不到，這也是建議改用 HTTP 的原因之一）。
 
 ### 快照上傳（選用）
 
@@ -176,11 +200,43 @@ X-Device-Key: ...
 
 ## 4. 健康狀態（建議）
 
+**HTTP（建議）**，都帶 `X-Device-Key`：
+
+| 端點 | 頻率 | 內容 |
+|------|------|------|
+| `POST /api/v1/edge/heartbeat` | 每 10 秒 | `{"cpu_usage","memory_usage","agent_version", "models": [...], ...}`（`device_uuid` 可省略）；30 秒沒收到視為離線。回應見 4b |
+| `POST /api/v1/edge/cameras/{code}/status` | 每 5 秒 | `{"rtsp_status","ai_status","stream_status","input_fps","inference_fps","output_fps","resolution"}`；未登記的攝影機回 `404` |
+| `POST /api/v1/edge/status` | 正常關機時 | `{"state":"offline"}`，平台立即顯示離線（不送也會在 30 秒後判定離線） |
+
+**MQTT（舊）**：
+
 | Topic | 頻率 | 內容 |
 |-------|------|------|
 | `edge/{裝置ID}/heartbeat` | 每 10 秒 | `{"device_uuid","cpu_usage","memory_usage","agent_version", "models": [...], ...}`；30 秒沒收到視為離線 |
 | `edge/{裝置ID}/status` | 連線時、retained，並設為 MQTT Last Will | `{"device_uuid","state":"online"}` / `"offline"` |
 | `edge/{裝置ID}/cameras/{code}/status` | 每 5 秒 | `{"camera_id","rtsp_status","ai_status","stream_status","input_fps","inference_fps","output_fps","resolution"}` |
+
+### 4b. 心跳回應：平台要告訴 Edge 的事
+
+MQTT 由平台主動推送指令與設定變更；改用 HTTP 後，這些改放在**心跳的回應**裡：
+
+```json
+{
+  "config_version": 1791800049,
+  "commands": [
+    { "command_id": "d9e75f7f-...", "command": "reload_config", "params": {}, "issued_at": "2026-10-12T10:14:08Z" }
+  ],
+  "mqtt_enabled": true,
+  "server_time": "2026-10-12T10:14:09Z"
+}
+```
+
+| 欄位 | Edge 要做的事 |
+|------|---------------|
+| `config_version` | 跟上一次回應的值不同 → 重新 `GET /api/v1/edge/config`（平台上改了攝影機名稱、場域等）。第一次收到只記下來 |
+| `commands` | 依序執行（`reload_config` / `restart_camera` / `ping`），每個指令只會送一次；不認得的指令略過 |
+| `mqtt_enabled` | `false` = 平台已停用 MQTT 共用帳號，只能用 HTTP |
+| `server_time` | 可用來檢查 Edge 時鐘是否偏差 |
 
 **回報正在使用的模型**（建議）：心跳加上 `models`，平台「AI 模型」頁會列出每個模型在哪些 Edge、哪些攝影機使用，
 並標出同一模型在不同 Edge 版本不一致的情況：
@@ -203,7 +259,6 @@ Python Edge 也可以直接 `pip install` 這個套件使用同一份資料模�
 ```bash
 # 在可以連到平台的機器上
 EDGE_API_URL=http://<平台IP>:8000/api/v1 EDGE_DEVICE_ID=REACH01 EDGE_DEVICE_KEY=... \
-EDGE_MQTT_USERNAME=... EDGE_MQTT_PASSWORD=... \
 EDGE_CAMERAS="bimer-entrance-right:BIMer 大門右側,bimer-back-left:BIMer 後左" \
 python examples/third-party-edge/generic_edge.py
 ```
@@ -213,7 +268,9 @@ python examples/third-party-edge/generic_edge.py
 
 ## 已知限制
 
-- MQTT 目前所有 Edge 共用一組帳密（ACL 允許寫 `edge/#`）。平台會檢查 payload 與 topic 的裝置 ID 一致，
-  但無法防止持有這組帳密的程式冒充其他 Edge。正式上線、串接外部廠商前，建議改為**每台 Edge 各自的 MQTT 帳密**
-  （例如換 EMQX 並用 HTTP 認證對接平台的裝置金鑰）。
+- MQTT 所有 Edge 共用一組帳密（ACL 允許寫 `edge/#`），持有這組帳密的程式可以冒充任何一台 Edge。
+  因此平台提供同樣功能的 HTTP 端點（每台各自的裝置金鑰）；所有 Edge 改用 HTTP 後，設定
+  `MQTT_EDGE_ENABLED=false` 即可停用這組共用帳號，步驟見 [`mqtt-to-http.md`](mqtt-to-http.md)。
+- HTTP 送法沒有 MQTT 的 Last Will：Edge 突然斷電時，平台在心跳停止 30 秒後才判定離線（MQTT 約 45 秒內，差不多）。
+  平台下的指令也要等下一次心跳（最多 10 秒）才會送到。
 - LOG 目前永久保存；量大時需要加保存天數或分區。

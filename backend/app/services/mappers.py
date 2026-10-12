@@ -8,7 +8,7 @@ from app.models.edge_device import EdgeDevice
 from app.schemas.camera import CameraRead
 from app.schemas.detection_event import DetectionEventRead
 from app.schemas.edge_device import EdgeDeviceRead
-from app.services import storage_service
+from app.services import storage_service, telemetry
 
 
 def device_to_read(device: EdgeDevice, camera_count: int = 0, disconnects_24h: int = 0) -> EdgeDeviceRead:
@@ -17,6 +17,7 @@ def device_to_read(device: EdgeDevice, camera_count: int = 0, disconnects_24h: i
     dto.owner_name = device.owner.name if device.owner else None
     dto.camera_count = camera_count
     dto.disconnects_24h = disconnects_24h
+    dto.telemetry_transport = telemetry.transport_of(device)
     return dto
 
 

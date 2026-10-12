@@ -23,10 +23,11 @@ from app.schemas.edge import (
     EdgeModelConfig,
     EdgeMQTTConfig,
     EdgeStreamingConfig,
+    EdgeTelemetryConfig,
     EdgeVideoConfig,
     PresignResponse,
 )
-from app.services import storage_service
+from app.services import storage_service, telemetry
 from app.services.camera_service import CameraService, build_authenticated_url
 from app.services.connection_history import ConnectionHistory
 from app.services.provisioning import device_site_profile
@@ -102,6 +103,7 @@ class EdgeService:
                     "config": topics.config(device.device_uuid),
                 },
             ),
+            telemetry=EdgeTelemetryConfig(mqtt_enabled=settings.mqtt_edge_enabled, http=dict(telemetry.HTTP_PATHS)),
             streaming=EdgeStreamingConfig(
                 protocol=settings.edge_stream_protocol,
                 rtsp_publish_url=settings.mediamtx_rtsp_publish_url,

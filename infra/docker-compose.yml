@@ -81,7 +81,9 @@ services:
       MQTT_BACKEND_USERNAME: ${MQTT_BACKEND_USERNAME:-backend}
       MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:?MQTT_BACKEND_PASSWORD is required}
       MQTT_EDGE_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
-      MQTT_EDGE_PASSWORD: ${MQTT_EDGE_PASSWORD:?MQTT_EDGE_PASSWORD is required}
+      # required while MQTT_EDGE_ENABLED=true (checked at start); may be removed once it is false
+      MQTT_EDGE_PASSWORD: ${MQTT_EDGE_PASSWORD:-}
+      MQTT_EDGE_ENABLED: ${MQTT_EDGE_ENABLED:-true}
     volumes:
       - mosquitto-data:/mosquitto/data
     ports:
@@ -137,7 +139,9 @@ services:
       MQTT_PUBLIC_PORT: ${MQTT_PORT_PUBLISHED:-1883}
       # shown to admins in the device connection info (the broker itself is configured in mosquitto)
       MQTT_EDGE_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
-      MQTT_EDGE_PASSWORD: ${MQTT_EDGE_PASSWORD:?MQTT_EDGE_PASSWORD is required}
+      # required while MQTT_EDGE_ENABLED=true (checked at start); may be removed once it is false
+      MQTT_EDGE_PASSWORD: ${MQTT_EDGE_PASSWORD:-}
+      MQTT_EDGE_ENABLED: ${MQTT_EDGE_ENABLED:-true}
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}

@@ -26,3 +26,18 @@ def test_connection_info_for_admins_includes_the_mqtt_password(settings):
 
 def test_connection_info_hides_the_mqtt_password_from_operators(settings):
     assert connection_info("aibox", include_mqtt_password=False).mqtt_password is None
+
+
+def test_connection_info_lists_the_http_telemetry_endpoints(settings):
+    info = connection_info("aibox", include_mqtt_password=True)
+    assert info.mqtt_enabled is True
+    assert info.http_endpoints["heartbeat"] == "/edge/heartbeat"
+    assert info.http_endpoints["logs"] == "/edge/logs"
+
+
+def test_switching_the_shared_mqtt_account_off_stops_handing_out_its_password(settings, monkeypatch):
+    monkeypatch.setenv("MQTT_EDGE_ENABLED", "false")
+    get_settings.cache_clear()
+    info = connection_info("aibox", include_mqtt_password=True)
+    assert info.mqtt_enabled is False
+    assert info.mqtt_password is None

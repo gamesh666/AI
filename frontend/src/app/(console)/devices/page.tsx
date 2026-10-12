@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -20,8 +21,36 @@ import { sitesApi } from "@/lib/api/sites";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { pct } from "@/lib/format";
-import type { EdgeConnectionInfo, EdgeDevice } from "@/types";
+import type { EdgeConnectionInfo, EdgeDevice, TelemetryTransport } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+
+const TRANSPORT_TONE: Record<TelemetryTransport, "green" | "yellow" | "blue"> = {
+  http: "green",
+  mqtt: "yellow",
+  both: "blue",
+};
+
+/** MQTT -> HTTP cut-over status: how many active edges still send over the shared MQTT account. */
+function CutoverBar({ devices }: { devices: EdgeDevice[] }) {
+  const { t } = useI18n();
+  const flags = useAsync(() => devicesApi.telemetrySettings());
+  if (!flags.data || devices.length === 0) return null;
+  if (!flags.data.mqtt_edge_enabled)
+    return <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{t("cutover.mqttOff")}</div>;
+  const active = devices.filter((d) => d.admin_state === "active");
+  const onMqtt = active.filter((d) => d.telemetry_transport === "mqtt" || d.telemetry_transport === "both").length;
+  const ready = onMqtt === 0 && active.some((d) => d.telemetry_transport === "http");
+  return (
+    <div
+      className={clsx(
+        "mb-3 rounded-md border px-3 py-2 text-sm",
+        ready ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-amber-500/30 bg-amber-500/10 text-amber-200",
+      )}
+    >
+      {ready ? t("cutover.ready") : t("cutover.mqttOn", { n: onMqtt })}
+    </div>
+  );
+}
 
 const modelText = (m: { name: string; version?: string }) => [m.name, m.version].filter(Boolean).join(" ");
 
@@ -78,6 +107,7 @@ export default function DevicesPage() {
         actions={canEdit && <Button onClick={() => setEditing("new")}>{t("devices.provision")}</Button>}
       />
       <ErrorBanner error={devices.error ?? m.error} />
+      <CutoverBar devices={devices.data ?? []} />
       <DataTable
         loading={devices.loading}
         rows={devices.data ?? []}
@@ -112,6 +142,20 @@ export default function DevicesPage() {
                 {d.owner_name && <div className="text-slate-500">{d.owner_name}</div>}
               </div>
             ),
+          },
+          {
+            key: "transport",
+            header: t("devices.transport"),
+            render: (d) =>
+              d.telemetry_transport ? (
+                <span title={t("devices.transportHint")}>
+                  <Badge tone={TRANSPORT_TONE[d.telemetry_transport]}>
+                    {t(`devices.transport.${d.telemetry_transport}`)}
+                  </Badge>
+                </span>
+              ) : (
+                <span className="text-xs text-slate-500">—</span>
+              ),
           },
           { key: "seen", header: t("devices.lastSeen"), render: (d) => formatRelative(d.last_seen) },
           {

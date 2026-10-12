@@ -2,14 +2,15 @@
 
     register (provisioning token -> device key, cached)
       -> fetch config (REST, HTTPS)
-      -> MQTT connect (LWT = offline)                          outgoing
+      -> telemetry: MQTT (LWT = offline) or HTTPS with the device key   outgoing
       -> CameraManager: one CameraPipeline per camera           camera RTSP in, annotated H.264 out (push)
       -> heartbeat every 10 s, per-camera health every 10 s + on state change
-      -> react to server/{id}/command and server/{id}/config
+      -> react to commands / config changes (MQTT server/{id}/..., or the HTTP heartbeat answer)
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -21,8 +22,9 @@ from agent.config.models import DeviceConfig
 from agent.config.settings import AgentSettings
 from agent.core.credentials import CredentialStore
 from agent.messaging.command_handler import CommandHandler
+from agent.messaging.http_publisher import HttpPublisher
 from agent.messaging.mqtt import EdgeMQTTClient
-from agent.messaging.publisher import EdgePublisher
+from agent.messaging.publisher import EdgePublisher, SwitchablePublisher
 from agent.storage.snapshot_uploader import SnapshotUploader
 from agent.streaming.factory import PublishEndpoint
 from agent.telemetry.heartbeat import HeartbeatReporter
@@ -49,7 +51,10 @@ class EdgeAgent:
         self._last_status_report = 0.0
 
         self.mqtt: EdgeMQTTClient | None = None
-        self.publisher: EdgePublisher | None = None
+        self.http: HttpPublisher | None = None
+        self.publisher: SwitchablePublisher | None = None
+        self.transport: str | None = None  # "mqtt" | "http"
+        self._config_version: int | None = None
         self.cameras: CameraManager | None = None
         self.heartbeat: HeartbeatReporter | None = None
         self.device_key: str = ""
@@ -117,7 +122,20 @@ class EdgeAgent:
             base = s.rtsp_publish_url or cfg.streaming.rtsp_publish_url
         return PublishEndpoint(protocol=protocol, base_url=base, username=s.device_uuid, password=self.device_key)
 
-    def _setup_mqtt(self) -> None:
+    def _wanted_transport(self) -> str:
+        s, cfg = self.settings, self.config
+        assert cfg is not None
+        if s.telemetry != "auto":
+            return s.telemetry
+        return "mqtt" if cfg.telemetry.mqtt_enabled and s.mqtt_username else "http"
+
+    def _register_commands(self) -> None:
+        self.commands.register(CommandType.RELOAD_CONFIG, lambda _: self._reload.set())
+        self.commands.register(CommandType.RESTART_CAMERA, self._cmd_restart_camera)
+        self.commands.register(CommandType.PING, lambda _: self._report_cameras(force=True))
+        self.commands.on_config_changed(self._on_config_changed)
+
+    def _setup_mqtt(self) -> EdgePublisher:
         s, cfg = self.settings, self.config
         assert cfg is not None
         self.mqtt = EdgeMQTTClient(
@@ -130,16 +148,54 @@ class EdgeAgent:
             keepalive=s.mqtt_keepalive,
             max_queued=s.mqtt_max_queued_messages,
         )
-        self.publisher = EdgePublisher(self.mqtt, s.device_uuid)
-        self.publisher.configure_last_will()
+        publisher = EdgePublisher(self.mqtt, s.device_uuid)
+        publisher.configure_last_will()
         self.mqtt.subscribe(topics.command(s.device_uuid), self.commands.handle_command)
         self.mqtt.subscribe(topics.config(s.device_uuid), self.commands.handle_config)
         self.mqtt.on_connected(self._on_mqtt_connected)
+        return publisher
 
-        self.commands.register(CommandType.RELOAD_CONFIG, lambda _: self._reload.set())
-        self.commands.register(CommandType.RESTART_CAMERA, self._cmd_restart_camera)
-        self.commands.register(CommandType.PING, lambda _: self._report_cameras(force=True))
-        self.commands.on_config_changed(self._on_config_changed)
+    def _start_transport(self, transport: str) -> None:
+        """Connects MQTT or starts the HTTP sender and points the shared publisher at it."""
+        if transport == "mqtt":
+            target = self._setup_mqtt()
+        else:
+            self.http = HttpPublisher(self.api, self._on_heartbeat_ack, self.settings.mqtt_max_queued_messages)
+            target = self.http
+        if self.publisher is None:
+            self.publisher = SwitchablePublisher(target)
+        else:
+            self.publisher.target = target
+        self.transport = transport
+        logger.info("telemetry over %s", transport.upper())
+        if transport == "mqtt":
+            assert self.mqtt is not None
+            self.mqtt.start()
+        else:
+            assert self.http is not None
+            self.http.start()
+            self.publisher.status(DeviceStatus(device_uuid=self.settings.device_uuid, state=DeviceState.ONLINE))
+
+    def _switch_to_http(self) -> None:
+        """The platform switched the shared MQTT account off: carry on over HTTP."""
+        logger.warning("platform no longer offers MQTT; switching telemetry to HTTP")
+        old = self.mqtt
+        self._start_transport("http")
+        self.mqtt = None
+        if old:
+            old.stop()
+        self._report_cameras(force=True)
+
+    def _on_heartbeat_ack(self, ack: dict) -> None:
+        """HTTP only: commands and config changes ride back on the heartbeat answer."""
+        for cmd in ack.get("commands") or []:
+            self.commands.handle_command("http:heartbeat", json.dumps(cmd).encode())
+        version = ack.get("config_version")
+        if version is not None:
+            if self._config_version is not None and version != self._config_version:
+                logger.info("config version %s -> %s", self._config_version, version)
+                self._reload.set()
+            self._config_version = version
 
     def _on_mqtt_connected(self) -> None:
         assert self.publisher is not None
@@ -181,7 +237,7 @@ class EdgeAgent:
 
     def _report_cameras(self, force: bool = False) -> None:
         """Per-camera health → edge/{device}/cameras/{camera}/status (periodic + on state change)."""
-        if not self.publisher or not self.cameras or not (self.mqtt and self.mqtt.connected):
+        if not self.publisher or not self.cameras or not self.publisher.ready:
             return
         periodic = time.monotonic() - self._last_status_report >= self.settings.camera_status_interval_seconds
         statuses = self.cameras.statuses()
@@ -200,8 +256,9 @@ class EdgeAgent:
         self._bootstrap()
         if self._stop.is_set():
             return
-        self._setup_mqtt()
-        assert self.mqtt is not None and self.publisher is not None
+        self._register_commands()
+        self._start_transport(self._wanted_transport())
+        assert self.publisher is not None
 
         uploader = SnapshotUploader(self.api, s.snapshot_jpeg_quality) if s.snapshot_enabled else None
         ctx = PipelineContext(settings=s, device_id=s.device_uuid, publisher=self.publisher, uploader=uploader,
@@ -210,7 +267,6 @@ class EdgeAgent:
         self.heartbeat = HeartbeatReporter(s.device_uuid, self.publisher, self.metrics, s.heartbeat_interval_seconds,
                                            models=self._reported_models)
 
-        self.mqtt.start()
         self.heartbeat.start()
         self._apply_config()
 
@@ -232,6 +288,8 @@ class EdgeAgent:
             logger.error("config reload failed: %s", exc)
             return
         self.config = new
+        if self.transport == "mqtt" and self._wanted_transport() == "http":
+            self._switch_to_http()
         self._apply_config()
 
     def stop(self) -> None:
@@ -241,8 +299,10 @@ class EdgeAgent:
             self.heartbeat.stop()
         if self.cameras:
             self.cameras.stop_all()
-        if self.publisher and self.mqtt and self.mqtt.connected:
+        if self.publisher and self.publisher.ready:
             self.publisher.status(DeviceStatus(device_uuid=self.settings.device_uuid, state=DeviceState.OFFLINE))
         if self.mqtt:
             self.mqtt.stop()
+        if self.http:
+            self.http.stop()
         self.api.close()

@@ -7,6 +7,7 @@ from app.api.v1 import (
     dashboard,
     devices,
     edge,
+    edge_telemetry,
     events,
     health,
     logs,
@@ -31,3 +32,4 @@ api_router.include_router(logs.router, prefix="/logs", tags=["edge-logs"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(streams.router, prefix="/streams", tags=["streams"])
 api_router.include_router(edge.router, prefix="/edge", tags=["edge-agent"])
+api_router.include_router(edge_telemetry.router, prefix="/edge", tags=["edge-agent"])

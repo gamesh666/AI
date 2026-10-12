@@ -80,6 +80,11 @@ class BackendClient:
         )
         return PresignedUpload.model_validate(resp.json())
 
+    def post_telemetry(self, path: str, body: bytes) -> dict | None:
+        """Heartbeat / status / events over HTTP. One attempt: the telemetry sender queues and retries."""
+        resp = self._request("POST", path, retries=1, content=body, headers={"Content-Type": "application/json"})
+        return resp.json() if resp.content else None
+
     def upload(self, url: str, data: bytes, content_type: str) -> None:
         # presigned URL: no API headers, plain PUT
         resp = httpx.put(url, content=data, headers={"Content-Type": content_type}, timeout=15.0)

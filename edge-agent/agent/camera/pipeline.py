@@ -26,7 +26,7 @@ from agent.config.models import CameraConfig
 from agent.config.settings import AgentSettings
 from agent.core.frame_queue import BoundedFrameQueue
 from agent.core.worker import Worker
-from agent.messaging.publisher import EdgePublisher
+from agent.messaging.publisher import TelemetryPublisher
 from agent.monitoring.health import CameraHealth
 from agent.storage.snapshot_uploader import SnapshotUploader
 from agent.streaming.factory import PublishEndpoint, create_publisher
@@ -46,7 +46,7 @@ class PipelineContext:
 
     settings: AgentSettings
     device_id: str
-    publisher: EdgePublisher  # MQTT
+    publisher: TelemetryPublisher  # MQTT or HTTP
     uploader: SnapshotUploader | None
     endpoint: PublishEndpoint  # media server push endpoint
 
