@@ -185,6 +185,9 @@ def main() -> None:
             client.publish(f"edge/{DEVICE}/heartbeat", json.dumps({
                 "device_uuid": DEVICE, "timestamp": now(), "cpu_usage": min(100.0, round(load, 1)),
                 "memory_usage": 0, "agent_version": "generic-edge/1.0", "hostname": socket.gethostname(),
+                # the models running right now and which cameras use them (shown on the AI Models page)
+                "models": [{"name": "demo-detector", "version": "1.0", "type": "yolo11",
+                            "task": "person / helmet / zone intrusion", "cameras": list(cams)}],
             }), qos=0)
         if tick % 5 == 0:
             for code, pusher in pushers.items():

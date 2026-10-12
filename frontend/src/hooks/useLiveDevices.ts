@@ -24,6 +24,7 @@ export function useLiveDevices() {
               gpu_memory_usage: hb.gpu_memory_usage,
               temperature: hb.temperature,
               agent_version: hb.agent_version,
+              ...(hb.models ? { reported_models: hb.models, reported_models_at: hb.timestamp } : {}),
             }
           : d,
       ) ?? prev,

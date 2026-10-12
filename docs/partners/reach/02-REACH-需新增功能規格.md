@@ -148,11 +148,19 @@ MQTT 連線前設定 **Last Will**（retained、QoS 1）：
   "hostname": "reach-office",
   "ip_address": "192.168.0.50",
   "gpu_name": "NVIDIA RTX A2000",
-  "gpu_memory": 6144
+  "gpu_memory": 6144,
+  "models": [
+    { "name": "yolo11n", "version": "2026.09", "type": "yolo11", "task": "person / cell phone",
+      "labels": ["person", "cell phone"],
+      "cameras": ["bimer-entrance-right", "bimer-back-left"] }
+  ]
 }
 ```
 
-必填：`device_uuid`、`cpu_usage`、`memory_usage`（0~100）、`agent_version`。GPU 欄位可用 `nvidia-smi` 取得，取不到就省略。
+`models`：REACH **目前實際載入**的模型（換模型或版本後下一次心跳就會反映），平台「AI 模型」頁據此顯示
+哪個模型在哪台 Edge、哪幾支攝影機使用。`name` 必填；`version` 建議填權重檔版本或訓練日期，方便判斷是否需要更新。
+
+必填：`device_uuid`、`cpu_usage`、`memory_usage`（0~100）、`agent_version`；`models` 強烈建議填寫。GPU 欄位可用 `nvidia-smi` 取得，取不到就省略。
 
 ## 6. 攝影機狀態（3.4）
 
@@ -374,6 +382,7 @@ Content-Type: application/json
 - [ ] 平台「即時監看」兩支攝影機都有**畫框後**的畫面，延遲 < 3 秒（WebRTC）
 - [ ] 拔掉平台網路 1 分鐘再恢復：畫面自動恢復，REACH 本身畫面與辨識不受影響
 - [ ] 攝影機狀態顯示 RTSP / AI / 串流狀態與 FPS
+- [ ] 平台「AI 模型」頁顯示 REACH 正在使用的模型、版本與對應攝影機；更換模型版本後 10 秒內更新
 
 ### 事件
 

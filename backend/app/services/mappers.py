@@ -19,6 +19,20 @@ def device_to_read(device: EdgeDevice, camera_count: int = 0, disconnects_24h: i
     return dto
 
 
+def model_label(model: dict) -> str:
+    return " ".join(str(x) for x in (model.get("name"), model.get("version")) if x)
+
+
+def model_for_camera(reported: list[dict] | None, camera_code: str) -> str | None:
+    """Model(s) an edge reports for one camera; a single model without a camera list applies to all."""
+    if not reported:
+        return None
+    names = [model_label(m) for m in reported if camera_code in (m.get("cameras") or [])]
+    if not names and len(reported) == 1 and not reported[0].get("cameras"):
+        names = [model_label(reported[0])]
+    return ", ".join(names) or None
+
+
 def camera_to_read(camera: Camera) -> CameraRead:
     device = camera.edge_device
     site = device.site if device else None
@@ -55,6 +69,7 @@ def camera_to_read(camera: Camera) -> CameraRead:
         last_frame_at=camera.last_frame_at,
         runtime_stats=camera.runtime_stats or {},
         missing_from_edge_at=camera.missing_from_edge_at,
+        active_model=model_for_camera(device.reported_models if device else None, camera.code),
         created_at=camera.created_at,
     )
 

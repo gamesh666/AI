@@ -14,6 +14,20 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 };
 
 const en = {
+  "models.inUseSubtitle": "Which model each edge is running, on which cameras — as reported by the edges",
+  "models.tabInUse": "In use",
+  "models.tabRegistry": "Registry (AIVMS edge-agent)",
+  "models.registryHint": "Models assigned from the platform to cameras of the AIVMS edge-agent. Third-party edges run their own models (see “In use”).",
+  "models.inUseSummary": "{models} models in use on {devices} edges",
+  "models.searchHint": "Model, edge or camera",
+  "models.noneReported": "No edge has reported its models yet.",
+  "models.usage": "{devices} edges · {cameras} cameras",
+  "models.otherVersions": "Other versions of this model are running elsewhere: {versions}",
+  "models.reported": "reported {time}",
+  "models.allCameras": "all cameras of this edge",
+  "models.unknownCamera": "camera not registered on the platform",
+  "models.notReporting": "Edges not reporting their models ({n})",
+  "models.notReportingHint": "These edges do not send “models” in their heartbeat yet (see docs/edge-integration.md).",
   "cameras.missingBadge": "No longer on the edge",
   "cameras.missingFilter": "No longer on edge ({n})",
   "cameras.deleteMissing": "Delete all {n}",
@@ -282,6 +296,20 @@ export type MessageKey = keyof typeof en;
 export type Messages = Record<MessageKey, string>;
 
 const zhHant: Messages = {
+  "models.inUseSubtitle": "各 Edge 正在用哪個模型、用在哪些攝影機（由 Edge 回報）",
+  "models.tabInUse": "使用中",
+  "models.tabRegistry": "模型登記（AIVMS edge-agent）",
+  "models.registryHint": "由平台指派給 AIVMS edge-agent 攝影機的模型。第三方 Edge 使用自己的模型，請看「使用中」。",
+  "models.inUseSummary": "{models} 個模型使用中，分布在 {devices} 台 Edge",
+  "models.searchHint": "搜尋模型、Edge 或攝影機",
+  "models.noneReported": "還沒有 Edge 回報使用中的模型。",
+  "models.usage": "{devices} 台 Edge · {cameras} 支攝影機",
+  "models.otherVersions": "其他 Edge 正在使用此模型的其他版本：{versions}",
+  "models.reported": "{time}回報",
+  "models.allCameras": "此 Edge 的所有攝影機",
+  "models.unknownCamera": "平台上沒有這支攝影機",
+  "models.notReporting": "尚未回報模型的 Edge（{n}）",
+  "models.notReportingHint": "這些 Edge 的心跳還沒有帶 models 欄位（見 docs/edge-integration.md）。",
   "cameras.missingBadge": "已不在 Edge 上",
   "cameras.missingFilter": "已不在 Edge 上（{n}）",
   "cameras.deleteMissing": "全部刪除（{n}）",
@@ -546,6 +574,20 @@ const zhHant: Messages = {
 };
 
 const zhHans: Messages = {
+  "models.inUseSubtitle": "各 Edge 正在用哪个模型、用在哪些摄像头（由 Edge 上报）",
+  "models.tabInUse": "使用中",
+  "models.tabRegistry": "模型登记（AIVMS edge-agent）",
+  "models.registryHint": "由平台分配给 AIVMS edge-agent 摄像头的模型。第三方 Edge 使用自己的模型，请看“使用中”。",
+  "models.inUseSummary": "{models} 个模型使用中，分布在 {devices} 台 Edge",
+  "models.searchHint": "搜索模型、Edge 或摄像头",
+  "models.noneReported": "还没有 Edge 上报使用中的模型。",
+  "models.usage": "{devices} 台 Edge · {cameras} 个摄像头",
+  "models.otherVersions": "其他 Edge 正在使用此模型的其他版本：{versions}",
+  "models.reported": "{time}上报",
+  "models.allCameras": "此 Edge 的所有摄像头",
+  "models.unknownCamera": "平台上没有这个摄像头",
+  "models.notReporting": "尚未上报模型的 Edge（{n}）",
+  "models.notReportingHint": "这些 Edge 的心跳还没有带 models 字段（见 docs/edge-integration.md）。",
   "cameras.missingBadge": "已不在 Edge 上",
   "cameras.missingFilter": "已不在 Edge 上（{n}）",
   "cameras.deleteMissing": "全部删除（{n}）",

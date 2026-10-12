@@ -119,6 +119,7 @@ export default function CamerasPage() {
             render: (c) => (
               <span className="text-xs text-slate-400">
                 {c.resolution ?? t("cameras.source")} @ {c.stream_fps} fps · {c.bitrate} · AI {c.inference_fps} fps
+                {c.active_model && <span className="block text-brand-400">{c.active_model}</span>}
               </span>
             ),
           },

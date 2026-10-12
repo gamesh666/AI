@@ -1,4 +1,81 @@
 {
+  "$defs": {
+    "ReportedModel": {
+      "description": "A model the edge is running right now (whatever runtime it uses). Shown on the platform as-is.",
+      "properties": {
+        "name": {
+          "description": "e.g. yolo11n, ppe-detector",
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "e.g. yolov8, yolo11, onnx, tensorrt",
+          "title": "Type"
+        },
+        "task": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "what it recognises, e.g. person / cell phone",
+          "title": "Task"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Labels",
+          "type": "array"
+        },
+        "cameras": {
+          "description": "camera codes using this model",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Cameras",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ReportedModel",
+      "type": "object"
+    }
+  },
   "properties": {
     "device_uuid": {
       "title": "Device Uuid",
@@ -113,6 +190,22 @@
       "default": null,
       "description": "Total GPU memory in MB",
       "title": "Gpu Memory"
+    },
+    "models": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/ReportedModel"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Models"
     }
   },
   "required": [

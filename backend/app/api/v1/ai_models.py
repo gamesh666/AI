@@ -5,7 +5,9 @@ from fastapi import APIRouter, status
 from app.api.deps import DBSession, OperatorUser, Pagination, ViewerUser
 from app.schemas.ai_model import AIModelCreate, AIModelRead, AIModelUpdate
 from app.schemas.common import Page
+from app.schemas.model_usage import ModelUsageOverview
 from app.services.ai_model_service import AIModelService
+from app.services.model_usage_service import ModelUsageService
 
 router = APIRouter()
 
@@ -13,6 +15,12 @@ router = APIRouter()
 @router.get("", response_model=Page[AIModelRead])
 async def list_models(db: DBSession, _: ViewerUser, pagination: Pagination) -> Page[AIModelRead]:
     return await AIModelService(db).list(pagination)
+
+
+@router.get("/in-use", response_model=ModelUsageOverview)
+async def models_in_use(db: DBSession, _: ViewerUser) -> ModelUsageOverview:
+    """Models the edges report running, grouped by name + version, with the edges and cameras using them."""
+    return await ModelUsageService(db).overview()
 
 
 @router.post("", response_model=AIModelRead, status_code=status.HTTP_201_CREATED)

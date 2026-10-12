@@ -49,6 +49,7 @@ export function CameraCard({ camera }: { camera: Camera }) {
             </div>
             <div className="hidden truncate text-[11px] text-slate-300 sm:block">
               {camera.site_name ?? "—"} · {camera.edge_device_name ?? "—"}
+              {camera.active_model && <span className="text-brand-100"> · {camera.active_model}</span>}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 text-[10px] text-slate-200">

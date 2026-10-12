@@ -28,7 +28,7 @@ from agent.streaming.factory import PublishEndpoint
 from agent.telemetry.heartbeat import HeartbeatReporter
 from agent.telemetry.system_metrics import create_metrics
 from aivms_shared import topics
-from aivms_shared.payloads import Command, CommandType, ConfigChanged, DeviceState, DeviceStatus
+from aivms_shared.payloads import Command, CommandType, ConfigChanged, DeviceState, DeviceStatus, ReportedModel
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +163,22 @@ class EdgeAgent:
             self.heartbeat.interval = self.config.heartbeat_interval_seconds or self.settings.heartbeat_interval_seconds
         self._report_cameras(force=True)
 
+    def _reported_models(self) -> list[ReportedModel] | None:
+        """Models assigned to running cameras, so the platform shows what this edge actually uses."""
+        if self.config is None:
+            return None
+        by_model: dict[str, ReportedModel] = {}
+        for cam in self.config.cameras:
+            if not (cam.enabled and cam.ai_enabled and cam.ai_model and cam.rtsp_url):
+                continue
+            m = cam.ai_model
+            entry = by_model.setdefault(m.id, ReportedModel(
+                name=m.name, version=m.version, type=m.model_type, labels=m.labels[:1000],
+                cameras=[],
+            ))
+            entry.cameras.append(cam.camera_id)
+        return list(by_model.values())
+
     def _report_cameras(self, force: bool = False) -> None:
         """Per-camera health → edge/{device}/cameras/{camera}/status (periodic + on state change)."""
         if not self.publisher or not self.cameras or not (self.mqtt and self.mqtt.connected):
@@ -191,7 +207,8 @@ class EdgeAgent:
         ctx = PipelineContext(settings=s, device_id=s.device_uuid, publisher=self.publisher, uploader=uploader,
                               endpoint=self._endpoint())
         self.cameras = CameraManager(ctx)
-        self.heartbeat = HeartbeatReporter(s.device_uuid, self.publisher, self.metrics, s.heartbeat_interval_seconds)
+        self.heartbeat = HeartbeatReporter(s.device_uuid, self.publisher, self.metrics, s.heartbeat_interval_seconds,
+                                           models=self._reported_models)
 
         self.mqtt.start()
         self.heartbeat.start()

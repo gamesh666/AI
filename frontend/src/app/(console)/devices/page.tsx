@@ -21,6 +21,8 @@ import { pct } from "@/lib/format";
 import type { EdgeConnectionInfo, EdgeDevice } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
+const modelText = (m: { name: string; version?: string }) => [m.name, m.version].filter(Boolean).join(" ");
+
 export default function DevicesPage() {
   const { t, formatRelative } = useI18n();
   const { hasRole } = useAuth();
@@ -112,6 +114,18 @@ export default function DevicesPage() {
           },
           { key: "temp", header: t("devices.temp"), render: (d) => (d.temperature != null ? `${d.temperature.toFixed(0)}°C` : "—") },
           { key: "cams", header: t("common.cameras"), render: (d) => d.camera_count },
+          {
+            key: "models",
+            header: t("nav.models"),
+            render: (d) =>
+              d.reported_models?.length ? (
+                <Link href="/models" className="text-xs hover:underline" title={d.reported_models.map(modelText).join("\n")}>
+                  {d.reported_models.map(modelText).join(", ")}
+                </Link>
+              ) : (
+                <span className="text-xs text-slate-500">—</span>
+              ),
+          },
           { key: "ver", header: t("devices.agent"), render: (d) => d.agent_version ?? "—" },
           {
             key: "actions",

@@ -31,6 +31,19 @@ class _Payload(BaseModel):
 # ---- heartbeat -------------------------------------------------------------
 
 
+class ReportedModel(BaseModel):
+    """A model the edge is running right now (whatever runtime it uses). Shown on the platform as-is."""
+
+    model_config = ConfigDict(extra="ignore", protected_namespaces=())
+
+    name: str = Field(min_length=1, max_length=128, description="e.g. yolo11n, ppe-detector")
+    version: str | None = Field(default=None, max_length=64)
+    type: str | None = Field(default=None, max_length=64, description="e.g. yolov8, yolo11, onnx, tensorrt")
+    task: str | None = Field(default=None, max_length=128, description="what it recognises, e.g. person / cell phone")
+    labels: list[str] = Field(default_factory=list, max_length=1000)
+    cameras: list[str] = Field(default_factory=list, max_length=256, description="camera codes using this model")
+
+
 class Heartbeat(_Payload):
     device_uuid: str
     timestamp: datetime = Field(default_factory=utcnow)
@@ -45,6 +58,8 @@ class Heartbeat(_Payload):
     ip_address: str | None = None
     gpu_name: str | None = None
     gpu_memory: int | None = Field(default=None, description="Total GPU memory in MB")
+    # models currently in use; None = not reported (the last report is kept), [] = no model running
+    models: list[ReportedModel] | None = Field(default=None, max_length=50)
 
 
 # ---- device status (edge/{device}/status, retained, also the MQTT Last Will) -----

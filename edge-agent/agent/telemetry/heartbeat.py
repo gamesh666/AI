@@ -4,18 +4,24 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections.abc import Callable
 
 from agent import __version__
 from agent.messaging.publisher import EdgePublisher
 from agent.telemetry.system_metrics import SystemMetrics
-from aivms_shared.payloads import Heartbeat
+from aivms_shared.payloads import Heartbeat, ReportedModel
 
 logger = logging.getLogger(__name__)
 
 
+ModelsProvider = Callable[[], "list[ReportedModel] | None"]
+
+
 class HeartbeatReporter:
-    def __init__(self, device_uuid: str, publisher: EdgePublisher, metrics: SystemMetrics, interval: float) -> None:
+    def __init__(self, device_uuid: str, publisher: EdgePublisher, metrics: SystemMetrics, interval: float,
+                 models: ModelsProvider | None = None) -> None:
         self._device = device_uuid
+        self._models = models
         self._publisher = publisher
         self._metrics = metrics
         self.interval = interval
@@ -36,6 +42,7 @@ class HeartbeatReporter:
             ip_address=self._metrics.primary_ip(),
             gpu_name=gpu.name,
             gpu_memory=gpu.total_memory_mb,
+            models=self._models() if self._models else None,
         )
 
     def start(self) -> None:

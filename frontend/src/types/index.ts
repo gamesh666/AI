@@ -62,6 +62,9 @@ export interface EdgeDevice {
   temperature: number | null;
   camera_count: number;
   disconnects_24h: number;
+  /** models the edge reports running (heartbeat); null = never reported */
+  reported_models: ReportedModel[] | null;
+  reported_models_at: string | null;
   created_at: string;
 }
 
@@ -129,6 +132,8 @@ export interface Camera {
   runtime_stats: CameraRuntimeStats;
   /** the edge stopped listing this camera (camera sync); it was disabled then */
   missing_from_edge_at: string | null;
+  /** model the edge reports running for this camera */
+  active_model: string | null;
   created_at: string;
 }
 
@@ -269,4 +274,39 @@ export interface HeartbeatMessage {
   gpu_memory_usage: number | null;
   temperature: number | null;
   agent_version: string;
+  models?: ReportedModel[] | null;
+}
+
+// ---- models reported by edges ----
+export interface ReportedModel {
+  name: string;
+  version?: string;
+  type?: string;
+  task?: string;
+  labels?: string[];
+  cameras?: string[];
+}
+
+export interface ModelUsage {
+  name: string;
+  version: string | null;
+  type: string | null;
+  task: string | null;
+  labels: string[];
+  devices: {
+    device_id: UUID;
+    device_uuid: string;
+    device_name: string;
+    site_name: string | null;
+    status: DeviceStatus;
+    reported_at: string | null;
+    cameras: { code: string; camera_id: UUID | null; name: string | null }[];
+  }[];
+  camera_count: number;
+  other_versions: string[];
+}
+
+export interface ModelUsageOverview {
+  models: ModelUsage[];
+  not_reporting: { device_id: UUID; device_uuid: string; device_name: string; status: DeviceStatus }[];
 }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -43,6 +44,9 @@ class EdgeDeviceRead(ORMModel):
     camera_count: int = 0
     # connection losses in the last 24 h (connection history)
     disconnects_24h: int = 0
+    # models the edge reports running (heartbeat), None = never reported
+    reported_models: list[dict[str, Any]] | None = None
+    reported_models_at: datetime | None = None
     created_at: datetime
 
 

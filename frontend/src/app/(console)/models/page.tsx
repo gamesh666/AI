@@ -1,88 +1,36 @@
 "use client";
 
+import clsx from "clsx";
 import { useState } from "react";
 
-import { ModelForm } from "@/components/models/ModelForm";
-import { Button } from "@/components/ui/Button";
-import { DataTable } from "@/components/ui/DataTable";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { Modal } from "@/components/ui/Modal";
+import { ModelRegistry } from "@/components/models/ModelRegistry";
+import { ModelsInUse } from "@/components/models/ModelsInUse";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useAsync } from "@/hooks/useAsync";
-import { useMutation } from "@/hooks/useMutation";
-import { modelsApi, type AIModelInput } from "@/lib/api/models";
-import { useAuth } from "@/lib/auth/AuthContext";
-import type { AIModel } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+
+type Tab = "inUse" | "registry";
 
 export default function ModelsPage() {
   const { t } = useI18n();
-  const { hasRole } = useAuth();
-  const canEdit = hasRole("operator");
-  const models = useAsync(async () => (await modelsApi.list()).items);
-  const m = useMutation();
-  const [editing, setEditing] = useState<AIModel | null | "new">(null);
-
-  const save = async (v: AIModelInput) => {
-    const res = await m.run(() => (editing === "new" ? modelsApi.create(v) : modelsApi.update((editing as AIModel).id, v)));
-    if (res.ok) {
-      setEditing(null);
-      models.reload();
-    }
-  };
-
-  const remove = async (model: AIModel) => {
-    if (!confirm(t("models.confirmDelete", { name: model.name, version: model.version }))) return;
-    if ((await m.run(() => modelsApi.remove(model.id))).ok) models.reload();
-  };
-
+  const [tab, setTab] = useState<Tab>("inUse");
   return (
     <>
-      <PageHeader
-        title={t("nav.models")}
-        subtitle={t("models.subtitle")}
-        actions={canEdit && <Button onClick={() => setEditing("new")}>{t("models.register")}</Button>}
-      />
-      <ErrorBanner error={models.error ?? m.error} />
-      <DataTable
-        loading={models.loading}
-        rows={models.data ?? []}
-        columns={[
-          { key: "name", header: t("common.name"), render: (x) => <span className="font-medium">{x.name}</span> },
-          { key: "version", header: t("models.version"), render: (x) => x.version },
-          { key: "type", header: t("models.type"), render: (x) => x.model_type },
-          { key: "path", header: t("models.path"), render: (x) => <code className="text-xs">{x.model_path}</code> },
-          {
-            key: "labels",
-            header: t("models.labels"),
-            render: (x) => (
-              <span className="text-xs text-slate-400" title={x.labels.join(", ")}>
-                {x.labels.slice(0, 5).join(", ")}
-                {x.labels.length > 5 && ` +${x.labels.length - 5}`}
-              </span>
-            ),
-          },
-          {
-            key: "actions",
-            header: "",
-            className: "text-right",
-            render: (x) =>
-              canEdit && (
-                <div className="flex justify-end gap-1">
-                  <Button variant="ghost" onClick={() => setEditing(x)}>
-                    {t("common.edit")}
-                  </Button>
-                  <Button variant="ghost" onClick={() => remove(x)}>
-                    {t("common.delete")}
-                  </Button>
-                </div>
-              ),
-          },
-        ]}
-      />
-      <Modal open={editing !== null} title={editing === "new" ? t("models.registerTitle") : t("models.editTitle")} onClose={() => setEditing(null)}>
-        <ModelForm initial={editing === "new" ? null : editing} busy={m.busy} onSubmit={save} />
-      </Modal>
+      <PageHeader title={t("nav.models")} subtitle={t("models.inUseSubtitle")} />
+      <div className="mb-4 flex gap-1 border-b border-slate-700/60">
+        {(["inUse", "registry"] as const).map((k) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={clsx(
+              "-mb-px border-b-2 px-3 py-2 text-sm",
+              tab === k ? "border-brand-500 text-white" : "border-transparent text-slate-400 hover:text-slate-200",
+            )}
+          >
+            {t(k === "inUse" ? "models.tabInUse" : "models.tabRegistry")}
+          </button>
+        ))}
+      </div>
+      {tab === "inUse" ? <ModelsInUse /> : <ModelRegistry />}
     </>
   );
 }

@@ -169,9 +169,22 @@ X-Device-Key: ...
 
 | Topic | 頻率 | 內容 |
 |-------|------|------|
-| `edge/{裝置ID}/heartbeat` | 每 10 秒 | `{"device_uuid","cpu_usage","memory_usage","agent_version", ...}`；30 秒沒收到視為離線 |
+| `edge/{裝置ID}/heartbeat` | 每 10 秒 | `{"device_uuid","cpu_usage","memory_usage","agent_version", "models": [...], ...}`；30 秒沒收到視為離線 |
 | `edge/{裝置ID}/status` | 連線時、retained，並設為 MQTT Last Will | `{"device_uuid","state":"online"}` / `"offline"` |
 | `edge/{裝置ID}/cameras/{code}/status` | 每 5 秒 | `{"camera_id","rtsp_status","ai_status","stream_status","input_fps","inference_fps","output_fps","resolution"}` |
+
+**回報正在使用的模型**（建議）：心跳加上 `models`，平台「AI 模型」頁會列出每個模型在哪些 Edge、哪些攝影機使用，
+並標出同一模型在不同 Edge 版本不一致的情況：
+
+```json
+"models": [
+  { "name": "yolo11n", "version": "2026.09", "type": "yolo11", "task": "person / cell phone",
+    "labels": ["person", "cell phone"], "cameras": ["bimer-entrance-right", "bimer-back-left"] }
+]
+```
+
+`name` 必填，其餘選填。`cameras` 為使用此模型的攝影機代碼；只有一個模型且不填 `cameras` 時視為全部攝影機都用它。
+不送 `models` = 沿用上次回報；送 `[]` = 目前沒有模型在跑。
 
 完整欄位見 [`shared/python/aivms_shared/payloads.py`](../shared/python/aivms_shared/payloads.py)，
 Python Edge 也可以直接 `pip install` 這個套件使用同一份資料模型。

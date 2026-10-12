@@ -217,6 +217,9 @@ class DeviceService:
             value = getattr(hb, field)
             if value is not None:
                 setattr(device, field, value)
+        if hb.models is not None:
+            device.reported_models = [m.model_dump(exclude_none=True) for m in hb.models]
+            device.reported_models_at = device.last_seen
         await self.session.commit()
 
         settings = get_settings()

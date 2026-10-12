@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import DeviceStatus
-from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.db.base import Base, JSONType, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.camera import Camera
@@ -40,6 +40,9 @@ class EdgeDevice(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     gpu_usage: Mapped[float | None] = mapped_column(Float)
     gpu_memory_usage: Mapped[float | None] = mapped_column(Float)
     temperature: Mapped[float | None] = mapped_column(Float)
+    # models the edge reports running (heartbeat `models`), NULL = never reported
+    reported_models: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONType)
+    reported_models_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # extension: device authentication (sha256 of the device API key)
     api_key_hash: Mapped[str | None] = mapped_column(String(128), unique=True)
 

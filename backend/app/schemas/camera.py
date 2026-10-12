@@ -112,4 +112,6 @@ class CameraRead(ORMModel):
     runtime_stats: dict[str, Any]
     # set when the edge stopped listing this camera (camera sync); it was disabled then
     missing_from_edge_at: datetime | None = None
+    # model the edge reports running for this camera ("name version"), None = not reported
+    active_model: str | None = None
     created_at: datetime
