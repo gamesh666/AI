@@ -29,6 +29,7 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
   {
     section: "nav.management",
     items: [
+      { href: "/owners", label: "nav.owners", icon: "◆", minRole: "operator" },
       { href: "/sites", label: "nav.sites", icon: "⌂" },
       { href: "/devices", label: "nav.devices", icon: "▣" },
       { href: "/cameras", label: "nav.cameras", icon: "◎" },

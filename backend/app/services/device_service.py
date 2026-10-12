@@ -12,18 +12,18 @@ from aivms_shared.payloads import CameraRuntimeStatus, CommandType, DeviceState,
 from aivms_shared.payloads import DeviceStatus as DeviceStatusPayload
 from app.core.config import get_settings
 from app.core.enums import CameraStatus, DeviceStatus, StreamStatus
-from app.core.exceptions import AuthError, ConflictError, DomainError, NotFoundError
+from app.core.exceptions import AuthError, ConflictError, DomainError, NotFoundError, PermissionDeniedError
 from app.core.redis import get_redis
-from app.core.security import constant_time_equals, generate_opaque_token, hash_token
+from app.core.security import generate_opaque_token, hash_token
 from app.messaging import publisher
 from app.models.edge_device import EdgeDevice
+from app.models.owner import EdgeDeviceAudit
 from app.realtime.broadcaster import broadcaster
 from app.realtime.messages import RealtimeEventType
 from app.repositories.camera_repository import CameraRepository
 from app.repositories.device_repository import DeviceRepository
 from app.repositories.edge_log_repository import EdgeLogRepository
 from app.schemas.common import Page, PageParams
-from app.schemas.edge import EdgeRegisterRequest
 from app.schemas.edge_device import (
     EdgeConnectionInfo,
     EdgeDeviceCreate,
@@ -39,6 +39,7 @@ from app.services.connection_history import (
     ConnectionHistory,
 )
 from app.services.mappers import device_to_read
+from app.services.provisioning import normalize_mac
 
 HEARTBEAT_CACHE_KEY = "aivms:device:{uuid}:heartbeat"
 
@@ -112,7 +113,7 @@ class DeviceService:
         device = await self.repo.get(device_id)
         if not device:
             raise NotFoundError("edge device not found")
-        await self.session.refresh(device, ["site"])
+        await self.session.refresh(device, ["site", "owner"])
         return device
 
     async def get_read(self, device_id: uuid.UUID) -> EdgeDeviceRead:
@@ -122,14 +123,17 @@ class DeviceService:
 
     async def create(self, data: EdgeDeviceCreate, include_mqtt_password: bool = False) -> EdgeDeviceWithKey:
         api_key = generate_opaque_token()
-        device = EdgeDevice(**data.model_dump(), api_key_hash=hash_token(api_key), status=DeviceStatus.PENDING)
+        values = data.model_dump()
+        values["mac_address"] = normalize_mac(values["mac_address"]) if values.get("mac_address") else None
+        device = EdgeDevice(**values, api_key_hash=hash_token(api_key), status=DeviceStatus.PENDING,
+                            registered_at=datetime.now(UTC))
         try:
             await self.repo.add(device)
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise ConflictError("device_uuid already exists") from exc
-        await self.session.refresh(device, ["site"])
+            raise ConflictError("device ID or MAC address already exists") from exc
+        await self.session.refresh(device, ["site", "owner"])
         return EdgeDeviceWithKey(
             **device_to_read(device).model_dump(),
             api_key=api_key,
@@ -139,13 +143,19 @@ class DeviceService:
     async def update(self, device_id: uuid.UUID, data: EdgeDeviceUpdate) -> EdgeDeviceRead:
         device = await self.get(device_id)
         changes = data.model_dump(exclude_unset=True)
+        if "mac_address" in changes:
+            changes["mac_address"] = normalize_mac(changes["mac_address"]) if changes["mac_address"] else None
         site_changed = "site_id" in changes and changes["site_id"] != device.site_id
         self.repo.apply_updates(device, changes)
-        if site_changed:
-            await self.session.flush()
-            # stream paths embed the site code: ai/<site>/<device>/<camera>
-            await CameraService(self.session).refresh_stream_paths(device)
-        await self.session.commit()
+        try:
+            if site_changed:
+                await self.session.flush()
+                # stream paths embed the site code: ai/<site>/<device>/<camera>
+                await CameraService(self.session).refresh_stream_paths(device)
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ConflictError("this MAC address is already used by another device") from exc
         if site_changed:
             await publisher.notify_config_changed(device.device_uuid, "site_changed")
         return await self.get_read(device.id)
@@ -158,6 +168,9 @@ class DeviceService:
         device = await self.get(device_id)
         api_key = generate_opaque_token()
         device.api_key_hash = hash_token(api_key)
+        self.session.add(EdgeDeviceAudit(edge_device_id=device.id, device_uuid=device.device_uuid,
+                                         mac_address=device.mac_address, action="key_rotated",
+                                         detail={"by": "admin"}))
         await self.session.commit()
         read = await self.get_read(device_id)
         # rotating is admin-only, so the MQTT password may be included
@@ -184,29 +197,13 @@ class DeviceService:
         device = await self.repo.get_by_api_key_hash(hash_token(api_key))
         if not device:
             raise AuthError("invalid device key")
+        if device.admin_state != "active":
+            raise PermissionDeniedError(f"this device is {device.admin_state} on the platform")
         return device
-
-    async def register(self, data: EdgeRegisterRequest, provisioning_token: str) -> tuple[EdgeDevice, str]:
-        """Self-registration with the shared provisioning token. Re-registering rotates the key."""
-        expected = get_settings().edge_provisioning_token.get_secret_value()
-        if not constant_time_equals(provisioning_token, expected):
-            raise AuthError("invalid provisioning token")
-        api_key = generate_opaque_token()
-        device = await self.repo.get_by_device_uuid(data.device_uuid)
-        if device is None:
-            device = EdgeDevice(device_uuid=data.device_uuid, name=data.name or data.device_uuid)
-            self.session.add(device)
-        info = data.model_dump(exclude={"device_uuid", "name"}, exclude_none=True)
-        self.repo.apply_updates(device, info)
-        device.api_key_hash = hash_token(api_key)
-        if device.status is None:
-            device.status = DeviceStatus.PENDING
-        await self.session.commit()
-        return device, api_key
 
     async def ingest_heartbeat(self, hb: Heartbeat) -> EdgeDevice | None:
         device = await self.repo.get_by_device_uuid(hb.device_uuid)
-        if device is None:
+        if device is None or device.admin_state != "active":
             return None
         previous = device.status
         was_online = previous == DeviceStatus.ONLINE
@@ -239,7 +236,7 @@ class DeviceService:
     async def ingest_status(self, status: DeviceStatusPayload) -> EdgeDevice | None:
         """Device-level online/offline (retained message + MQTT Last Will)."""
         device = await self.repo.get_by_device_uuid(status.device_uuid)
-        if device is None:
+        if device is None or device.admin_state != "active":
             return None
         online = status.state == DeviceState.ONLINE
         previous = device.status

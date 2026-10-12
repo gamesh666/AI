@@ -29,6 +29,7 @@ from app.schemas.edge import (
 from app.services import storage_service
 from app.services.camera_service import CameraService, build_authenticated_url
 from app.services.connection_history import ConnectionHistory
+from app.services.provisioning import device_site_profile
 
 PRESIGN_TTL_SECONDS = 300
 
@@ -78,8 +79,11 @@ class EdgeService:
         cameras = await self.cameras.list_for_device(device.id)
         timestamps = [device.updated_at, *(c.updated_at for c in cameras)]
         version = int(max(t.timestamp() for t in timestamps if t is not None))
+        site_id, site_profile = await device_site_profile(self.session, device.id)
         return EdgeConfig(
             device_uuid=device.device_uuid,
+            site_id=site_id,
+            site_profile=site_profile,
             version=version,
             cameras=[_camera_config(c) for c in cameras],
             mqtt=EdgeMQTTConfig(

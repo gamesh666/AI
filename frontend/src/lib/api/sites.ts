@@ -6,6 +6,13 @@ export interface SiteInput {
   code: string;
   address?: string | null;
   description?: string | null;
+  owner_id?: string | null;
+  profile?: string | null;
+  license_code?: string | null;
+  license_until?: string | null;
+  contract_no?: string | null;
+  term_years?: number | null;
+  transaction_type?: string | null;
 }
 
 export const sitesApi = {

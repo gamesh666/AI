@@ -3,27 +3,24 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.edge_device import DEVICE_UUID_PATTERN
 from app.schemas.site import SLUG_PATTERN
 
 
-class EdgeRegisterRequest(BaseModel):
-    device_uuid: str = Field(pattern=DEVICE_UUID_PATTERN)
-    name: str | None = Field(default=None, max_length=128)
-    hostname: str | None = None
-    ip_address: str | None = None
-    agent_version: str | None = None
-    gpu_name: str | None = None
-    gpu_memory: int | None = None
-
-
 class EdgeRegisterResponse(BaseModel):
-    id: uuid.UUID
-    device_uuid: str
+    """Fixed by the REACH AI BOX register contract (§3.5)."""
+
     api_key: str
+    device_uuid: str
+    site_id: str = ""  # site code, "" when the device has no site
+    site_profile: dict[str, Any] | None = None
+
+
+class EdgeSiteProfileResponse(BaseModel):
+    site_profile: dict[str, Any] | None = None
 
 
 class EdgeModelConfig(BaseModel):
@@ -79,11 +76,14 @@ class EdgeStreamingConfig(BaseModel):
 
 class EdgeConfig(BaseModel):
     device_uuid: str
+    site_id: str = ""  # site code, "" when the device has no site
     version: int
     heartbeat_interval_seconds: int = 10
     cameras: list[EdgeCameraConfig]
     mqtt: EdgeMQTTConfig
     streaming: EdgeStreamingConfig
+    # owner / site / contract data (REACH register contract §3.6); None when unknown
+    site_profile: dict[str, Any] | None = None
 
 
 class PresignRequest(BaseModel):

@@ -4,6 +4,7 @@ from fastapi import APIRouter, status
 
 from app.api.deps import AdminUser, DBSession, OperatorUser, Pagination, ViewerUser
 from app.core.enums import DeviceStatus, UserRole
+from app.core.exceptions import PermissionDeniedError
 from app.schemas.common import Page
 from app.schemas.edge_device import (
     DeviceCommandRequest,
@@ -13,7 +14,9 @@ from app.schemas.edge_device import (
     EdgeDeviceUpdate,
     EdgeDeviceWithKey,
 )
+from app.schemas.owner import DeviceAuditRead
 from app.services.device_service import DeviceService
+from app.services.owner_service import OwnerService
 
 router = APIRouter()
 
@@ -29,8 +32,16 @@ async def list_devices(
     return await DeviceService(db).list(pagination, site_id, status)
 
 
+def _admin_fields(body, user) -> None:
+    """MAC binding, owner and admin state decide who may provision / use a device: admins only."""
+    sensitive = {"mac_address", "owner_id", "admin_state"} & body.model_dump(exclude_unset=True).keys()
+    if sensitive and user.role != UserRole.ADMIN:
+        raise PermissionDeniedError(f"only administrators may change {', '.join(sorted(sensitive))}")
+
+
 @router.post("", response_model=EdgeDeviceWithKey, status_code=status.HTTP_201_CREATED)
 async def create_device(body: EdgeDeviceCreate, db: DBSession, user: OperatorUser) -> EdgeDeviceWithKey:
+    _admin_fields(body, user)
     """Pre-provision a device. The returned `api_key` is shown ONCE, with the connection info to hand over
     (the shared MQTT password only to admins)."""
     return await DeviceService(db).create(body, include_mqtt_password=user.role == UserRole.ADMIN)
@@ -43,9 +54,16 @@ async def get_device(device_id: uuid.UUID, db: DBSession, _: ViewerUser) -> Edge
 
 @router.patch("/{device_id}", response_model=EdgeDeviceRead)
 async def update_device(
-    device_id: uuid.UUID, body: EdgeDeviceUpdate, db: DBSession, _: OperatorUser
+    device_id: uuid.UUID, body: EdgeDeviceUpdate, db: DBSession, user: OperatorUser
 ) -> EdgeDeviceRead:
+    _admin_fields(body, user)
     return await DeviceService(db).update(device_id, body)
+
+
+@router.get("/{device_id}/audit", response_model=list[DeviceAuditRead])
+async def device_audit(device_id: uuid.UUID, db: DBSession, _: AdminUser) -> list[DeviceAuditRead]:
+    """Registrations, key rotations and rejected attempts (never contains a key or token)."""
+    return await OwnerService(db).device_audit(device_id)
 
 
 @router.delete("/{device_id}", status_code=status.HTTP_204_NO_CONTENT)

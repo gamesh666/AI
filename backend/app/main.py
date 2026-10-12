@@ -99,6 +99,15 @@ def create_app() -> FastAPI:
         headers = {"WWW-Authenticate": "Bearer"} if exc.status_code == 401 else None
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.message}, headers=headers)
 
+    edge_prefix = f"{settings.api_prefix}/edge/"
+
+    @app.middleware("http")
+    async def _no_store_on_edge_api(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith(edge_prefix):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     app.include_router(api_router, prefix=settings.api_prefix)
     app.include_router(ws_router)
     return app

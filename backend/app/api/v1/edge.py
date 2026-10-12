@@ -2,43 +2,83 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Header, Path
+from fastapi import APIRouter, Header, Path, Request
 
 from app.api.deps import CurrentDevice, DBSession
-from app.core.exceptions import AuthError
 from app.schemas.edge import (
     EdgeCameraConfig,
     EdgeCameraDeclare,
     EdgeCameraSync,
     EdgeCameraSyncResult,
     EdgeConfig,
-    EdgeRegisterRequest,
     EdgeRegisterResponse,
+    EdgeSiteProfileResponse,
     PresignRequest,
     PresignResponse,
 )
 from app.schemas.site import SLUG_PATTERN
-from app.services.device_service import DeviceService
 from app.services.edge_service import EdgeService
+from app.services.provisioning import (
+    ProvisioningService,
+    UnprocessableError,
+    check_rate_limit,
+    device_site_profile,
+)
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=EdgeRegisterResponse)
+@router.post("/register", response_model=EdgeRegisterResponse, response_model_exclude_none=False)
 async def register(
-    body: EdgeRegisterRequest,
+    request: Request,
     db: DBSession,
     x_provisioning_token: Annotated[str | None, Header()] = None,
 ) -> EdgeRegisterResponse:
-    if not x_provisioning_token:
-        raise AuthError("missing X-Provisioning-Token")
-    device, api_key = await DeviceService(db).register(body, x_provisioning_token)
-    return EdgeRegisterResponse(id=device.id, device_uuid=device.device_uuid, api_key=api_key)
+    """Edge self-registration.
+
+    - with `mac_address` (REACH AI BOX contract): owner provisioning token, identity = MAC, platform-assigned
+      device ID, the key is rotated on every call, `site_profile` is returned
+    - without (AIVMS edge-agent): platform-wide token from EDGE_PROVISIONING_TOKEN, agent-chosen device ID
+    Errors are always {"detail": "<text>"}.
+    """
+    ip = request.client.host if request.client else "unknown"
+    await check_rate_limit(ip, x_provisioning_token)
+    service = ProvisioningService(db)
+    scope = await service.resolve_token(x_provisioning_token, ip)
+    try:
+        body = await request.json()
+    except ValueError:
+        raise UnprocessableError("request body must be JSON") from None
+    if not isinstance(body, dict):
+        raise UnprocessableError("request body must be a JSON object")
+    device_uuid = body.get("device_uuid")
+    if not isinstance(device_uuid, str):
+        raise UnprocessableError("device_uuid is required")
+    mac = body.get("mac_address")
+    if mac is not None:
+        if not isinstance(mac, str):
+            raise UnprocessableError("mac_address must be a string")
+        result = await service.register_mac(scope, device_uuid, mac, ip)
+    else:
+        result = await service.register_legacy(scope, device_uuid, body, ip)
+    return EdgeRegisterResponse(
+        api_key=result.api_key,
+        device_uuid=result.device.device_uuid,
+        site_id=result.site.code if result.site else "",
+        site_profile=result.site_profile,
+    )
 
 
 @router.get("/config", response_model=EdgeConfig)
 async def get_config(device: CurrentDevice, db: DBSession) -> EdgeConfig:
     return await EdgeService(db).build_config(device)
+
+
+@router.get("/site-profile", response_model=EdgeSiteProfileResponse)
+async def get_site_profile(device: CurrentDevice, db: DBSession) -> EdgeSiteProfileResponse:
+    """Owner / site / contract data only, for the edge's "re-sync owner data" button."""
+    _, profile = await device_site_profile(db, device.id)
+    return EdgeSiteProfileResponse(site_profile=profile)
 
 
 @router.post("/snapshots/presign", response_model=PresignResponse)

@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { ConnectionInfoPanel } from "@/components/devices/ConnectionInfoPanel";
 import { DeviceForm } from "@/components/devices/DeviceForm";
-import { StatusBadge } from "@/components/ui/Badge";
+import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
@@ -15,7 +15,9 @@ import { useAsync } from "@/hooks/useAsync";
 import { useLiveDevices } from "@/hooks/useLiveDevices";
 import { useMutation } from "@/hooks/useMutation";
 import { devicesApi, type DeviceInput } from "@/lib/api/devices";
+import { ownersApi } from "@/lib/api/owners";
 import { sitesApi } from "@/lib/api/sites";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { pct } from "@/lib/format";
 import type { EdgeConnectionInfo, EdgeDevice } from "@/types";
@@ -24,13 +26,16 @@ import { useI18n } from "@/lib/i18n/I18nProvider";
 const modelText = (m: { name: string; version?: string }) => [m.name, m.version].filter(Boolean).join(" ");
 
 export default function DevicesPage() {
-  const { t, formatRelative } = useI18n();
+  const { t, formatRelative, formatDateTime } = useI18n();
   const { hasRole } = useAuth();
   const canEdit = hasRole("operator");
   const isAdmin = hasRole("admin");
   const devices = useLiveDevices();
   const sites = useAsync(async () => (await sitesApi.list()).items);
+  const owners = useAsync(async () => (isAdmin ? ownersApi.list() : []), [isAdmin]);
   const m = useMutation();
+  const [auditOf, setAuditOf] = useState<EdgeDevice | null>(null);
+  const audit = useAsync(async () => (auditOf ? devicesApi.audit(auditOf.id) : []), [auditOf?.id]);
   const [editing, setEditing] = useState<EdgeDevice | null | "new">(null);
   // connection info to hand over; apiKey only right after create / rotate (shown once)
   const [revealed, setRevealed] = useState<{ info: EdgeConnectionInfo; apiKey: string | null } | null>(null);
@@ -41,7 +46,8 @@ export default function DevicesPage() {
       if (!res.ok) return;
       if (res.value.connection) setRevealed({ info: res.value.connection, apiKey: res.value.api_key });
     } else if (editing) {
-      const res = await m.run(() => devicesApi.update(editing.id, { name: v.name, site_id: v.site_id }));
+      const { device_uuid: _, ...changes } = v;
+      const res = await m.run(() => devicesApi.update(editing.id, changes));
       if (!res.ok) return;
     }
     setEditing(null);
@@ -87,7 +93,26 @@ export default function DevicesPage() {
             ),
           },
           { key: "site", header: t("common.site"), render: (d) => d.site_name ?? "—" },
-          { key: "status", header: t("devices.status"), render: (d) => <StatusBadge status={d.status} /> },
+          {
+            key: "status",
+            header: t("devices.status"),
+            render: (d) =>
+              d.admin_state !== "active" ? (
+                <Badge tone="gray">{t(`devices.state.${d.admin_state}`)}</Badge>
+              ) : (
+                <StatusBadge status={d.status} />
+              ),
+          },
+          {
+            key: "mac",
+            header: t("devices.mac"),
+            render: (d) => (
+              <div className="text-xs">
+                <code>{d.mac_address ?? "—"}</code>
+                {d.owner_name && <div className="text-slate-500">{d.owner_name}</div>}
+              </div>
+            ),
+          },
           { key: "seen", header: t("devices.lastSeen"), render: (d) => formatRelative(d.last_seen) },
           {
             key: "outages",
@@ -141,6 +166,11 @@ export default function DevicesPage() {
                     {t("common.edit")}
                   </Button>
                   {isAdmin && (
+                    <Button variant="ghost" onClick={() => setAuditOf(d)}>
+                      {t("devices.audit")}
+                    </Button>
+                  )}
+                  {isAdmin && (
                     <Button variant="ghost" onClick={() => showConnection(d)}>
                       {t("sheet.connectionInfo")}
                     </Button>
@@ -166,9 +196,34 @@ export default function DevicesPage() {
         <DeviceForm
           initial={editing === "new" ? null : editing}
           sites={sites.data ?? []}
+          owners={owners.data ?? []}
+          isAdmin={isAdmin}
           busy={m.busy}
           onSubmit={save}
         />
+      </Modal>
+      <Modal
+        open={!!auditOf}
+        wide
+        title={auditOf ? t("devices.auditTitle", { name: auditOf.name }) : ""}
+        onClose={() => setAuditOf(null)}
+      >
+        <ul className="max-h-[60vh] divide-y divide-slate-800 overflow-y-auto text-sm">
+          {(audit.data ?? []).length === 0 && <li className="py-6 text-center text-slate-500">{t("common.noData")}</li>}
+          {audit.data?.map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <span>
+                <Badge tone={a.action.startsWith("rejected") ? "red" : a.action === "registered" ? "green" : "blue"}>
+                  {t(`audit.${a.action}` as MessageKey) || a.action}
+                </Badge>
+                <span className="ml-2 text-xs text-slate-500">
+                  {[a.source_ip, a.token_prefix && `${a.token_prefix}…`, a.mac_address].filter(Boolean).join(" · ")}
+                </span>
+              </span>
+              <span className="text-xs text-slate-400">{formatDateTime(a.created_at)}</span>
+            </li>
+          ))}
+        </ul>
       </Modal>
       <Modal
         open={!!revealed}

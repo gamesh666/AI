@@ -37,6 +37,15 @@ Edge 端需要的設定：
 
 所有 REST 呼叫都帶 header `X-Device-Key: <API 金鑰>`。
 
+### 0b. 自動註冊（REACH AI BOX 等出廠設備）
+
+管理員在「業主」頁替業主產生**佈建權杖**（只顯示一次）放進設備出廠設定；設備以 MAC 呼叫
+`POST /api/v1/edge/register` 自動註冊、取得 device_uuid 與金鑰，並帶回業主 / 場域 / 合約資料（`site_profile`）。
+完整契約：[`docs/reach-edge-register/CLAUDE.md`](reach-edge-register/CLAUDE.md)，交付說明：
+[`docs/reach-edge-register/DELIVERY.md`](reach-edge-register/DELIVERY.md)。
+
+已經手動建立的裝置：在裝置的「編輯」填入設備 MAC（並選業主），設備自動綁定時就會沿用原本的 ID，不會重複建立。
+
 ## 1. 宣告攝影機（Edge 自己管理來源）
 
 **建議：同步完整清單**（Edge 啟動時、攝影機有增減時呼叫一次）

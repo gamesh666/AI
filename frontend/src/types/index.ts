@@ -38,8 +38,66 @@ export interface Site {
   code: string;
   address: string | null;
   description: string | null;
+  owner_id: UUID | null;
+  owner_name: string | null;
+  profile: SiteProfileKind | null;
+  license_code: string | null;
+  license_until: string | null; // YYYY-MM-DD
+  contract_no: string | null;
+  term_years: number | null;
+  transaction_type: "buyout" | "lease" | null;
   created_at: string;
   device_count: number;
+}
+
+export type SiteProfileKind = "office" | "construction" | "factory" | "security";
+export type AdminState = "active" | "disabled" | "retired";
+
+/** 業主 */
+export interface Owner {
+  id: UUID;
+  name: string;
+  company_name: string | null;
+  company_address: string | null;
+  company_phone: string | null;
+  tax_id: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  created_at: string;
+  site_count: number;
+  device_count: number;
+  token_count: number;
+}
+
+export interface ProvisioningToken {
+  id: UUID;
+  token_prefix: string;
+  label: string | null;
+  owner_id: UUID;
+  site_id: UUID | null;
+  site_name: string | null;
+  device_prefix: string;
+  max_devices: number | null;
+  used_devices: number;
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  state: "active" | "revoked" | "expired";
+}
+
+export interface ProvisioningTokenCreated extends ProvisioningToken {
+  token: string;
+}
+
+export interface DeviceAudit {
+  id: UUID;
+  action: string;
+  device_uuid: string | null;
+  mac_address: string | null;
+  source_ip: string | null;
+  token_prefix: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
 }
 
 export interface EdgeDevice {
@@ -62,6 +120,12 @@ export interface EdgeDevice {
   temperature: number | null;
   camera_count: number;
   disconnects_24h: number;
+  mac_address: string | null;
+  admin_state: AdminState;
+  owner_id: UUID | null;
+  owner_name: string | null;
+  registered_at: string | null;
+  last_registered_at: string | null;
   /** models the edge reports running (heartbeat); null = never reported */
   reported_models: ReportedModel[] | null;
   reported_models_at: string | null;

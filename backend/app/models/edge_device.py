@@ -12,6 +12,7 @@ from app.db.base import Base, JSONType, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.camera import Camera
+    from app.models.owner import Owner
     from app.models.site import Site
 
 
@@ -45,8 +46,18 @@ class EdgeDevice(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     reported_models_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # extension: device authentication (sha256 of the device API key)
     api_key_hash: Mapped[str | None] = mapped_column(String(128), unique=True)
+    # ---- provisioning (REACH register contract) ----
+    mac_address: Mapped[str | None] = mapped_column(String(17), unique=True)  # aa:bb:cc:dd:ee:ff
+    admin_state: Mapped[str] = mapped_column(String(16), default="active")  # active | disabled | retired
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("owners.id", ondelete="SET NULL"), index=True)
+    provisioning_token_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("provisioning_tokens.id", ondelete="SET NULL")
+    )
+    registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     site: Mapped[Site | None] = relationship(back_populates="edge_devices")
+    owner: Mapped[Owner | None] = relationship()
     cameras: Mapped[list[Camera]] = relationship(
         back_populates="edge_device", cascade="all, delete-orphan"
     )

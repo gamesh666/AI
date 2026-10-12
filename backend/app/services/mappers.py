@@ -14,6 +14,7 @@ from app.services import storage_service
 def device_to_read(device: EdgeDevice, camera_count: int = 0, disconnects_24h: int = 0) -> EdgeDeviceRead:
     dto = EdgeDeviceRead.model_validate(device)
     dto.site_name = device.site.name if device.site else None
+    dto.owner_name = device.owner.name if device.owner else None
     dto.camera_count = camera_count
     dto.disconnects_24h = disconnects_24h
     return dto

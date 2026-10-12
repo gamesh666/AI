@@ -5,7 +5,20 @@ from app.models.camera import Camera
 from app.models.detection_event import DetectionEvent
 from app.models.edge_device import EdgeDevice
 from app.models.edge_log import EdgeLog
+from app.models.owner import EdgeDeviceAudit, Owner, ProvisioningToken
 from app.models.site import Site
 from app.models.user import RefreshToken, User
 
-__all__ = ["AIModel", "Camera", "DetectionEvent", "EdgeDevice", "EdgeLog", "RefreshToken", "Site", "User"]
+__all__ = [
+    "AIModel",
+    "Camera",
+    "DetectionEvent",
+    "EdgeDevice",
+    "EdgeDeviceAudit",
+    "EdgeLog",
+    "Owner",
+    "ProvisioningToken",
+    "RefreshToken",
+    "Site",
+    "User",
+]

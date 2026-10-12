@@ -22,7 +22,11 @@ class DeviceRepository(BaseRepository[EdgeDevice]):
         return await self.get_by(api_key_hash=key_hash)
 
     def list_stmt(self, site_id: uuid.UUID | None = None, status: DeviceStatus | None = None):
-        stmt = select(EdgeDevice).options(selectinload(EdgeDevice.site)).order_by(EdgeDevice.name)
+        stmt = (
+            select(EdgeDevice)
+            .options(selectinload(EdgeDevice.site), selectinload(EdgeDevice.owner))
+            .order_by(EdgeDevice.name)
+        )
         if site_id:
             stmt = stmt.where(EdgeDevice.site_id == site_id)
         if status:

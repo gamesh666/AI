@@ -28,6 +28,7 @@ class SiteService:
         for site in rows:
             dto = SiteRead.model_validate(site)
             dto.device_count = counts.get(site.id, 0)
+            dto.owner_name = site.owner.name if site.owner else None
             items.append(dto)
         return Page(items=items, total=total, page=params.page, page_size=params.page_size)
 

@@ -92,8 +92,8 @@ class EdgeLogService:
                            payload.event_type, payload.device_id)
             return None
         device = await self.devices.get_by_device_uuid(payload.device_id)
-        if device is None:
-            logger.warning("log from unknown device %s dropped", payload.device_id)
+        if device is None or device.admin_state != "active":
+            logger.warning("log from unknown or disabled device %s dropped", payload.device_id)
             return None
         data_size = len(payload.model_dump_json(include={"data"}))
         if data_size > MAX_DATA_BYTES:

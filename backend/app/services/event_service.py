@@ -56,8 +56,8 @@ class EventService:
             logger.warning("device_id mismatch topic=%s payload=%s; dropped", topic_device_id, payload.device_id)
             return 0
         device = await self.devices.get_by_device_uuid(payload.device_id)
-        if device is None:
-            logger.warning("event from unknown device %s dropped", payload.device_id)
+        if device is None or device.admin_state != "active":
+            logger.warning("event from unknown or disabled device %s dropped", payload.device_id)
             return 0
 
         # camera_id in MQTT is the camera code (unique per device); a UUID is accepted as well

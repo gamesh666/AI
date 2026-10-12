@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,11 +16,18 @@ class EdgeDeviceCreate(BaseModel):
     device_uuid: str = Field(pattern=DEVICE_UUID_PATTERN)
     name: str = Field(min_length=1, max_length=128)
     site_id: uuid.UUID | None = None
+    # pre-bind a box: its auto-registration (MAC) then maps to this device instead of creating a new one
+    mac_address: str | None = Field(default=None, max_length=32)
+    owner_id: uuid.UUID | None = None
 
 
 class EdgeDeviceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     site_id: uuid.UUID | None = None
+    # admin only
+    mac_address: str | None = Field(default=None, max_length=32)  # "" clears
+    owner_id: uuid.UUID | None = None
+    admin_state: Literal["active", "disabled", "retired"] | None = None
 
 
 class EdgeDeviceRead(ORMModel):
@@ -44,6 +51,12 @@ class EdgeDeviceRead(ORMModel):
     camera_count: int = 0
     # connection losses in the last 24 h (connection history)
     disconnects_24h: int = 0
+    mac_address: str | None = None
+    admin_state: str = "active"
+    owner_id: uuid.UUID | None = None
+    owner_name: str | None = None
+    registered_at: datetime | None = None
+    last_registered_at: datetime | None = None
     # models the edge reports running (heartbeat), None = never reported
     reported_models: list[dict[str, Any]] | None = None
     reported_models_at: datetime | None = None

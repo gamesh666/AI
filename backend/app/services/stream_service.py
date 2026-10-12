@@ -96,7 +96,7 @@ class StreamService:
             return False
         stream_type, canonical = parsed
         device = await self.devices.get_by_api_key_hash(hash_token(req.password))
-        if device is None or device.device_uuid != req.user:
+        if device is None or device.device_uuid != req.user or device.admin_state != "active":
             return False
         camera = await self.cameras.get_by_stream_path(canonical)
         allowed = (
