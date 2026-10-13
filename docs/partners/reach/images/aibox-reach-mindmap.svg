@@ -1,23 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2300" height="1180" viewBox="0 0 2300 1180" font-family="&#x27;Noto Sans TC&#x27;,&#x27;Noto Sans CJK TC&#x27;,&#x27;PingFang TC&#x27;,&#x27;Microsoft JhengHei&#x27;,&#x27;WenQuanYi Zen Hei&#x27;,sans-serif">
 <rect width="2300" height="1180" fill="#ffffff"/>
-<text x="1150.0" y="58" text-anchor="middle" font-size="34" font-weight="700" fill="#0f172a">AIVMS 平台 × REACH01 / REACH02 串接運作</text>
+<text x="1150.0" y="58" text-anchor="middle" font-size="34" font-weight="700" fill="#0f172a">AIBOX SERVER × REACH01 / REACH02 串接運作</text>
 <text x="1150.0" y="94" text-anchor="middle" font-size="19" fill="#475569">REACH 自己辨識，主動把「已畫框影像」與「辨識結果」推給平台；平台只接收、保存、顯示，從不連進 REACH</text>
 <path d="M1025.0,620.0 C937.5,620.0 937.5,380.0 850.0,380.0" fill="none" stroke="#0f766e" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M657.2,380.0 C627.2,380.0 627.2,308.0 597.2,308.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M657.2,380.0 C627.2,380.0 627.2,356.0 597.2,356.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M657.2,380.0 C627.2,380.0 627.2,404.0 597.2,404.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M657.2,380.0 C627.2,380.0 627.2,452.0 597.2,452.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M617.9,380.0 C587.9,380.0 587.9,308.0 557.9,308.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M617.9,380.0 C587.9,380.0 587.9,356.0 557.9,356.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M617.9,380.0 C587.9,380.0 587.9,404.0 557.9,404.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M617.9,380.0 C587.9,380.0 587.9,452.0 557.9,452.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
 <path d="M1025.0,620.0 C937.5,620.0 937.5,596.0 850.0,596.0" fill="none" stroke="#b91c1c" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M701.0,596.0 C649.1,596.0 649.1,524.0 597.2,524.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M701.0,596.0 C649.1,596.0 649.1,572.0 597.2,572.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M701.0,596.0 C649.1,596.0 649.1,620.0 597.2,620.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M701.0,596.0 C649.1,596.0 649.1,668.0 597.2,668.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M701.0,596.0 C629.5,596.0 629.5,524.0 557.9,524.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M701.0,596.0 C629.5,596.0 629.5,572.0 557.9,572.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M701.0,596.0 C629.5,596.0 629.5,620.0 557.9,620.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M701.0,596.0 C629.5,596.0 629.5,668.0 557.9,668.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
 <path d="M1025.0,620.0 C937.5,620.0 937.5,836.0 850.0,836.0" fill="none" stroke="#4338ca" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M680.0,836.0 C638.6,836.0 638.6,740.0 597.2,740.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M680.0,836.0 C638.6,836.0 638.6,788.0 597.2,788.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M680.0,836.0 C638.6,836.0 638.6,836.0 597.2,836.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M680.0,836.0 C638.6,836.0 638.6,884.0 597.2,884.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
-<path d="M680.0,836.0 C638.6,836.0 638.6,932.0 597.2,932.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,740.0 557.9,740.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,788.0 557.9,788.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,836.0 557.9,836.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,884.0 557.9,884.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,932.0 557.9,932.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
 <path d="M1275.0,620.0 C1362.5,620.0 1362.5,296.0 1450.0,296.0" fill="none" stroke="#15803d" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
 <path d="M1611.9,296.0 C1680.6,296.0 1680.6,224.0 1749.3,224.0" fill="none" stroke="#15803d" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
 <path d="M1611.9,296.0 C1680.6,296.0 1680.6,272.0 1749.3,272.0" fill="none" stroke="#15803d" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
@@ -39,44 +39,44 @@
 <path d="M1614.0,944.0 C1681.7,944.0 1681.7,968.0 1749.3,968.0" fill="none" stroke="#c2410c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
 <path d="M1614.0,944.0 C1681.7,944.0 1681.7,1016.0 1749.3,1016.0" fill="none" stroke="#c2410c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
 <rect x="1025.0" y="558.0" width="250" height="124" rx="24" fill="#0f172a"/>
-<text x="1150.0" y="606.0" text-anchor="middle" font-size="27" font-weight="700" fill="#ffffff">AIVMS × REACH</text>
-<text x="1150.0" y="640.0" text-anchor="middle" font-size="18" fill="#cbd5e1">邊緣辨識 · 中央顯示</text>
+<text x="1150.0" y="606.0" text-anchor="middle" font-size="27" font-weight="700" fill="#ffffff">AIBOX SERVER</text>
+<text x="1150.0" y="640.0" text-anchor="middle" font-size="18" fill="#cbd5e1">× REACH 邊緣辨識</text>
 <text x="1150.0" y="664.0" text-anchor="middle" font-size="14" fill="#94a3b8">連線方向：REACH → 平台</text>
-<rect x="657.2" y="346.0" width="192.8" height="68" rx="16" fill="#0f766e"/>
-<text x="753.6" y="374.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">AIVMS 平台</text>
-<text x="753.6" y="399.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">VM 192.168.0.179</text>
-<rect x="329.2" y="289.0" width="268.0" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
-<text x="344.2" y="314.0" font-size="17" fill="#0f172a">只接收、只顯示，不做任何辨識</text>
-<rect x="364.6" y="337.0" width="232.6" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
-<text x="379.6" y="362.0" font-size="17" fill="#0f172a">網頁 3000 · API 8000</text>
-<rect x="235.7" y="385.0" width="361.5" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
-<text x="250.7" y="410.0" font-size="17" fill="#0f172a">MQTT 1883 · 串流 8554 · 快照 9000</text>
-<rect x="254.4" y="433.0" width="342.8" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
-<text x="269.4" y="458.0" font-size="17" fill="#0f172a">PostgreSQL 保存 · Redis 即時推播</text>
+<rect x="617.9" y="346.0" width="232.1" height="68" rx="16" fill="#0f766e"/>
+<text x="734.0" y="374.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">AIBOX SERVER</text>
+<text x="734.0" y="399.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">平台 VM 192.168.0.179</text>
+<rect x="289.9" y="289.0" width="268.0" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
+<text x="304.9" y="314.0" font-size="17" fill="#0f172a">只接收、只顯示，不做任何辨識</text>
+<rect x="325.3" y="337.0" width="232.6" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
+<text x="340.3" y="362.0" font-size="17" fill="#0f172a">網頁 3000 · API 8000</text>
+<rect x="196.4" y="385.0" width="361.5" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
+<text x="211.4" y="410.0" font-size="17" fill="#0f172a">MQTT 1883 · 串流 8554 · 快照 9000</text>
+<rect x="215.1" y="433.0" width="342.8" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
+<text x="230.1" y="458.0" font-size="17" fill="#0f172a">PostgreSQL 保存 · Redis 即時推播</text>
 <rect x="701.0" y="562.0" width="149.0" height="68" rx="16" fill="#b91c1c"/>
 <text x="775.5" y="590.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">身分與金鑰</text>
 <text x="775.5" y="615.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">哪一把用在哪</text>
-<rect x="266.0" y="505.0" width="331.2" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
-<text x="281.0" y="530.0" font-size="17" fill="#0f172a">裝置金鑰：每台一把，API + 推流密碼</text>
-<rect x="264.3" y="553.0" width="332.9" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
-<text x="279.3" y="578.0" font-size="17" fill="#0f172a">MQTT 帳密：共用，REACH 改好後停用</text>
-<rect x="253.0" y="601.0" width="344.2" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
-<text x="268.0" y="626.0" font-size="17" fill="#0f172a">佈建權杖：每個業主一把，MAC 自動註冊</text>
-<rect x="240.8" y="649.0" width="356.4" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
-<text x="255.8" y="674.0" font-size="17" fill="#0f172a">Tailscale 金鑰：只管網路，與平台無關</text>
+<rect x="226.7" y="505.0" width="331.2" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="241.7" y="530.0" font-size="17" fill="#0f172a">裝置金鑰：每台一把，API + 推流密碼</text>
+<rect x="225.0" y="553.0" width="332.9" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="240.0" y="578.0" font-size="17" fill="#0f172a">MQTT 帳密：共用，REACH 改好後停用</text>
+<rect x="213.7" y="601.0" width="344.2" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="228.7" y="626.0" font-size="17" fill="#0f172a">佈建權杖：每個業主一把，MAC 自動註冊</text>
+<rect x="201.5" y="649.0" width="356.4" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="216.5" y="674.0" font-size="17" fill="#0f172a">Tailscale 金鑰：只管網路，與平台無關</text>
 <rect x="680.0" y="802.0" width="170.0" height="68" rx="16" fill="#4338ca"/>
 <text x="765.0" y="830.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">平台上看得到</text>
 <text x="765.0" y="855.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">給使用者</text>
-<rect x="278.2" y="721.0" width="319.0" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
-<text x="293.2" y="746.0" font-size="17" fill="#0f172a">總覽：在線台數、今日斷線、即時紀錄</text>
-<rect x="380.2" y="769.0" width="217.0" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
-<text x="395.2" y="794.0" font-size="17" fill="#0f172a">即時監看：已畫框的影像</text>
-<rect x="210.9" y="817.0" width="386.3" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
-<text x="225.9" y="842.0" font-size="17" fill="#0f172a">Edge 紀錄：離席 / 回座、斷線、攝影機增減</text>
-<rect x="263.6" y="865.0" width="333.6" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
-<text x="278.6" y="890.0" font-size="17" fill="#0f172a">AI 模型：哪台、哪支攝影機用哪個模型</text>
-<rect x="224.5" y="913.0" width="372.7" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
-<text x="239.5" y="938.0" font-size="17" fill="#0f172a">業主 / 場域：合約資料 → site_profile</text>
+<rect x="238.9" y="721.0" width="319.0" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="253.9" y="746.0" font-size="17" fill="#0f172a">總覽：在線台數、今日斷線、即時紀錄</text>
+<rect x="340.9" y="769.0" width="217.0" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="355.9" y="794.0" font-size="17" fill="#0f172a">即時監看：已畫框的影像</text>
+<rect x="86.6" y="817.0" width="471.3" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="101.6" y="842.0" font-size="17" fill="#0f172a">Edge 紀錄：辨識結果、離席 / 回座、斷線、攝影機增減</text>
+<rect x="224.3" y="865.0" width="333.6" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="239.3" y="890.0" font-size="17" fill="#0f172a">AI 模型：哪台、哪支攝影機用哪個模型</text>
+<rect x="185.2" y="913.0" width="372.7" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="200.2" y="938.0" font-size="17" fill="#0f172a">業主 / 場域：合約資料 → site_profile</text>
 <rect x="1450.0" y="262.0" width="161.9" height="68" rx="16" fill="#15803d"/>
 <text x="1531.0" y="290.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">REACH01</text>
 <text x="1531.0" y="315.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">同區網 · 直接連</text>
@@ -121,5 +121,5 @@
 <text x="1764.3" y="974.0" font-size="17" fill="#0f172a">③ 心跳 + 推流 + 送辨識紀錄</text>
 <rect x="1749.3" y="997.0" width="352.3" height="38" rx="10" fill="#ffedd5" stroke="#c2410c" stroke-width="1.5"/>
 <text x="1764.3" y="1022.0" font-size="17" fill="#0f172a">④ 斷線 → 平台記錄 → 恢復時記中斷多久</text>
-<text x="1150.0" y="1156" text-anchor="middle" font-size="15" fill="#94a3b8">金鑰、密碼、權杖不在此圖中，一律另以安全管道交付 · docs/partners/reach/03-AIVMS與REACH01-02串接說明.md</text>
+<text x="1150.0" y="1156" text-anchor="middle" font-size="15" fill="#94a3b8">金鑰、密碼、權杖不在此圖中，一律另以安全管道交付 · docs/partners/reach/03-AIBOX-SERVER與REACH01-02串接說明.md</text>
 </svg>

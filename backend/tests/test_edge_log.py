@@ -75,3 +75,27 @@ def test_camera_sync_rejects_duplicate_codes():
         EdgeCameraSync.model_validate({"cameras": [{"code": "cam01"}, {"code": "cam01"}]})
     with pytest.raises(ValidationError):
         EdgeCameraSync.model_validate({"cameras": [{"code": "bad code"}]})
+
+
+def test_detection_events_become_edge_logs():
+    from aivms_shared.payloads import DetectionEvent
+    from app.services.edge_log_service import DETECTION_EVENT_TYPE, detection_to_log
+
+    box = {"x1": 1, "y1": 2, "x2": 3, "y2": 4}
+    event = DetectionEvent.model_validate({
+        "device_id": "EDGE001", "camera_id": "CAM001", "model": "yolo11n",
+        "detections": [
+            {"class_id": 0, "class_name": "person", "confidence": 0.9, "bbox": box},
+            {"class_id": 0, "class_name": "person", "confidence": 0.8, "bbox": box},
+            {"class_id": 7, "class_name": "truck", "confidence": 0.7, "bbox": box},
+        ],
+        "frame": {"width": 640, "height": 360},
+        "snapshot_key": "2026/10/13/EDGE001/x/y.jpg",
+    })
+    log = detection_to_log(event)
+    assert (log.event_type, log.device_id, log.camera_id) == (DETECTION_EVENT_TYPE, "EDGE001", "CAM001")
+    assert log.event_id == str(event.event_id)
+    assert log.message == "person ×2 · truck"
+    assert log.data["classes"] == {"person": 2, "truck": 1} and log.data["model"] == "yolo11n"
+    assert len(log.detections) == 3 and log.frame.width == 640
+    assert log.snapshot_key == event.snapshot_key

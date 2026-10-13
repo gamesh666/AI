@@ -38,7 +38,7 @@ async def register(
 
     - with `mac_address` (REACH AI BOX contract): owner provisioning token, identity = MAC, platform-assigned
       device ID, the key is rotated on every call, `site_profile` is returned
-    - without (AIVMS edge-agent): platform-wide token from EDGE_PROVISIONING_TOKEN, agent-chosen device ID
+    - without (edge-agent): platform-wide token from EDGE_PROVISIONING_TOKEN, agent-chosen device ID
     Errors are always {"detail": "<text>"}.
     """
     ip = request.client.host if request.client else "unknown"

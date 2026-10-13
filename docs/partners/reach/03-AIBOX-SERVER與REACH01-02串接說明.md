@@ -1,22 +1,22 @@
-# AIVMS 平台 × REACH01 / REACH02 串接說明
+# AIBOX SERVER 平台 × REACH01 / REACH02 串接說明
 
 > 給誰看：要了解、維護或排查這套串接的人（平台管理員、REACH 開發者、現場 IT）
-> 內容：兩台 REACH 邊緣設備怎麼連到 AIVMS 平台、各傳什麼、平台上看得到什麼、出問題時看哪裡
+> 內容：兩台 REACH 邊緣設備怎麼連到 AIBOX SERVER 平台、各傳什麼、平台上看得到什麼、出問題時看哪裡
 > 本文件**不含**任何金鑰、密碼或權杖；這些只用安全管道另外交付。
 
-![AIVMS × REACH 串接心智圖](images/aivms-reach-mindmap.png)
+![AIBOX SERVER × REACH 串接心智圖](images/aibox-reach-mindmap.png)
 
-（向量版：[`images/aivms-reach-mindmap.svg`](images/aivms-reach-mindmap.svg)）
+（向量版：[`images/aibox-reach-mindmap.svg`](images/aibox-reach-mindmap.svg)）
 
 ---
 
 ## 1. 一句話說明
 
-**REACH 設備自己辨識、自己判斷，再主動把「已畫框的影像」和「辨識結果」推到 AIVMS；
-AIVMS 只負責接收、保存、顯示，不做任何辨識，也從不主動連進 REACH。**
+**REACH 設備自己辨識、自己判斷，再主動把「已畫框的影像」和「辨識結果」推到 AIBOX SERVER；
+AIBOX SERVER 只負責接收、保存、顯示，不做任何辨識，也從不主動連進 REACH。**
 
 ```text
-          REACH01（同區網）                               AIVMS 平台（VM 192.168.0.179）
+          REACH01（同區網）                               AIBOX SERVER 平台（VM 192.168.0.179）
   攝影機 ─► 拉流 ─► YOLO / 離席判斷 ─► 畫框 ──┐
                                                │  HTTP 8000   登記攝影機、取設定、快照上傳簽章
           REACH02 / aibox（192.168.89.x）      ├─►MQTT 1883   心跳、狀態、辨識紀錄
@@ -31,7 +31,7 @@ AIVMS 只負責接收、保存、顯示，不做任何辨識，也從不主動�
 
 | 角色 | 位置 | 負責 |
 |------|------|------|
-| **AIVMS 平台** | Ubuntu VM `192.168.0.179`（辦公室區網 `192.168.0.0/24`），Docker Compose | 接收、保存、顯示；帳號權限；多場域總覽 |
+| **AIBOX SERVER 平台** | Ubuntu VM `192.168.0.179`（辦公室區網 `192.168.0.0/24`），Docker Compose | 接收、保存、顯示；帳號權限；多場域總覽 |
 | **REACH01**（REACH Office Vision） | 辦公室區網，和平台**同網段** | 兩支攝影機的辦公室離席辨識（前鏡頭捕捉、後鏡頭確認） |
 | **REACH02**（aibox） | 另一個區網 `192.168.89.0/24` | 一支攝影機的辨識 |
 | **Tailscale（B 帳號）** | 平台 VM 與 aibox 都已加入 | 讓不同網段的 aibox 連得到平台 |
@@ -98,7 +98,7 @@ aibox (192.168.89.x) ──Tailscale──► 平台 VM（子網路由 192.168.0
 > `POST /edge/heartbeat`、`/edge/status`、`/edge/cameras/{攝影機}/status`、`/edge/logs`。
 > JSON 內容與 MQTT 相同，改用每台自己的裝置金鑰驗證，不再需要共用的 MQTT 帳密。
 >
-> - REACH 要改的地方見 [`04-REACH-改用HTTP回傳規格.md`](04-REACH-改用HTTP回傳規格.md)。
+> - REACH 要改的地方見 [`05-REACH-更新規格v2.md`](05-REACH-更新規格v2.md)。
 > - REACH01、REACH02 都改好之後，平台會停用 MQTT 共用帳號，四條通道就只剩 HTTP、RTSP、快照三種連線。
 > - 進度可在「邊緣裝置」頁的**通訊方式**欄位查看。
 
@@ -123,7 +123,7 @@ REACH 的離席事件從「離開」到「回座」會送兩次，**用同一個
 | **佈建權杖**（Provisioning Token） | 每個**業主**一把 | 新設備以 MAC 自動註冊（`/edge/register`） | 設備出廠設定 | 平台「業主 → 佈建權杖 → 撤銷」；已註冊的設備不受影響 |
 | **Tailscale Auth Key** | — | 只用來讓機器加入 Tailscale 網路，**與平台無關** | 網管 | Tailscale 後台撤銷 |
 
-> 常見錯誤：把 Tailscale 的 `tskey-auth-…` 當成裝置金鑰填進 `AIVMS_DEVICE_KEY`——兩者完全不同。
+> 常見錯誤：把 Tailscale 的 `tskey-auth-…` 當成裝置金鑰填進 `AIBOX_DEVICE_KEY`——兩者完全不同。
 
 ---
 
@@ -198,7 +198,7 @@ docker compose logs -f mediamtx  | grep -i "REACH0[12]"                         
 - 平台只存金鑰與權杖的 hash；裝置金鑰與權杖都只在產生時顯示一次。
 - 目前測試環境走 Tailscale（WireGuard 加密）＋ HTTP；**正式對外前要改 HTTPS**。
 - MQTT 目前所有 Edge 共用一組帳密，外流就能冒充任何一台。因此改走 HTTP（每台自己的裝置金鑰），
-  REACH 改好後停用共用帳號（[`04`](04-REACH-改用HTTP回傳規格.md)、[`mqtt-to-http.md`](../../mqtt-to-http.md)）。
+  REACH 改好後停用共用帳號（[`05`](05-REACH-更新規格v2.md)、[`mqtt-to-http.md`](../../mqtt-to-http.md)）。
 
 ---
 
@@ -206,9 +206,9 @@ docker compose logs -f mediamtx  | grep -i "REACH0[12]"                         
 
 | 文件 | 內容 |
 |------|------|
-| [`01-AIVMS-平台說明與串接訴求.md`](01-AIVMS-平台說明與串接訴求.md) | 平台定位與分工 |
+| [`01-AIBOX-SERVER-平台說明與串接訴求.md`](01-AIBOX-SERVER-平台說明與串接訴求.md) | 平台定位與分工 |
 | [`02-REACH-需新增功能規格.md`](02-REACH-需新增功能規格.md) | REACH 端串接模組的開發與驗收規格 |
-| [`04-REACH-改用HTTP回傳規格.md`](04-REACH-改用HTTP回傳規格.md) | 心跳、狀態、事件從 MQTT 改走 HTTP（REACH 要改的地方） |
+| [`05-REACH-更新規格v2.md`](05-REACH-更新規格v2.md) | **最新**：改走 HTTP、平台更名、統一紀錄規範（REACH 要改的地方） |
 | [`../../mqtt-to-http.md`](../../mqtt-to-http.md) | 平台端停用 MQTT 共用帳號的步驟 |
-| [`../../edge-integration.md`](../../edge-integration.md) | 通用第三方 Edge 串接規格（欄位、topic、範例 JSON） |
+| [`../../edge-integration.md`](../../edge-integration.md) | 通用 Edge 串接規格（欄位、topic、範例 JSON） |
 | [`../../reach-edge-register/CLAUDE.md`](../../reach-edge-register/CLAUDE.md) / [`DELIVERY.md`](../../reach-edge-register/DELIVERY.md) | MAC 自動註冊契約與交付清單 |

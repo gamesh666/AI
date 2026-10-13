@@ -49,7 +49,7 @@ export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
   };
 
   const snippet = created
-    ? `AIVMS_API_URL=${API_BASE.replace(/\/api\/v1$/, "")}\nAIVMS_PROVISIONING_TOKEN=${created.token}\n`
+    ? `AIBOX_API_URL=${API_BASE.replace(/\/api\/v1$/, "")}\nAIBOX_PROVISIONING_TOKEN=${created.token}\n`
     : "";
 
   return (

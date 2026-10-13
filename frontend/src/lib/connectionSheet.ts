@@ -62,21 +62,21 @@ export function buildConnectionSheet(
   }
 
   lines.push(
-    "AIVMS_ENABLED=true",
-    `AIVMS_API_URL=${apiBase}`,
-    `AIVMS_DEVICE_ID=${id}`,
-    `AIVMS_DEVICE_KEY=${key}`,
-    "AIVMS_TELEMETRY=http",
+    "AIBOX_ENABLED=true",
+    `AIBOX_API_URL=${apiBase}`,
+    `AIBOX_DEVICE_ID=${id}`,
+    `AIBOX_DEVICE_KEY=${key}`,
+    "AIBOX_TELEMETRY=http",
     ...(mqtt
       ? [
-          `AIVMS_MQTT_HOST=${info.mqtt_host}`,
-          `AIVMS_MQTT_PORT=${info.mqtt_port}`,
-          `AIVMS_MQTT_TLS=${info.mqtt_tls}`,
-          `AIVMS_MQTT_USERNAME=${info.mqtt_username}`,
-          `AIVMS_MQTT_PASSWORD=${mqttPassword}`,
+          `AIBOX_MQTT_HOST=${info.mqtt_host}`,
+          `AIBOX_MQTT_PORT=${info.mqtt_port}`,
+          `AIBOX_MQTT_TLS=${info.mqtt_tls}`,
+          `AIBOX_MQTT_USERNAME=${info.mqtt_username}`,
+          `AIBOX_MQTT_PASSWORD=${mqttPassword}`,
         ]
       : []),
-    `AIVMS_STREAM_URL=${info.stream_protocol === "srt" && info.srt_publish_url ? info.srt_publish_url : info.rtsp_publish_url}`,
+    `AIBOX_STREAM_URL=${info.stream_protocol === "srt" && info.srt_publish_url ? info.srt_publish_url : info.rtsp_publish_url}`,
     "",
     `# ${t("sheet.step1")}`,
     `#    PUT ${apiBase}/edge/cameras/<camera_code>   (X-Device-Key: <DEVICE_KEY>)  {"name": "..."}`,

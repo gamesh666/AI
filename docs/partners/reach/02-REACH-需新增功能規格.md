@@ -1,7 +1,9 @@
-# REACH 需新增功能規格：AIVMS 平台串接模組（aivms_bridge）
+# REACH 需新增功能規格：AIBOX SERVER 平台串接模組（aivms_bridge）
+
+> **已更新**：心跳、狀態、事件改走 HTTP，設定改名 `AIBOX_*`，以及紀錄命名規範，請見 [`05-REACH-更新規格v2.md`](05-REACH-更新規格v2.md)；兩者衝突時以 05 為準。
 
 > 對象：REACH AI Office Vision System 開發者（含 Claude Code）
-> 背景與分工：見 `01-AIVMS-平台說明與串接訴求.md`
+> 背景與分工：見 `01-AIBOX-SERVER-平台說明與串接訴求.md`
 > 本文件是**新增**功能的開發與驗收規格，不改變 `CLAUDE_SPEC.md` 既有的任何行為。
 
 ---
@@ -9,7 +11,7 @@
 ## 0. 原則（必須遵守）
 
 1. **只新增、不改壞**：不得改變 REACH 既有 RTSP / YOLO / ROI / 離席狀態機 / Dashboard / 日報的行為與結果。
-2. **可關閉**：`AIVMS_ENABLED=false`（預設）時模組完全不啟動，REACH 行為與現在一模一樣。
+2. **可關閉**：`AIBOX_ENABLED=false`（預設）時模組完全不啟動，REACH 行為與現在一模一樣。
 3. **故障隔離**：平台斷線、推流失敗、HTTP 錯誤都**不得**阻塞或拖慢 REACH 的主流程。
    - 與主流程之間一律用**有上限的佇列**，滿了就**丟最舊的**，絕不等待。
    - 所有網路動作在獨立執行緒，例外要被攔下並記 log，不可讓 REACH 程序結束。
@@ -44,22 +46,22 @@ REACH 主程式只需要在三個地方各加一行呼叫（其餘全部在模�
 放在 `/etc/reach-ai-office-vision/office-vision.env`（權限 640，與既有設定相同）。
 
 ```bash
-AIVMS_ENABLED=true
-AIVMS_API_URL='http://<平台IP>:8000/api/v1'
-AIVMS_DEVICE_ID='REACH01'
-AIVMS_DEVICE_KEY='<平台提供，只顯示一次>'
-AIVMS_MQTT_HOST='<平台IP>'
-AIVMS_MQTT_PORT=1883
-AIVMS_MQTT_USERNAME='<平台提供>'
-AIVMS_MQTT_PASSWORD='<平台提供>'
-AIVMS_MQTT_TLS=false
-AIVMS_STREAM_URL='rtsp://<平台IP>:8554'      # 跨網際網路可改 srt://<平台IP>:8890
-AIVMS_STREAM_FPS=15
-AIVMS_STREAM_WIDTH=1280                       # 0 = 維持原始解析度；高度依比例
-AIVMS_STREAM_BITRATE=2M
-AIVMS_VIDEO_ENCODER=auto                      # auto | h264_nvenc | libx264（auto：有 NVENC 用 NVENC，否則 libx264）
-AIVMS_SEND_EMPLOYEE_NAME=false                # 是否在事件中附員工姓名（個資，預設不送）
-AIVMS_SEND_SNAPSHOT=true
+AIBOX_ENABLED=true
+AIBOX_API_URL='http://<平台IP>:8000/api/v1'
+AIBOX_DEVICE_ID='REACH01'
+AIBOX_DEVICE_KEY='<平台提供，只顯示一次>'
+AIBOX_MQTT_HOST='<平台IP>'
+AIBOX_MQTT_PORT=1883
+AIBOX_MQTT_USERNAME='<平台提供>'
+AIBOX_MQTT_PASSWORD='<平台提供>'
+AIBOX_MQTT_TLS=false
+AIBOX_STREAM_URL='rtsp://<平台IP>:8554'      # 跨網際網路可改 srt://<平台IP>:8890
+AIBOX_STREAM_FPS=15
+AIBOX_STREAM_WIDTH=1280                       # 0 = 維持原始解析度；高度依比例
+AIBOX_STREAM_BITRATE=2M
+AIBOX_VIDEO_ENCODER=auto                      # auto | h264_nvenc | libx264（auto：有 NVENC 用 NVENC，否則 libx264）
+AIBOX_SEND_EMPLOYEE_NAME=false                # 是否在事件中附員工姓名（個資，預設不送）
+AIBOX_SEND_SNAPSHOT=true
 ```
 
 缺少必要設定時：記一行 warning 並**停用模組**，REACH 照常啟動。
@@ -76,9 +78,9 @@ AIVMS_SEND_SNAPSHOT=true
 | 3.6 | 事件 | MQTT `edge/{device}/cameras/{camera_code}/logs` | 事件狀態改變時 |
 | 3.7 | 快照（選用） | HTTP presign + PUT | 事件成立時 |
 
-- `{device}` = `AIVMS_DEVICE_ID`（例 `REACH01`）
+- `{device}` = `AIBOX_DEVICE_ID`（例 `REACH01`）
 - `{camera_code}` = REACH 的 `camera_id`：`bimer-entrance-right`、`bimer-back-left`
-- 所有 HTTP 呼叫都帶 header：`X-Device-Key: <AIVMS_DEVICE_KEY>`
+- 所有 HTTP 呼叫都帶 header：`X-Device-Key: <AIBOX_DEVICE_KEY>`
 - 所有時間用 **ISO 8601 且帶時區**，例如 `2026-09-29T09:15:10+08:00`
 
 ## 4. 同步攝影機清單（3.1）
@@ -86,7 +88,7 @@ AIVMS_SEND_SNAPSHOT=true
 啟動時（以及攝影機有增減時）送出 **REACH 目前全部的攝影機**：
 
 ```http
-PUT {AIVMS_API_URL}/edge/cameras
+PUT {AIBOX_API_URL}/edge/cameras
 X-Device-Key: ...
 Content-Type: application/json
 
@@ -198,8 +200,8 @@ MQTT 連線前設定 **Last Will**（retained、QoS 1）：
 **推流目標**：
 
 ```text
-RTSP：rtsp://<AIVMS_DEVICE_ID>:<AIVMS_DEVICE_KEY>@<平台IP>:8554/<stream_path>
-SRT ：srt://<平台IP>:8890?streamid=publish:<stream_path>:<AIVMS_DEVICE_ID>:<AIVMS_DEVICE_KEY>&pkt_size=1316
+RTSP：rtsp://<AIBOX_DEVICE_ID>:<AIBOX_DEVICE_KEY>@<平台IP>:8554/<stream_path>
+SRT ：srt://<平台IP>:8890?streamid=publish:<stream_path>:<AIBOX_DEVICE_ID>:<AIBOX_DEVICE_KEY>&pkt_size=1316
 ```
 
 帳號、金鑰需 URL encode。log 中只能印出遮蔽後的網址（例如 `rtsp://***@host:8554/<stream_path>`）。
@@ -208,8 +210,8 @@ SRT ：srt://<平台IP>:8890?streamid=publish:<stream_path>:<AIVMS_DEVICE_ID>:<A
 
 1. 每支攝影機一個推流執行緒，與推論執行緒分開。
 2. `publish_frame()` 只把影格放進**容量 2 的佇列，滿了丟最舊的**，立即返回。
-3. 推流執行緒依 `AIVMS_STREAM_FPS` 取最新影格送給 ffmpeg；沒有新影格時重送上一張，維持固定 FPS。
-4. 依 `AIVMS_STREAM_WIDTH` 縮放（等比例，寬高取偶數）。
+3. 推流執行緒依 `AIBOX_STREAM_FPS` 取最新影格送給 ffmpeg；沒有新影格時重送上一張，維持固定 FPS。
+4. 依 `AIBOX_STREAM_WIDTH` 縮放（等比例，寬高取偶數）。
 5. ffmpeg 參數參考：
 
 ```bash
@@ -310,7 +312,7 @@ ffmpeg -loglevel warning -f rawvideo -pix_fmt bgr24 -s {W}x{H} -r {FPS} -i - -an
 | `message` | 給人看的一行文字，≤ 1000 字 |
 | `data` | 任意 JSON，≤ 64 KB。`away_seconds` 依 REACH 規格只算有效工作時間 |
 | `detections` | 選用。`bbox` 為像素座標，需同時送 `frame`；若用 0~1 正規化座標則不送 `frame` |
-| 員工姓名 | 只有 `AIVMS_SEND_EMPLOYEE_NAME=true` 時才放進 `data.employee_name` |
+| 員工姓名 | 只有 `AIBOX_SEND_EMPLOYEE_NAME=true` 時才放進 `data.employee_name` |
 
 整則訊息 ≤ 256 KB。
 
@@ -325,7 +327,7 @@ ffmpeg -loglevel warning -f rawvideo -pix_fmt bgr24 -s {W}x{H} -r {FPS} -i - -an
 事件成立（`open`）時附一張已畫框的 JPEG：
 
 ```http
-POST {AIVMS_API_URL}/edge/snapshots/presign
+POST {AIBOX_API_URL}/edge/snapshots/presign
 X-Device-Key: ...
 Content-Type: application/json
 
@@ -360,11 +362,11 @@ Content-Type: application/json
 
 - [ ] REACH 離席事件 → 平台 JSON 的轉換（`open` / `returned` / `auto_closed` / `cancelled`）
 - [ ] `timestamp` = `leave_time`，不是 `confirmed_at`
-- [ ] `AIVMS_SEND_EMPLOYEE_NAME=false` 時 payload 不含姓名
+- [ ] `AIBOX_SEND_EMPLOYEE_NAME=false` 時 payload 不含姓名
 - [ ] URL 遮蔽：log 字串不含金鑰、密碼
 - [ ] 佇列滿時丟最舊、`publish_frame()` / `report_event()` 不阻塞
 - [ ] 退避序列為 1, 2, 5, 10, 30, 30…
-- [ ] `AIVMS_ENABLED=false` 或缺設定時模組不啟動、不拋例外
+- [ ] `AIBOX_ENABLED=false` 或缺設定時模組不啟動、不拋例外
 
 **整合測試**（連平台測試環境）：見下一節驗收清單。
 
@@ -396,7 +398,7 @@ Content-Type: application/json
 
 ### 不影響 REACH
 
-- [ ] `AIVMS_ENABLED=false` 時 REACH 行為、效能與現在相同
+- [ ] `AIBOX_ENABLED=false` 時 REACH 行為、效能與現在相同
 - [ ] 平台完全斷線時，REACH 的 RTSP、YOLO、Dashboard、事件、日報全部正常
 - [ ] REACH 的 log、Git、前端 API 中查不到裝置金鑰、MQTT 密碼、攝影機帳密
 

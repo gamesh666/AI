@@ -23,7 +23,6 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
       { href: "/dashboard", label: "nav.dashboard", icon: "▦" },
       { href: "/monitor", label: "nav.monitor", icon: "◉" },
       { href: "/logs", label: "nav.logs", icon: "☰" },
-      { href: "/events", label: "nav.events", icon: "⚑" },
     ],
   },
   {

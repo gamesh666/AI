@@ -31,6 +31,7 @@ class DashboardService:
             pending_devices=by_status.get(DeviceStatus.PENDING, 0),
             camera_count=await self.cameras.count_total(),
             active_camera_count=await self.cameras.count_active(),
+            # legacy detection table (no longer written: detections are Edge logs of type ai.detection)
             events_today=await self.events.count_since(since),
             logs_today=await self.logs.count_since(since),
             disconnects_today=await self.logs.count_type_since(CONNECTION, since),

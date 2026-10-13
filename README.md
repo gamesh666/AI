@@ -241,7 +241,7 @@ Base `/api/v1`，互動文件：`/docs`。管理 API 以 `Authorization: Bearer 
 | POST | `/edge/register` | `X-Provisioning-Token` | Edge 註冊 → device key |
 | GET | `/edge/config` | `X-Device-Key` | 攝影機（含解密後 RTSP URL）、模型、MQTT / 串流設定 |
 | POST | `/edge/snapshots/presign` | `X-Device-Key` | MinIO presigned PUT URL（`camera_id` 或 `camera_code`） |
-| PUT | `/edge/cameras/{code}` | `X-Device-Key` | 第三方 Edge 自行宣告攝影機（來源留在 Edge），回傳 stream path |
+| PUT | `/edge/cameras/{code}` | `X-Device-Key` | Edge（如 REACH）自行宣告攝影機（來源留在 Edge），回傳 stream path |
 | WS | `/ws?token=<access_token>[&types=...]` | user | 即時推播 `detection.created`, `log.created`, `log.updated`, `device.heartbeat`, `device.status`, `camera.status` |
 
 ---
@@ -262,7 +262,7 @@ Base `/api/v1`，互動文件：`/docs`。管理 API 以 `Authorization: Bearer 
 `device_id` = `edge_devices.device_uuid`（例 `edge01`），`camera_id` = `cameras.code`（例 `cam01`）。Schema：`shared/schemas/*.schema.json`。
 影像**不經過** MQTT / WebSocket，只走 H.264 串流。
 
-**第三方 Edge**（不使用本 repo 的 edge-agent，辨識內容自訂，平台只接收與顯示）：見 [`docs/edge-integration.md`](docs/edge-integration.md) 與可執行範例 [`examples/third-party-edge/`](examples/third-party-edge/)。
+**REACH 等 AI BOX**（不使用本 repo 的 edge-agent，辨識內容自訂，平台只接收與顯示）：見 [`docs/edge-integration.md`](docs/edge-integration.md) 與可執行範例 [`examples/third-party-edge/`](examples/third-party-edge/)。
 
 Detection event：
 ```json

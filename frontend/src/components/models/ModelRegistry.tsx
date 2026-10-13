@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import type { AIModel } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
-/** Platform-side model registry: assigned to cameras of the AIVMS edge-agent. */
+/** Platform-side model registry: assigned to cameras of the platform's edge-agent. */
 export function ModelRegistry() {
   const { t } = useI18n();
   const { hasRole } = useAuth();

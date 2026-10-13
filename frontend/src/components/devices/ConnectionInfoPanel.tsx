@@ -77,7 +77,7 @@ export function ConnectionInfoPanel({
       {copied === "failed" && <p className="text-xs text-red-300">{t("sheet.copyFailed")}</p>}
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => copy("all", sheet)}>{copied === "all" ? t("sheet.copied") : t("sheet.copyAll")}</Button>
-        <Button variant="secondary" onClick={() => downloadText(`${info.device_id}-aivms.env`, sheet)}>
+        <Button variant="secondary" onClick={() => downloadText(`${info.device_id}-aibox.env`, sheet)}>
           {t("sheet.download")}
         </Button>
         <Button variant="ghost" onClick={onClose}>

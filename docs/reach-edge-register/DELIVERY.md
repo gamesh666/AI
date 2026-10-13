@@ -1,4 +1,4 @@
-# 交付清單：AIVMS → REACH（回覆 `CLAUDE.md` §10）
+# 交付清單：AIBOX SERVER → REACH（回覆 `CLAUDE.md` §10）
 
 > 對應契約：`docs/reach-edge-register/CLAUDE.md`（2026-10-12 版）
 > 實作：`backend/app/services/provisioning.py`、`backend/app/services/site_profile.py`、`backend/app/api/v1/edge.py`
@@ -22,7 +22,7 @@
 - **重新註冊**：同業主權杖 + 同 MAC → 同一個 device_uuid、新 api_key、舊 key 立即失效（401）。
 - **稽核**：registered / re_registered / key_rotated / rejected_401 / rejected_403 / rejected_409，含時間、來源 IP、權杖前綴、MAC，不含任何金鑰或權杖。
 - **MQTT**：仍使用平台固定帳密（不是 api_key），topic 前綴 `edge/{device_uuid}/`。
-- 不帶 `mac_address` 的舊註冊方式只供 AIVMS edge-agent 使用，無法接管已依 MAC / 業主佈建的裝置。
+- 不帶 `mac_address` 的舊註冊方式只供 edge-agent 使用，無法接管已依 MAC / 業主佈建的裝置。
 
 ## §9 契約腳本輸出（測試環境，2026-10-12）
 

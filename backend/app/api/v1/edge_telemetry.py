@@ -24,8 +24,7 @@ from app.schemas.edge import EdgeHeartbeatAck, EdgeLogAck, EdgeLogBatchAck, Edge
 from app.schemas.site import SLUG_PATTERN
 from app.services import telemetry
 from app.services.device_service import DeviceService
-from app.services.edge_log_service import EdgeLogService
-from app.services.event_service import EventService
+from app.services.edge_log_service import EdgeLogService, detection_to_log
 from app.services.provisioning import UnprocessableError
 
 router = APIRouter()
@@ -154,8 +153,11 @@ async def logs(request: Request, device: CurrentDevice, db: DBSession) -> EdgeLo
 
 @router.post("/events", status_code=204)
 async def events(request: Request, device: CurrentDevice, db: DBSession) -> None:
-    """Detection event, same body as edge/{device}/cameras/{camera}/events (AIVMS edge-agent format)."""
+    """Detection event (edge-agent format, same body as edge/{device}/cameras/{camera}/events).
+
+    Stored as an Edge log of type ai.detection, like every other recognition result.
+    """
     data = _own(_object(await _json(request)), "device_id", device.device_uuid)
     event = _validate(DetectionEvent, data, "event")
     if event.detections:
-        await EventService(db).ingest(event, device.device_uuid)
+        await EdgeLogService(db).ingest(detection_to_log(event), device.device_uuid)

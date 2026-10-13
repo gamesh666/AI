@@ -7,13 +7,13 @@ from aivms_shared.payloads import DetectionEvent
 from app.db.session import get_session_factory
 from app.messaging.base import IncomingMessage
 from app.messaging.handlers._common import parse_payload
-from app.services.event_service import EventService
+from app.services.edge_log_service import EdgeLogService, detection_to_log
 
 logger = logging.getLogger(__name__)
 
 
 async def handle_detection(msg: IncomingMessage) -> None:
-    """Handles both edge/{d}/events and edge/{d}/cameras/{c}/events."""
+    """edge/{d}/events and edge/{d}/cameras/{c}/events (edge-agent format) -> stored as an Edge log."""
     parsed = topics.parse(msg.topic)
     event = parse_payload(msg, DetectionEvent)
     if parsed is None or event is None:
@@ -24,5 +24,4 @@ async def handle_detection(msg: IncomingMessage) -> None:
     if not event.detections:
         return
     async with get_session_factory()() as session:
-        inserted = await EventService(session).ingest(event, parsed.device_id)
-    logger.debug("event %s: %d detections stored", event.event_id, inserted)
+        await EdgeLogService(session).ingest(detection_to_log(event), parsed.device_id)

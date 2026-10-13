@@ -4,7 +4,7 @@ Two flows:
 - MAC flow (REACH AI BOX contract, docs/reach-edge-register/CLAUDE.md): the body carries `mac_address`;
   the device is identified by its MAC, belongs to the owner of the provisioning token, gets a platform ID
   (<prefix>01, <prefix>02, ...) and a fresh key on every (re-)registration.
-- legacy flow (AIVMS edge-agent): no MAC, the platform-wide token from EDGE_PROVISIONING_TOKEN, the
+- legacy flow (edge-agent): no MAC, the platform-wide token from EDGE_PROVISIONING_TOKEN, the
   device ID chosen by the agent. It can never take over a device that has a MAC or an owner.
 
 Nothing here ever logs a token, a key, a tax ID or a phone number.
@@ -262,7 +262,7 @@ class ProvisioningService:
 
     async def register_legacy(self, scope: TokenScope, device_uuid: str, info: dict[str, Any],
                               ip: str) -> Registration:
-        """AIVMS edge-agent: platform-wide token, agent-chosen ID. Never takes over a provisioned box."""
+        """edge-agent: platform-wide token, agent-chosen ID. Never takes over a provisioned box."""
         if scope.token is not None:
             raise UnprocessableError("mac_address is required with an owner provisioning token")
         if not re.fullmatch(DEVICE_UUID_PATTERN, device_uuid or ""):

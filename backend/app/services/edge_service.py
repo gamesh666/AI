@@ -166,7 +166,7 @@ class EdgeService:
         Listed cameras are created / renamed / restored. Edge-managed cameras (no source configured on the
         platform) that are not listed any more are disabled and flagged, never deleted: history is kept and
         they come back automatically when listed again. Cameras whose source the platform configures (the
-        AIVMS edge-agent) are never touched by a sync.
+        edge-agent) are never touched by a sync.
         """
         added: list[str] = []
         restored: list[str] = []
