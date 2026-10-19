@@ -29,7 +29,7 @@ export function SnapshotWithBoxes({ log }: { log: EdgeLog }) {
                 width={Math.max(0, b.x2 - b.x1)}
                 height={Math.max(0, b.y2 - b.y1)}
                 fill="none"
-                stroke="#22d3ee"
+                stroke="var(--cyan)"
                 strokeWidth={normalized ? 0.004 : Math.max(2, w / 400)}
               >
                 <title>{`${d.class_name} ${(d.confidence * 100).toFixed(0)}%`}</title>

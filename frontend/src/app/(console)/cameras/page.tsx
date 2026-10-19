@@ -99,7 +99,7 @@ export default function CamerasPage() {
             render: (c) => (
               <div>
                 <div className="font-medium">{c.name}</div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-muted">
                   {c.code} {c.has_credentials && "· 🔒"}
                   {!c.source_configured && ` · ${t("cameras.edgeManagedShort")}`}
                 </div>
@@ -111,15 +111,15 @@ export default function CamerasPage() {
               </div>
             ),
           },
-          { key: "site", header: t("cameras.siteEdge"), render: (c) => `${c.site_name ?? "—"} / ${c.edge_device_name ?? "—"}` },
+          { key: "site", header: t("cameras.siteEdge"), render: (c) => `${c.site_name ?? "--"} / ${c.edge_device_name ?? "--"}` },
           { key: "path", header: t("cameras.streamPath"), render: (c) => <code className="text-xs">{c.stream_path}</code> },
           {
             key: "video",
             header: t("cameras.streamAi"),
             render: (c) => (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted">
                 {c.resolution ?? t("cameras.source")} @ {c.stream_fps} fps · {c.bitrate} · AI {c.inference_fps} fps
-                {c.active_model && <span className="block text-brand-400">{c.active_model}</span>}
+                {c.active_model && <span className="block text-accent-hi">{c.active_model}</span>}
               </span>
             ),
           },

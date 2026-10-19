@@ -19,7 +19,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   }, [loading, user, router]);
 
   if (loading || !user) {
-    return <div className="flex min-h-screen items-center justify-center text-slate-400">{t("common.loading")}</div>;
+    return <div className="flex min-h-screen items-center justify-center text-muted">{t("common.loading")}</div>;
   }
 
   return (

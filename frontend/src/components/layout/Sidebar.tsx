@@ -2,8 +2,11 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { useAuth } from "@/lib/auth/AuthContext";
 import type { MessageKey } from "@/lib/i18n/messages";
 import type { Role } from "@/types";
@@ -12,7 +15,7 @@ import { useI18n } from "@/lib/i18n/I18nProvider";
 interface NavItem {
   href: string;
   label: MessageKey;
-  icon: string;
+  icon: IconName;
   minRole?: Role;
 }
 
@@ -20,71 +23,99 @@ const NAV: { section: MessageKey; items: NavItem[] }[] = [
   {
     section: "nav.monitoring",
     items: [
-      { href: "/dashboard", label: "nav.dashboard", icon: "▦" },
-      { href: "/monitor", label: "nav.monitor", icon: "◉" },
-      { href: "/logs", label: "nav.logs", icon: "☰" },
+      { href: "/dashboard", label: "nav.dashboard", icon: "dashboard" },
+      { href: "/monitor", label: "nav.monitor", icon: "monitor" },
+      { href: "/logs", label: "nav.logs", icon: "logs" },
     ],
   },
   {
     section: "nav.management",
     items: [
-      { href: "/owners", label: "nav.owners", icon: "◆", minRole: "operator" },
-      { href: "/sites", label: "nav.sites", icon: "⌂" },
-      { href: "/devices", label: "nav.devices", icon: "▣" },
-      { href: "/cameras", label: "nav.cameras", icon: "◎" },
-      { href: "/models", label: "nav.models", icon: "✦" },
-      { href: "/users", label: "nav.users", icon: "☺", minRole: "admin" },
+      { href: "/owners", label: "nav.owners", icon: "owners", minRole: "operator" },
+      { href: "/sites", label: "nav.sites", icon: "sites" },
+      { href: "/devices", label: "nav.devices", icon: "devices" },
+      { href: "/cameras", label: "nav.cameras", icon: "cameras" },
+      { href: "/models", label: "nav.models", icon: "models" },
+      { href: "/users", label: "nav.users", icon: "users", minRole: "admin" },
     ],
   },
 ];
 
-/** Fixed column on md+; a slide-in drawer on phones (opened from the top bar). */
+const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
+
+/**
+ * 220px column (≥1101px), 64px icon rail (768–1100px), slide-in drawer on phones.
+ * Language switch and sign-out sit together at the bottom.
+ */
 export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
-  const { hasRole } = useAuth();
+  const router = useRouter();
+  const { hasRole, logout } = useAuth();
   const { t } = useI18n();
+  const [host, setHost] = useState("");
+  useEffect(() => setHost(window.location.hostname), []);
+  // labels show in the drawer (phones) and the full column; the 768–1100px rail is icons only
+  const label = "rail:hidden wide:inline";
+  const block = "rail:hidden wide:block";
 
   return (
     <>
-    {open && <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={onClose} />}
-    <aside
-      className={clsx(
-        "w-56 shrink-0 border-r border-slate-800 bg-surface-800",
-        open ? "fixed inset-y-0 left-0 z-50 overflow-y-auto" : "hidden",
-        "md:sticky md:top-0 md:block md:h-screen md:overflow-y-auto",
-      )}
-    >
-      <div className="px-4 py-4">
-        <div className="text-lg font-bold text-white">AIBOX SERVER</div>
-        <div className="text-xs text-slate-500">{t("app.tagline")}</div>
-      </div>
-      <nav className="space-y-5 px-2">
-        {NAV.map((group) => (
-          <div key={group.section}>
-            <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-              {t(group.section)}
-            </div>
-            {group.items
-              .filter((i) => !i.minRole || hasRole(i.minRole))
-              .map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm",
-                    pathname.startsWith(item.href)
-                      ? "bg-brand-600/20 text-brand-100"
-                      : "text-slate-300 hover:bg-surface-700",
-                  )}
-                >
-                  <span className="w-4 text-center">{item.icon}</span>
-                  {t(item.label)}
-                </Link>
-              ))}
+      {open && <div className="backdrop fixed inset-0 z-40 rail:hidden" onClick={onClose} />}
+      <aside
+        className={clsx(
+          "flex shrink-0 flex-col border-r border-line bg-side px-3 pb-3.5 pt-[18px]",
+          open ? "fixed inset-y-0 left-0 z-50 w-[220px] overflow-y-auto" : "hidden",
+          "rail:sticky rail:top-0 rail:flex rail:h-screen rail:w-16 rail:overflow-y-auto rail:px-2 wide:w-[220px] wide:px-3",
+        )}
+      >
+        <div className="px-2 pb-2">
+          <div className={clsx("serif text-[21px] font-semibold leading-tight text-ink", block)}>
+            AIBOX <em className="not-italic text-accent-hi">SERVER</em>
           </div>
-        ))}
-      </nav>
-    </aside>
+          <div className="serif hidden text-center text-[17px] font-semibold text-accent-hi rail:block wide:hidden">AI</div>
+          <div className={clsx("mt-0.5 text-xs text-muted", block)}>{t("app.tagline")}</div>
+        </div>
+        <nav className="flex-1">
+          {NAV.map((group) => (
+            <div key={group.section}>
+              <div className={clsx("nav-group", block)}>{t(group.section)}</div>
+              {group.items
+                .filter((i) => !i.minRole || hasRole(i.minRole))
+                .map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={t(item.label)}
+                    aria-current={pathname.startsWith(item.href) ? "page" : undefined}
+                    className="nav-item mb-0.5 rail:justify-center wide:justify-start"
+                  >
+                    <Icon name={item.icon} className="shrink-0" />
+                    <span className={clsx("truncate", label)}>{t(item.label)}</span>
+                  </Link>
+                ))}
+            </div>
+          ))}
+        </nav>
+        <div className="mt-4 space-y-2">
+          <LanguageSwitcher className={clsx("w-full", block)} />
+          <button
+            type="button"
+            className="logout-btn"
+            title={t("topbar.signOut")}
+            onClick={async () => {
+              await logout();
+              router.replace("/login");
+            }}
+          >
+            <Icon name="logout" />
+            <span className={label}>{t("topbar.signOut")}</span>
+          </button>
+          <div className={clsx("border-t border-line pt-2 text-[11px] leading-relaxed text-faint", block)}>
+            <div>v{VERSION} · AIBOX SERVER</div>
+            {host && <div className="truncate">{t("shell.host", { host })}</div>}
+          </div>
+        </div>
+      </aside>
     </>
   );
 }

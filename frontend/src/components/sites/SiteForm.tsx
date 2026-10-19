@@ -67,9 +67,9 @@ export function SiteForm({
         <Input value={v.description ?? ""} onChange={(e) => setV({ ...v, description: e.target.value })} />
       </Field>
 
-      <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
-        <legend className="px-1 text-xs uppercase text-slate-400">{t("sites.contractLegend")}</legend>
-        <p className="text-xs text-slate-500">{t("sites.contractHint")}</p>
+      <fieldset className="space-y-3 rounded-item border border-line p-3">
+        <legend className="px-1 text-xs uppercase text-muted">{t("sites.contractLegend")}</legend>
+        <p className="text-xs text-muted">{t("sites.contractHint")}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t("nav.owners")}>
             <Select value={v.owner_id ?? ""} onChange={text("owner_id")}>

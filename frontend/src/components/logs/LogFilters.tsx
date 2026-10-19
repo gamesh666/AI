@@ -58,7 +58,7 @@ export function LogFilters({
   );
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-slate-700/60 bg-surface-800 p-4 md:grid-cols-5 xl:grid-cols-9">
+    <div className="mb-4 grid grid-cols-2 gap-3 rounded-card border border-line bg-panel p-4 md:grid-cols-5 xl:grid-cols-9">
       <Field label={t("events.from")}>
         <Input type="date" value={value.start} onChange={set("start")} />
       </Field>

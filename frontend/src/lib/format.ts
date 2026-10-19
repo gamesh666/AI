@@ -1,5 +1,5 @@
 export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "--";
   return new Date(iso).toLocaleString();
 }
 
@@ -13,7 +13,7 @@ export function formatRelative(iso: string | null | undefined): string {
 }
 
 export function pct(v: number | null | undefined): string {
-  return v === null || v === undefined ? "—" : `${v.toFixed(0)}%`;
+  return v === null || v === undefined ? "--" : `${v.toFixed(0)}%`;
 }
 
 export function errorMessage(e: unknown): string {

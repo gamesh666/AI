@@ -67,7 +67,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       setLocale,
       t,
       tEnum,
-      formatDateTime: (iso) => (iso ? new Date(iso).toLocaleString(locale) : "—"),
+      formatDateTime: (iso) => (iso ? new Date(iso).toLocaleString(locale) : "--"),
       formatRelative: (iso) => {
         if (!iso) return t("time.never");
         const diff = (Date.now() - new Date(iso).getTime()) / 1000;

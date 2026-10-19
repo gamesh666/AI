@@ -69,8 +69,8 @@ export function DeviceForm({
         </Select>
       </Field>
       {isAdmin && (
-        <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
-          <legend className="px-1 text-xs uppercase text-slate-400">{t("devices.provisioningLegend")}</legend>
+        <fieldset className="space-y-3 rounded-item border border-line p-3">
+          <legend className="px-1 text-xs uppercase text-muted">{t("devices.provisioningLegend")}</legend>
           <Field label={t("devices.mac")} hint={t("devices.macHint")}>
             <Input
               value={v.mac_address ?? ""}

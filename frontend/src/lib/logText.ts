@@ -8,7 +8,7 @@ export function describeLog(log: EdgeLog, t: T, duration: (s: number) => string)
   const d = log.data as Record<string, unknown>;
   const secs = typeof d.duration_seconds === "number" ? d.duration_seconds : null;
   if (log.event_type === "system.connection") {
-    if (log.status === "recovered") return t("syslog.recovered", { d: secs !== null ? duration(secs) : "—" });
+    if (log.status === "recovered") return t("syslog.recovered", { d: secs !== null ? duration(secs) : "--" });
     return t(d.reason === "heartbeat_timeout" ? "syslog.offlineTimeout" : "syslog.offlineReported");
   }
   if (log.event_type === "system.camera_sync") {
@@ -31,15 +31,15 @@ export function describeLog(log: EdgeLog, t: T, duration: (s: number) => string)
 
 /** Device / camera shown for a log; platform-level records have no device. */
 export function logSource(log: EdgeLog, t: T): { primary: string; secondary: string } {
-  if (!log.edge_device_id) return { primary: t("syslog.platform"), secondary: "—" };
+  if (!log.edge_device_id) return { primary: t("syslog.platform"), secondary: "--" };
   return {
-    primary: log.camera_name ?? log.camera_code ?? log.edge_device_name ?? log.edge_device_uuid ?? "—",
-    secondary: `${log.site_name ?? "—"} · ${log.edge_device_name ?? log.edge_device_uuid}`,
+    primary: log.camera_name ?? log.camera_code ?? log.edge_device_name ?? log.edge_device_uuid ?? "--",
+    secondary: `${log.site_name ?? "--"} · ${log.edge_device_name ?? log.edge_device_uuid}`,
   };
 }
 
 /** "Site › Edge device › Camera" — which box and which camera a record came from (empty parts skipped). */
 export function sourcePath(site: string | null | undefined, device: string | null | undefined,
                            camera: string | null | undefined): string {
-  return [site, device, camera].filter((x) => x && x.trim()).join(" › ") || "—";
+  return [site, device, camera].filter((x) => x && x.trim()).join(" › ") || "--";
 }

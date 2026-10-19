@@ -87,15 +87,15 @@ export default function MonitorPage() {
       ref={rootRef}
       className={
         fullscreen
-          ? "flex h-screen flex-col gap-2 bg-surface-900 p-2"
+          ? "flex h-screen flex-col gap-2 bg-panel2 p-2"
           : // 3rem = top bar; main padding is 0.75rem (mobile) / 1.25rem (md+) on each side
             "flex h-[calc(100dvh-3rem-1.5rem)] flex-col gap-2 md:h-[calc(100dvh-3rem-2.5rem)]"
       }
     >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold text-white">{t("nav.monitor")}</h1>
-          <p className="hidden truncate text-xs text-slate-400 lg:block">{t("monitor.subtitle", { n: all.length })}</p>
+          <h1 className="truncate text-[21px] font-semibold text-ink">{t("nav.monitor")}</h1>
+          <p className="hidden truncate text-xs text-muted lg:block">{t("monitor.subtitle", { n: all.length })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select
@@ -116,7 +116,7 @@ export default function MonitorPage() {
               <Button variant="secondary" className="!px-2" disabled={current === 0} onClick={() => setPage(current - 1)}>
                 ‹
               </Button>
-              <span className="min-w-[3.5rem] text-center tabular-nums text-slate-400">
+              <span className="min-w-[3.5rem] text-center tabular-nums text-muted">
                 {current + 1} / {pages}
               </span>
               <Button

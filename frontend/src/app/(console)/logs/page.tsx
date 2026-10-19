@@ -124,7 +124,7 @@ function LogsView() {
         <Button variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>
           {t("common.prev")}
         </Button>
-        <span className="text-slate-400">{t("common.page", { page, pages })}</span>
+        <span className="text-muted">{t("common.page", { page, pages })}</span>
         <Button variant="secondary" disabled={page >= pages} onClick={() => setPage(page + 1)}>
           {t("common.next")}
         </Button>

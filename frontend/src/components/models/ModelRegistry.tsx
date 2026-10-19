@@ -39,7 +39,7 @@ export function ModelRegistry() {
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-slate-400">{t("models.registryHint")}</p>
+        <p className="text-sm text-muted">{t("models.registryHint")}</p>
         {canEdit && <Button onClick={() => setEditing("new")}>{t("models.register")}</Button>}
       </div>
       <ErrorBanner error={models.error ?? m.error} />
@@ -55,7 +55,7 @@ export function ModelRegistry() {
             key: "labels",
             header: t("models.labels"),
             render: (x) => (
-              <span className="text-xs text-slate-400" title={x.labels.join(", ")}>
+              <span className="text-xs text-muted" title={x.labels.join(", ")}>
                 {x.labels.slice(0, 5).join(", ")}
                 {x.labels.length > 5 && ` +${x.labels.length - 5}`}
               </span>

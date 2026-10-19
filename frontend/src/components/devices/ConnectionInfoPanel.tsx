@@ -35,14 +35,14 @@ export function ConnectionInfoPanel({
 
   return (
     <div className="space-y-3 text-sm">
-      {apiKey && <p className="text-amber-300">{t("devices.copyNow")}</p>}
-      <p className="text-xs text-slate-400">{t("sheet.secretWarning")}</p>
+      {apiKey && <p className="text-warn">{t("devices.copyNow")}</p>}
+      <p className="text-xs text-muted">{t("sheet.secretWarning")}</p>
 
       {apiKey && (
         <div>
-          <div className="text-xs uppercase text-slate-400">{t("devices.apiKey")}</div>
+          <div className="text-xs uppercase text-muted">{t("devices.apiKey")}</div>
           <div className="flex gap-2">
-            <code className="block flex-1 break-all rounded bg-surface-900 p-2">{apiKey}</code>
+            <code className="block flex-1 break-all rounded bg-panel2 p-2">{apiKey}</code>
             <Button variant="secondary" onClick={() => copy("key", apiKey)}>
               {copied === "key" ? t("sheet.copied") : t("devices.copyKey")}
             </Button>
@@ -51,15 +51,15 @@ export function ConnectionInfoPanel({
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs uppercase text-slate-400">{t("sheet.connectionInfo")}</div>
-        <div className="inline-flex overflow-hidden rounded-md border border-slate-600 text-xs">
+        <div className="text-xs uppercase text-muted">{t("sheet.connectionInfo")}</div>
+        <div className="inline-flex overflow-hidden rounded-item border border-line2 text-xs">
           {(["partner", "agent"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFormat(f)}
               className={clsx(
                 "px-2.5 py-1",
-                format === f ? "bg-brand-600 text-white" : "bg-surface-800 text-slate-300 hover:bg-surface-700",
+                format === f ? "bg-accent text-on-accent" : "bg-panel text-ink2 hover:bg-panel2",
               )}
             >
               {t(f === "partner" ? "sheet.formatPartner" : "sheet.formatAgent")}
@@ -72,9 +72,9 @@ export function ConnectionInfoPanel({
         value={sheet}
         rows={18}
         onFocus={(e) => e.currentTarget.select()}
-        className="w-full rounded bg-surface-900 p-2 font-mono text-xs text-slate-200"
+        className="w-full rounded bg-panel2 p-2 font-mono text-xs text-ink"
       />
-      {copied === "failed" && <p className="text-xs text-red-300">{t("sheet.copyFailed")}</p>}
+      {copied === "failed" && <p className="text-xs text-bad">{t("sheet.copyFailed")}</p>}
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => copy("all", sheet)}>{copied === "all" ? t("sheet.copied") : t("sheet.copyAll")}</Button>
         <Button variant="secondary" onClick={() => downloadText(`${info.device_id}-aibox.env`, sheet)}>

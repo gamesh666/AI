@@ -58,18 +58,18 @@ export default function OwnersPage() {
             render: (o) => (
               <div>
                 <div className="font-medium">{o.name}</div>
-                <div className="text-xs text-slate-500">{o.company_name ?? "—"}</div>
+                <div className="text-xs text-muted">{o.company_name ?? "--"}</div>
               </div>
             ),
           },
-          { key: "tax", header: t("owners.taxId"), render: (o) => o.tax_id ?? "—" },
+          { key: "tax", header: t("owners.taxId"), render: (o) => o.tax_id ?? "--" },
           {
             key: "contact",
             header: t("owners.contactName"),
             render: (o) => (
               <div className="text-xs">
-                <div>{o.contact_name ?? "—"}</div>
-                <div className="text-slate-500">{o.contact_phone ?? o.company_phone ?? ""}</div>
+                <div>{o.contact_name ?? "--"}</div>
+                <div className="text-muted">{o.contact_phone ?? o.company_phone ?? ""}</div>
               </div>
             ),
           },
@@ -77,7 +77,7 @@ export default function OwnersPage() {
             key: "usage",
             header: t("owners.usage"),
             render: (o) => (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted">
                 {t("owners.counts", { sites: o.site_count, devices: o.device_count, tokens: o.token_count })}
               </span>
             ),

@@ -55,17 +55,17 @@ export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
   return (
     <div className="space-y-4 text-sm">
       <ErrorBanner error={tokens.error ?? m.error} />
-      <p className="text-xs text-slate-400">{t("tokens.hint")}</p>
+      <p className="text-xs text-muted">{t("tokens.hint")}</p>
 
       {created && (
-        <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
-          <p className="text-amber-200">{t("tokens.copyNow")}</p>
+        <div className="notice space-y-2 p-3" data-state="warn">
+          <p className="text-warn">{t("tokens.copyNow")}</p>
           <textarea
             readOnly
             rows={2}
             value={snippet}
             onFocus={(e) => e.currentTarget.select()}
-            className="w-full rounded bg-surface-900 p-2 font-mono text-xs"
+            className="w-full rounded bg-panel2 p-2 font-mono text-xs"
           />
           <Button variant="secondary" onClick={async () => setCopied(await copyText(snippet))}>
             {copied ? t("sheet.copied") : t("sheet.copyAll")}
@@ -73,17 +73,17 @@ export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
         </div>
       )}
 
-      <ul className="divide-y divide-slate-800 rounded border border-slate-700/60">
-        {(tokens.data ?? []).length === 0 && <li className="px-3 py-4 text-center text-slate-500">{t("tokens.none")}</li>}
+      <ul className="divide-y divide-line rounded border border-line">
+        {(tokens.data ?? []).length === 0 && <li className="px-3 py-4 text-center text-muted">{t("tokens.none")}</li>}
         {tokens.data?.map((tk) => (
           <li key={tk.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <code className="text-xs">{tk.token_prefix}…</code>
                 <Badge tone={STATE_TONE[tk.state]}>{t(`tokens.state.${tk.state}`)}</Badge>
-                {tk.label && <span className="text-slate-300">{tk.label}</span>}
+                {tk.label && <span className="text-ink2">{tk.label}</span>}
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted">
                 {t("tokens.summary", {
                   site: tk.site_name ?? t("common.noSite"),
                   prefix: tk.device_prefix,
@@ -102,8 +102,8 @@ export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
         ))}
       </ul>
 
-      <form onSubmit={create} className="space-y-3 rounded border border-slate-700/60 p-3">
-        <div className="text-xs font-semibold uppercase text-slate-400">{t("tokens.new")}</div>
+      <form onSubmit={create} className="space-y-3 rounded border border-line p-3">
+        <div className="text-xs font-semibold uppercase text-muted">{t("tokens.new")}</div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t("tokens.label")}>
             <Input maxLength={128} value={v.label} onChange={(e) => setV({ ...v, label: e.target.value })} />

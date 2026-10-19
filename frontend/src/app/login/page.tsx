@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { Field, Input } from "@/components/ui/Field";
+import { ThemeSwitch } from "@/components/layout/ThemeSwitch";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { IDLE_FLAG_KEY } from "@/components/layout/IdleLogout";
@@ -56,17 +57,20 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-lg border border-slate-700 bg-surface-800 p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-4">
+      <ThemeSwitch />
+      <form onSubmit={submit} className="card w-full max-w-sm space-y-4 p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">AIBOX SERVER</h1>
-            <p className="text-sm text-slate-400">{t("app.loginTagline")}</p>
+            <h1 className="serif m-0 text-[24px] font-semibold text-ink">
+              AIBOX <em className="not-italic text-accent-hi">SERVER</em>
+            </h1>
+            <p className="text-sm text-muted">{t("app.loginTagline")}</p>
           </div>
           <LanguageSwitcher />
         </div>
         {idleNotice && !error && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+          <div className="notice" data-state="warn">
             {t("login.idleLoggedOut", { n: IDLE_LOGOUT_MINUTES })}
           </div>
         )}

@@ -1,6 +1,5 @@
 "use client";
 
-import clsx from "clsx";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -36,17 +35,12 @@ function CutoverBar({ devices }: { devices: EdgeDevice[] }) {
   const flags = useAsync(() => devicesApi.telemetrySettings());
   if (!flags.data || devices.length === 0) return null;
   if (!flags.data.mqtt_edge_enabled)
-    return <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{t("cutover.mqttOff")}</div>;
+    return <div className="notice mb-3" data-state="ok">{t("cutover.mqttOff")}</div>;
   const active = devices.filter((d) => d.admin_state === "active");
   const onMqtt = active.filter((d) => d.telemetry_transport === "mqtt" || d.telemetry_transport === "both").length;
   const ready = onMqtt === 0 && active.some((d) => d.telemetry_transport === "http");
   return (
-    <div
-      className={clsx(
-        "mb-3 rounded-md border px-3 py-2 text-sm",
-        ready ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-amber-500/30 bg-amber-500/10 text-amber-200",
-      )}
-    >
+    <div className="notice mb-3" data-state={ready ? "ok" : "warn"}>
       {ready ? t("cutover.ready") : t("cutover.mqttOn", { n: onMqtt })}
     </div>
   );
@@ -118,11 +112,11 @@ export default function DevicesPage() {
             render: (d) => (
               <div>
                 <div className="font-medium">{d.name}</div>
-                <div className="text-xs text-slate-500">{d.device_uuid}</div>
+                <div className="text-xs text-muted">{d.device_uuid}</div>
               </div>
             ),
           },
-          { key: "site", header: t("common.site"), render: (d) => d.site_name ?? "—" },
+          { key: "site", header: t("common.site"), render: (d) => d.site_name ?? "--" },
           {
             key: "status",
             header: t("devices.status"),
@@ -138,8 +132,8 @@ export default function DevicesPage() {
             header: t("devices.mac"),
             render: (d) => (
               <div className="text-xs">
-                <code>{d.mac_address ?? "—"}</code>
-                {d.owner_name && <div className="text-slate-500">{d.owner_name}</div>}
+                <code>{d.mac_address ?? "--"}</code>
+                {d.owner_name && <div className="text-muted">{d.owner_name}</div>}
               </div>
             ),
           },
@@ -154,7 +148,7 @@ export default function DevicesPage() {
                   </Badge>
                 </span>
               ) : (
-                <span className="text-xs text-slate-500">—</span>
+                <span className="text-xs text-muted">--</span>
               ),
           },
           { key: "seen", header: t("devices.lastSeen"), render: (d) => formatRelative(d.last_seen) },
@@ -165,23 +159,23 @@ export default function DevicesPage() {
               d.disconnects_24h ? (
                 <Link
                   href={`/logs?edge_device_id=${d.id}&event_type=system.connection`}
-                  className="text-red-300 underline-offset-2 hover:underline"
+                  className="text-bad underline-offset-2 hover:underline"
                 >
                   {d.disconnects_24h}
                 </Link>
               ) : (
-                <span className="text-slate-500">0</span>
+                <span className="text-muted">0</span>
               ),
           },
-          { key: "host", header: t("devices.host"), render: (d) => `${d.hostname ?? "—"} / ${d.ip_address ?? "—"}` },
+          { key: "host", header: t("devices.host"), render: (d) => `${d.hostname ?? "--"} / ${d.ip_address ?? "--"}` },
           { key: "cpu", header: "CPU", render: (d) => pct(d.cpu_usage) },
           { key: "mem", header: t("devices.memory"), render: (d) => pct(d.memory_usage) },
           {
             key: "gpu",
             header: "GPU",
-            render: (d) => (d.gpu_name ? `${d.gpu_name} · ${pct(d.gpu_usage)}` : "—"),
+            render: (d) => (d.gpu_name ? `${d.gpu_name} · ${pct(d.gpu_usage)}` : "--"),
           },
-          { key: "temp", header: t("devices.temp"), render: (d) => (d.temperature != null ? `${d.temperature.toFixed(0)}°C` : "—") },
+          { key: "temp", header: t("devices.temp"), render: (d) => (d.temperature != null ? `${d.temperature.toFixed(0)}°C` : "--") },
           { key: "cams", header: t("common.cameras"), render: (d) => d.camera_count },
           {
             key: "models",
@@ -192,10 +186,10 @@ export default function DevicesPage() {
                   {d.reported_models.map(modelText).join(", ")}
                 </Link>
               ) : (
-                <span className="text-xs text-slate-500">—</span>
+                <span className="text-xs text-muted">--</span>
               ),
           },
-          { key: "ver", header: t("devices.agent"), render: (d) => d.agent_version ?? "—" },
+          { key: "ver", header: t("devices.agent"), render: (d) => d.agent_version ?? "--" },
           {
             key: "actions",
             header: "",
@@ -252,19 +246,19 @@ export default function DevicesPage() {
         title={auditOf ? t("devices.auditTitle", { name: auditOf.name }) : ""}
         onClose={() => setAuditOf(null)}
       >
-        <ul className="max-h-[60vh] divide-y divide-slate-800 overflow-y-auto text-sm">
-          {(audit.data ?? []).length === 0 && <li className="py-6 text-center text-slate-500">{t("common.noData")}</li>}
+        <ul className="max-h-[60vh] divide-y divide-line overflow-y-auto text-sm">
+          {(audit.data ?? []).length === 0 && <li className="py-6 text-center text-muted">{t("common.noData")}</li>}
           {audit.data?.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span>
                 <Badge tone={a.action.startsWith("rejected") ? "red" : a.action === "registered" ? "green" : "blue"}>
                   {t(`audit.${a.action}` as MessageKey) || a.action}
                 </Badge>
-                <span className="ml-2 text-xs text-slate-500">
+                <span className="ml-2 text-xs text-muted">
                   {[a.source_ip, a.token_prefix && `${a.token_prefix}…`, a.mac_address].filter(Boolean).join(" · ")}
                 </span>
               </span>
-              <span className="text-xs text-slate-400">{formatDateTime(a.created_at)}</span>
+              <span className="text-xs text-muted">{formatDateTime(a.created_at)}</span>
             </li>
           ))}
         </ul>

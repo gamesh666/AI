@@ -58,8 +58,8 @@ export default function UsersPage() {
         rows={users.data ?? []}
         columns={[
           { key: "username", header: t("common.username"), render: (u) => <span className="font-medium">{u.username}</span> },
-          { key: "name", header: t("common.name"), render: (u) => u.full_name ?? "—" },
-          { key: "email", header: t("users.email"), render: (u) => u.email ?? "—" },
+          { key: "name", header: t("common.name"), render: (u) => u.full_name ?? "--" },
+          { key: "email", header: t("users.email"), render: (u) => u.email ?? "--" },
           {
             key: "role",
             header: t("users.role"),

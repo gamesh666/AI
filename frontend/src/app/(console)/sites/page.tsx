@@ -58,9 +58,9 @@ export default function SitesPage() {
             header: t("nav.owners"),
             render: (s) => (
               <div className="text-xs">
-                <div>{s.owner_name ?? "—"}</div>
+                <div>{s.owner_name ?? "--"}</div>
                 {(s.contract_no || s.license_until) && (
-                  <div className="text-slate-500">
+                  <div className="text-muted">
                     {[s.contract_no, s.license_until && t("sites.until", { date: s.license_until })]
                       .filter(Boolean)
                       .join(" · ")}
@@ -69,7 +69,7 @@ export default function SitesPage() {
               </div>
             ),
           },
-          { key: "address", header: t("common.address"), render: (s) => s.address ?? "—" },
+          { key: "address", header: t("common.address"), render: (s) => s.address ?? "--" },
           { key: "devices", header: t("sites.edgeDevices"), render: (s) => s.device_count },
           { key: "created", header: t("common.created"), render: (s) => formatDateTime(s.created_at) },
           {

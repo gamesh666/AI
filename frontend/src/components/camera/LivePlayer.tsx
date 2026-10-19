@@ -111,16 +111,16 @@ export function LivePlayer({
   }, [cameraId, active, attempt, streamType]);
 
   return (
-    <div className={`relative w-full overflow-hidden bg-black ${fill ? "h-full" : "aspect-video"}`}>
+    <div className={`video-surface relative w-full overflow-hidden bg-black ${fill ? "h-full" : "aspect-video"}`}>
       <video ref={videoRef} className="h-full w-full object-contain" muted playsInline autoPlay />
-      <span className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] uppercase text-slate-300">
+      <span className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] uppercase text-ink2">
         {mode}
       </span>
       {mode === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-center text-xs text-slate-300">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-center text-xs text-ink2">
           <span>{t("monitor.streamUnavailable")}</span>
-          {error && <span className="max-w-[90%] truncate text-slate-500">{error}</span>}
-          <button onClick={retry} className="rounded bg-surface-600 px-2 py-1 hover:bg-surface-700">
+          {error && <span className="max-w-[90%] truncate text-muted">{error}</span>}
+          <button onClick={retry} className="rounded bg-line px-2 py-1 hover:bg-panel2">
             {t("monitor.retry")}
           </button>
         </div>

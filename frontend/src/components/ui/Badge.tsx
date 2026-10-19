@@ -1,21 +1,16 @@
 "use client";
 
-import clsx from "clsx";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
+/** Status pill driven by data-state (colors in globals.css §4); `blue` = accent / info. */
 type Tone = "green" | "red" | "yellow" | "gray" | "blue";
 
-const tones: Record<Tone, string> = {
-  green: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
-  red: "bg-red-500/15 text-red-300 ring-red-500/30",
-  yellow: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
-  gray: "bg-slate-500/15 text-slate-300 ring-slate-500/30",
-  blue: "bg-brand-500/15 text-brand-100 ring-brand-500/30",
-};
+const STATE: Record<Tone, string> = { green: "ok", red: "bad", yellow: "warn", gray: "idle", blue: "info" };
 
-export function Badge({ tone = "gray", children }: { tone?: Tone; children: React.ReactNode }) {
+export function Badge({ tone = "gray", dot = false, children }: { tone?: Tone; dot?: boolean; children: React.ReactNode }) {
   return (
-    <span className={clsx("inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ring-1", tones[tone])}>
+    <span className="pill" data-state={STATE[tone]}>
+      {dot && <span className="state-dot" />}
       {children}
     </span>
   );
@@ -35,13 +30,15 @@ const STATUS_TONE: Record<string, Tone> = {
   disabled: "gray",
 };
 
+/** Online / offline style labels use the service pill (§4 .svc-pill) with a status dot. */
 export function StatusBadge({ status, label }: { status: string | null | undefined; label?: string }) {
   const { tEnum } = useI18n();
   const s = status ?? "unknown";
   const text = tEnum("status", s);
   return (
-    <Badge tone={STATUS_TONE[s] ?? "gray"}>
+    <span className="svc-pill" data-state={STATE[STATUS_TONE[s] ?? "gray"]}>
+      <span className="state-dot" />
       {label ? `${label} ${text}` : text}
-    </Badge>
+    </span>
   );
 }

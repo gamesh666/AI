@@ -25,8 +25,8 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
       header: t("logs.type"),
       render: (l) => (
         <span>
-          <code className="text-xs text-brand-400">{l.event_type}</code>
-          {l.status && <span className="ml-1.5 text-xs text-slate-400">[{l.status}]</span>}
+          <code className="text-xs text-accent-hi">{l.event_type}</code>
+          {l.status && <span className="ml-1.5 text-xs text-muted">[{l.status}]</span>}
         </span>
       ),
     },
@@ -36,7 +36,7 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
       className: "max-w-md",
       render: (l) => (
         <button className="block max-w-md truncate text-left hover:underline" onClick={() => setOpen(l)}>
-          {text(l) || <span className="text-slate-500">{t("logs.viewData")}</span>}
+          {text(l) || <span className="text-muted">{t("logs.viewData")}</span>}
         </button>
       ),
     },
@@ -48,7 +48,7 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
         return (
           <div>
             <div>{src.primary}</div>
-            <div className="text-xs text-slate-500">{src.secondary}</div>
+            <div className="text-xs text-muted">{src.secondary}</div>
           </div>
         );
       },
@@ -74,22 +74,22 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
           <div className="space-y-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <SeverityBadge severity={current.severity} />
-              {current.status && <span className="text-slate-400">[{current.status}]</span>}
-              <span className="text-slate-400">{formatDateTime(current.occurred_at)}</span>
+              {current.status && <span className="text-muted">[{current.status}]</span>}
+              <span className="text-muted">{formatDateTime(current.occurred_at)}</span>
             </div>
             {text(current) && <p className="whitespace-pre-wrap">{text(current)}</p>}
             <SnapshotWithBoxes log={current} />
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-              <dt className="text-slate-500">{t("logs.eventId")}</dt>
+              <dt className="text-muted">{t("logs.eventId")}</dt>
               <dd className="break-all font-mono">{current.event_id}</dd>
-              <dt className="text-slate-500">{t("common.edgeDevice")}</dt>
+              <dt className="text-muted">{t("common.edgeDevice")}</dt>
               <dd>{current.edge_device_id ? (current.edge_device_name ?? current.edge_device_uuid) : t("syslog.platform")}</dd>
-              <dt className="text-slate-500">{t("common.camera")}</dt>
-              <dd>{current.camera_name ?? current.camera_code ?? "—"}</dd>
-              <dt className="text-slate-500">{t("logs.updated")}</dt>
+              <dt className="text-muted">{t("common.camera")}</dt>
+              <dd>{current.camera_name ?? current.camera_code ?? "--"}</dd>
+              <dt className="text-muted">{t("logs.updated")}</dt>
               <dd>{formatDateTime(current.updated_at)}</dd>
             </dl>
-            <pre className="max-h-80 overflow-auto rounded bg-surface-900 p-2 text-xs text-slate-300">
+            <pre className="max-h-80 overflow-auto rounded bg-panel2 p-2 text-xs text-ink2">
               {JSON.stringify(
                 current.detections.length ? { data: current.data, detections: current.detections } : current.data,
                 null,

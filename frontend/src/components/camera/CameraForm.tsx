@@ -97,8 +97,8 @@ export function CameraForm({
         </Select>
       </Field>
 
-      <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
-        <legend className="px-1 text-xs uppercase text-slate-400">{t("cameras.sourceLegend")}</legend>
+      <fieldset className="space-y-3 rounded-item border border-line p-3">
+        <legend className="px-1 text-xs uppercase text-muted">{t("cameras.sourceLegend")}</legend>
         <Field label={t("cameras.rtspUrl")} hint={t("cameras.rtspUrlHint")}>
           <Input
             value={v.rtsp_url}
@@ -125,8 +125,8 @@ export function CameraForm({
         </div>
       </fieldset>
 
-      <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
-        <legend className="px-1 text-xs uppercase text-slate-400">AI</legend>
+      <fieldset className="space-y-3 rounded-item border border-line p-3">
+        <legend className="px-1 text-xs uppercase text-muted">AI</legend>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("cameras.aiModel")}>
             <Select value={v.ai_model_id} onChange={(e) => set("ai_model_id", e.target.value)}>
@@ -144,8 +144,8 @@ export function CameraForm({
         </div>
       </fieldset>
 
-      <fieldset className="space-y-3 rounded-md border border-slate-700 p-3">
-        <legend className="px-1 text-xs uppercase text-slate-400">{t("cameras.streamLegend")}</legend>
+      <fieldset className="space-y-3 rounded-item border border-line p-3">
+        <legend className="px-1 text-xs uppercase text-muted">{t("cameras.streamLegend")}</legend>
         <div className="grid grid-cols-4 gap-3">
           <Field label={t("cameras.resolution")} hint={t("cameras.resolutionHint")}>
             <Input pattern="\d{2,5}x\d{2,5}" placeholder="1920x1080" value={v.resolution} onChange={(e) => set("resolution", e.target.value)} />

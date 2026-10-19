@@ -9,9 +9,9 @@ export function CameraHealth({ camera, compact = false }: { camera: Camera; comp
   const deviceOnline = camera.edge_device_status === "online";
   const { t } = useI18n();
   const r = camera.runtime_stats ?? {};
-  const fps = (v?: number) => (v === undefined ? "—" : v.toFixed(0));
+  const fps = (v?: number) => (v === undefined ? "--" : v.toFixed(0));
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
       <StatusBadge status={deviceOnline ? camera.status : "offline"} label="RTSP" />
       <StatusBadge status={camera.ai_enabled ? (deviceOnline ? camera.ai_status : "offline") : "disabled"} label="AI" />
       <StatusBadge status={deviceOnline ? camera.stream_status : "offline"} label={t("health.stream")} />

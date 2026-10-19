@@ -82,10 +82,10 @@ export function IdleLogout() {
 
   if (remaining === null) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" role="alertdialog">
-      <div className="w-full max-w-sm space-y-3 rounded-lg border border-amber-500/40 bg-surface-800 p-5 text-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center backdrop p-4" role="alertdialog">
+      <div className="w-full max-w-sm space-y-3 rounded-panel border border-line bg-panel p-5 text-center shadow-card">
         <h2 className="text-lg font-semibold">{t("idle.title")}</h2>
-        <p className="text-sm text-slate-300">{t("idle.countdown", { n: remaining })}</p>
+        <p className="text-sm text-ink2">{t("idle.countdown", { n: remaining })}</p>
         <Button className="w-full" onClick={() => ((last.current = 0), touch())}>
           {t("idle.stay")}
         </Button>

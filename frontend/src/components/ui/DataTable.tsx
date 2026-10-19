@@ -23,25 +23,25 @@ export function DataTable<T extends { id: string }>({
 }) {
   const { t } = useI18n();
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-700/60">
-      <table className="min-w-full divide-y divide-slate-700/60 text-sm">
-        <thead className="bg-surface-700/60">
+    <div className="card overflow-x-auto">
+      <table className="min-w-full text-[13px]">
+        <thead className="border-b border-line bg-panel2">
           <tr>
             {columns.map((c) => (
               <th
                 key={c.key}
-                className={clsx("px-3 py-2 text-left text-xs font-semibold uppercase text-slate-400", c.className)}
+                className={clsx("whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold text-muted", c.className)}
               >
                 {c.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800 bg-surface-800">
+        <tbody className="divide-y divide-line">
           {rows.map((row) => (
-            <tr key={row.id} className="hover:bg-surface-700/40">
+            <tr key={row.id} className="hover:bg-panel2">
               {columns.map((c) => (
-                <td key={c.key} className={clsx("whitespace-nowrap px-3 py-2 text-slate-200", c.className)}>
+                <td key={c.key} className={clsx("whitespace-nowrap px-3 py-2 text-ink", c.className)}>
                   {c.render(row)}
                 </td>
               ))}
@@ -49,7 +49,7 @@ export function DataTable<T extends { id: string }>({
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={columns.length} className="px-3 py-8 text-center text-slate-500">
+              <td colSpan={columns.length} className="px-3 py-8 text-center text-muted">
                 {loading ? t("common.loading") : (empty ?? t("common.noData"))}
               </td>
             </tr>

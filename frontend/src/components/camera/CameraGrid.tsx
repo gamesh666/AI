@@ -32,7 +32,7 @@ export function CameraGrid({ cameras, slots }: { cameras: Camera[]; slots: numbe
   return (
     <div ref={ref} className="min-h-0 flex-1">
       {cameras.length === 0 ? (
-        <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-700 text-slate-500">
+        <div className="flex h-full items-center justify-center rounded-card border border-dashed border-line text-muted">
           {t("monitor.noCameras")}
         </div>
       ) : (

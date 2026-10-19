@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenu={() => setNavOpen(true)} />
-        <main className="flex-1 p-3 md:p-5">{children}</main>
+        <main className="flex-1 px-4 pb-10 pt-4 sm:px-6 sm:pt-[22px]">{children}</main>
       </div>
       <IdleLogout />
     </div>

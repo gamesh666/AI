@@ -4,10 +4,10 @@ import type { ButtonHTMLAttributes } from "react";
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const styles: Record<Variant, string> = {
-  primary: "bg-brand-600 hover:bg-brand-500 text-white",
-  secondary: "bg-surface-600 hover:bg-surface-700 text-slate-100 border border-slate-600",
-  danger: "bg-red-600 hover:bg-red-500 text-white",
-  ghost: "hover:bg-surface-600 text-slate-300",
+  primary: "border border-accent bg-accent text-on-accent hover:bg-accent-hi",
+  secondary: "border border-line2 bg-panel text-ink hover:bg-panel2",
+  danger: "border border-bad bg-bad text-on-accent hover:opacity-90",
+  ghost: "border border-transparent text-ink2 hover:bg-panel2",
 };
 
 export function Button({
@@ -18,7 +18,7 @@ export function Button({
   return (
     <button
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-item px-3 py-1.5 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
         styles[variant],
         className,
       )}

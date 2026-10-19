@@ -16,14 +16,14 @@ export default function ModelsPage() {
   return (
     <>
       <PageHeader title={t("nav.models")} subtitle={t("models.inUseSubtitle")} />
-      <div className="mb-4 flex gap-1 border-b border-slate-700/60">
+      <div className="mb-4 flex gap-1 border-b border-line">
         {(["inUse", "registry"] as const).map((k) => (
           <button
             key={k}
             onClick={() => setTab(k)}
             className={clsx(
               "-mb-px border-b-2 px-3 py-2 text-sm",
-              tab === k ? "border-brand-500 text-white" : "border-transparent text-slate-400 hover:text-slate-200",
+              tab === k ? "border-accent text-accent-hi font-semibold" : "border-transparent text-muted hover:text-ink",
             )}
           >
             {t(k === "inUse" ? "models.tabInUse" : "models.tabRegistry")}
