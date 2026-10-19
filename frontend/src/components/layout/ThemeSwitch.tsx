@@ -17,19 +17,27 @@ export function ThemeSwitch() {
   };
 
   return (
-    <div className="theme-switch" role="group" aria-label={t("theme.label")}>
-      {(["claude", "tech"] as const).map((k) => (
-        <button
-          key={k}
-          type="button"
-          data-theme-btn={k}
-          aria-pressed={theme === k}
-          className={theme === k ? "active" : undefined}
-          onClick={() => pick(k)}
-        >
-          {t(k === "claude" ? "theme.claude" : "theme.tech")}
-        </button>
-      ))}
+    <div className="inline-flex items-center gap-2">
+      <span className="hidden whitespace-nowrap text-[13px] font-semibold text-muted sm:inline">{t("theme.label")}</span>
+      <div className="theme-switch" role="group" aria-label={t("theme.label")}>
+        {(["claude", "tech"] as const).map((k) => {
+          const name = t(k === "claude" ? "theme.claude" : "theme.tech");
+          return (
+            <button
+              key={k}
+              type="button"
+              data-theme-btn={k}
+              aria-pressed={theme === k}
+              aria-label={name}
+              title={name}
+              className={theme === k ? "active !px-2.5" : "!px-2.5"}
+              onClick={() => pick(k)}
+            >
+              {k === "claude" ? "☀" : "☾"}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
