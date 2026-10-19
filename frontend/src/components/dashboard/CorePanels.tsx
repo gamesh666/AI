@@ -57,7 +57,6 @@ export function CorePanels({
   const { t } = useI18n();
   const active = devices.filter((d) => d.admin_state === "active");
   const online = active.filter((d) => d.status === "online");
-  const models = new Set(online.flatMap((d) => (d.reported_models ?? []).map((m) => `${m.name}|${m.version ?? ""}`)));
   const s = summary;
 
   const modules: Module[] = [
@@ -85,11 +84,6 @@ export function CorePanels({
       key: "logs", icon: "logs", title: "dashboard.modLogs",
       state: !s ? "idle" : "ok",
       metrics: [["dashboard.mToday", s?.logs_today ?? "--"], ["dashboard.mDevices", online.length]],
-    },
-    {
-      key: "models", icon: "models", title: "dashboard.modModels",
-      state: online.length === 0 ? "idle" : models.size ? "ok" : "warn",
-      metrics: [["dashboard.mCount", models.size], ["dashboard.mDevices", online.filter((d) => d.reported_models?.length).length]],
     },
   ];
   const warn = modules.filter((m) => m.state === "warn").length;
