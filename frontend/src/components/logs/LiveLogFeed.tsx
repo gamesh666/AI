@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SeverityBadge } from "@/components/logs/SeverityBadge";
 import { SectionCard } from "@/components/ui/Card";
+import { logsApi } from "@/lib/api/logs";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { describeLog, logSource, sourcePath } from "@/lib/logText";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
@@ -17,10 +18,30 @@ function badgeState(l: EdgeLog): string | undefined {
   return undefined;
 }
 
-/** Latest logs from every edge, pushed over WebSocket (updates replace the row in place). */
+/** Latest logs from every edge: the most recent ones on load, then pushed over WebSocket (updates replace the row in place). */
 export function LiveLogFeed({ limit = 20 }: { limit?: number }) {
   const { t, formatDateTime, formatDuration } = useI18n();
   const [logs, setLogs] = useState<EdgeLog[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    logsApi
+      .list({ page_size: limit })
+      .then((page) => {
+        if (cancelled) return;
+        // keep anything pushed while the request was in flight
+        setLogs((pushed) => {
+          const ids = new Set(pushed.map((l) => l.id));
+          return [...pushed, ...page.items.filter((l) => !ids.has(l.id))].slice(0, limit);
+        });
+      })
+      .catch(() => undefined)
+      .finally(() => !cancelled && setLoaded(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [limit]);
 
   useRealtime<EdgeLog>("log.created", (log) => setLogs((prev) => [log, ...prev].slice(0, limit)));
   useRealtime<EdgeLog>("log.updated", (log) =>
@@ -30,7 +51,9 @@ export function LiveLogFeed({ limit = 20 }: { limit?: number }) {
   return (
     <SectionCard title={t("logs.live")} meta={t("dashboard.realtime")}>
       <ul className="row-dashed max-h-[420px] overflow-y-auto">
-        {logs.length === 0 && <li className="py-8 text-center text-[13px] text-muted">{t("dashboard.waiting")}</li>}
+        {logs.length === 0 && (
+          <li className="py-8 text-center text-[13px] text-muted">{loaded ? t("dashboard.waiting") : t("common.loading")}</li>
+        )}
         {logs.map((l) => {
           const d = new Date(l.occurred_at);
           return (

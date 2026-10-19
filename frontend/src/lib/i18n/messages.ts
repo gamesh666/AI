@@ -297,7 +297,7 @@ const en = {
   "dashboard.noDevices": "No devices yet",
   "dashboard.seen": "seen {time}",
   "dashboard.realtime": "realtime",
-  "dashboard.waiting": "Waiting for events…",
+  "dashboard.waiting": "No logs yet — new ones show up here live",
 
   "monitor.subtitle": "{n} cameras · AI-annotated streams from the edge · WebRTC with HLS fallback",
   "monitor.allSites": "All sites",
@@ -693,7 +693,7 @@ const zhHant: Messages = {
   "dashboard.noDevices": "尚無裝置",
   "dashboard.seen": "最後回報 {time}",
   "dashboard.realtime": "即時",
-  "dashboard.waiting": "等待事件中…",
+  "dashboard.waiting": "尚無紀錄，新紀錄會即時出現在這裡",
 
   "monitor.subtitle": "{n} 台攝影機 · 邊緣端 AI 標註影像 · WebRTC（失敗自動改用 HLS）",
   "monitor.allSites": "所有場域",
@@ -1085,7 +1085,7 @@ const zhHans: Messages = {
   "dashboard.noDevices": "暂无设备",
   "dashboard.seen": "最后上报 {time}",
   "dashboard.realtime": "实时",
-  "dashboard.waiting": "等待事件中…",
+  "dashboard.waiting": "尚无记录，新记录会实时出现在这里",
 
   "monitor.subtitle": "{n} 台摄像头 · 边缘端 AI 标注视频 · WebRTC（失败自动改用 HLS）",
   "monitor.allSites": "所有站点",
