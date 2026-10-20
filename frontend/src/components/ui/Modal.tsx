@@ -11,7 +11,7 @@ export function Modal({
 }: {
   title: string;
   open: boolean;
-  wide?: boolean;
+  wide?: boolean | "xl";
   onClose: () => void;
   children: React.ReactNode;
 }) {
@@ -20,7 +20,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop p-4" onClick={onClose}>
       <div
-        className={`max-h-[90vh] w-full ${wide ? "max-w-3xl" : "max-w-lg"} overflow-y-auto rounded-panel border border-line bg-panel p-5 shadow-card`}
+        className={`max-h-[90vh] w-full ${wide === "xl" ? "max-w-[920px]" : wide ? "max-w-3xl" : "max-w-lg"} overflow-y-auto rounded-panel border border-line bg-panel p-5 shadow-card`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

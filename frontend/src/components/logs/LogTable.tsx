@@ -14,6 +14,7 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
   const { t, formatDateTime, formatDuration } = useI18n();
   const text = (l: EdgeLog) => describeLog(l, t, formatDuration);
   const [open, setOpen] = useState<EdgeLog | null>(null);
+  const [viewing, setViewing] = useState<EdgeLog | null>(null);
   // keep the dialog in sync when the open log is updated live
   const current = open ? (logs.find((l) => l.id === open.id) ?? open) : null;
 
@@ -58,9 +59,13 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
       header: t("events.snapshot"),
       render: (l) =>
         l.snapshot_url ? (
-          <button onClick={() => setOpen(l)}>
+          <button
+            onClick={() => setViewing(l)}
+            className="block overflow-hidden rounded-[10px] border border-line hover:border-accent"
+            title={t("logs.viewSnapshot")}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={l.snapshot_url} alt="" className="h-10 w-16 rounded object-cover" loading="lazy" />
+            <img src={l.snapshot_url} alt="" className="block aspect-[16/10] w-32 object-cover" loading="lazy" />
           </button>
         ) : null,
     },
@@ -69,6 +74,31 @@ export function LogTable({ logs, loading }: { logs: EdgeLog[]; loading?: boolean
   return (
     <>
       <DataTable columns={columns} rows={logs} loading={loading} empty={t("logs.empty")} />
+      <Modal
+        open={!!viewing}
+        wide="xl"
+        title={viewing ? `${viewing.camera_name ?? viewing.camera_code ?? viewing.event_type} · ${formatDateTime(viewing.occurred_at)}` : ""}
+        onClose={() => setViewing(null)}
+      >
+        {viewing && (
+          <div className="space-y-2">
+            <SnapshotWithBoxes log={viewing} height={480} />
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+              <span className="truncate">
+                <code className="text-accent-hi">{viewing.event_type}</code> {text(viewing)}
+              </span>
+              <span className="flex shrink-0 gap-3">
+                <button className="hover:text-ink hover:underline" onClick={() => { setOpen(viewing); setViewing(null); }}>
+                  {t("logs.details")}
+                </button>
+                <a className="hover:text-ink hover:underline" href={viewing.snapshot_url ?? "#"} target="_blank" rel="noreferrer">
+                  {t("logs.openOriginal")}
+                </a>
+              </span>
+            </div>
+          </div>
+        )}
+      </Modal>
       <Modal open={!!current} title={current ? current.event_type : ""} onClose={() => setOpen(null)}>
         {current && (
           <div className="space-y-3 text-sm">
