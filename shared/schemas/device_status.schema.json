@@ -1,0 +1,33 @@
+{
+  "$defs": {
+    "DeviceState": {
+      "enum": [
+        "online",
+        "offline"
+      ],
+      "title": "DeviceState",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "device_uuid": {
+      "title": "Device Uuid",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/DeviceState"
+    }
+  },
+  "required": [
+    "device_uuid",
+    "state"
+  ],
+  "title": "DeviceStatus",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

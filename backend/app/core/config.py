@@ -1,0 +1,128 @@
+"""Application settings. Every secret comes from environment variables — nothing is hardcoded."""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from urllib.parse import quote
+
+from cryptography.fernet import Fernet
+from pydantic import Field, SecretStr, computed_field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # --- app ---
+    app_name: str = "AIBOX SERVER Backend"
+    environment: str = Field(default="development", alias="APP_ENV")
+    log_level: str = "INFO"
+    api_prefix: str = "/api/v1"
+    # comma separated list
+    cors_origins: str = "http://localhost:3000"
+
+    # --- database ---
+    postgres_host: str = "postgres"
+    postgres_port: int = 5432
+    postgres_db: str = "aivms"
+    postgres_user: str = "aivms"
+    postgres_password: SecretStr
+    database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+
+    # --- redis ---
+    redis_url: str = "redis://redis:6379/0"
+
+    # --- auth ---
+    jwt_secret_key: SecretStr
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+    stream_token_expire_seconds: int = 300
+
+    # --- initial admin (created by seed on first start) ---
+    initial_admin_username: str = "admin"
+    initial_admin_password: SecretStr | None = None
+    initial_admin_email: str | None = None
+
+    # --- credentials encryption (RTSP passwords) ---
+    credential_encryption_key: SecretStr
+
+    @field_validator("credential_encryption_key")
+    @classmethod
+    def _valid_fernet_key(cls, v: SecretStr) -> SecretStr:
+        # fail at startup instead of a 500 on the first camera with RTSP credentials
+        try:
+            Fernet(v.get_secret_value().encode())
+        except (ValueError, TypeError):
+            raise ValueError(
+                "CREDENTIAL_ENCRYPTION_KEY is not a valid Fernet key (32 url-safe base64 bytes). Generate one with: "
+                "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\" "
+                "or run ./scripts/generate-secrets.sh"
+            ) from None
+        return v
+
+    # --- edges ---
+    device_offline_after_seconds: int = 30
+    device_monitor_interval_seconds: int = 10
+
+    # --- minio ---
+    minio_endpoint: str = "minio:9000"
+    minio_access_key: str
+    minio_secret_key: SecretStr
+    minio_secure: bool = False
+    minio_region: str = "us-east-1"
+    minio_bucket_snapshots: str = "snapshots"
+    # URL browsers use to download presigned snapshots
+    minio_public_url: str = "http://localhost:9000"
+    # URL edge agents use to upload snapshots
+    minio_edge_url: str = "http://localhost:9000"
+    snapshot_url_expire_seconds: int = 3600
+
+    # --- mediamtx ---
+    mediamtx_webrtc_public_url: str = "http://localhost:8889"
+    mediamtx_hls_public_url: str = "http://localhost:8888"
+    # addresses edge agents PUSH annotated streams to (outgoing from the edge; NAT friendly)
+    mediamtx_rtsp_publish_url: str = "rtsp://localhost:8554"
+    mediamtx_srt_publish_url: str = "srt://localhost:8890"
+    # default push protocol handed to edge agents: rtsp (LAN/VPN) | srt (across the Internet)
+    edge_stream_protocol: str = "rtsp"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def database_url(self) -> str:
+        if self.database_url_override:
+            return self.database_url_override
+        return (
+            f"postgresql+asyncpg://{quote(self.postgres_user)}:{quote(self.postgres_password.get_secret_value())}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
+    def placeholder_secrets(self) -> list[str]:
+        """Names of secrets still set to the .env.example placeholders ("change-me…")."""
+        names = []
+        for name in type(self).model_fields:
+            value = getattr(self, name)
+            if isinstance(value, SecretStr) and value.get_secret_value().startswith("change-me"):
+                names.append(name.upper())
+        return names
+
+    @model_validator(mode="after")
+    def _no_placeholders_in_production(self) -> Settings:
+        if self.is_production and (names := self.placeholder_secrets()):
+            raise ValueError(f"placeholder secrets are not allowed in production: {', '.join(names)}")
+        return self
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()  # type: ignore[call-arg]

@@ -1,0 +1,45 @@
+import type { MessageKey } from "@/lib/i18n/messages";
+import type { EdgeLog } from "@/types";
+
+type T = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+/** Human text for records the platform writes itself (system.*); edge logs use their own message. */
+export function describeLog(log: EdgeLog, t: T, duration: (s: number) => string): string | null {
+  const d = log.data as Record<string, unknown>;
+  const secs = typeof d.duration_seconds === "number" ? d.duration_seconds : null;
+  if (log.event_type === "system.connection") {
+    if (log.status === "recovered") return t("syslog.recovered", { d: secs !== null ? duration(secs) : "--" });
+    return t(d.reason === "heartbeat_timeout" ? "syslog.offlineTimeout" : "syslog.offlineReported");
+  }
+  if (log.event_type === "system.camera_sync") {
+    const list = (k: string) => (Array.isArray(d[k]) ? (d[k] as string[]) : []);
+    const parts = [
+      list("added").length ? t("syslog.camAdded", { list: list("added").join(", ") }) : null,
+      list("restored").length ? t("syslog.camRestored", { list: list("restored").join(", ") }) : null,
+      list("missing").length ? t("syslog.camMissing", { list: list("missing").join(", ") }) : null,
+    ].filter(Boolean);
+    return `${t("syslog.camSync")}${parts.join(" · ")}`;
+  }
+  if (log.event_type === "system.platform") {
+    if (log.status === "stopped") return t("syslog.platformStopped");
+    const down = typeof d.downtime_seconds === "number" ? duration(d.downtime_seconds) : null;
+    const base = d.unclean_shutdown ? t("syslog.platformStartedUnclean") : t("syslog.platformStarted");
+    return down ? `${base} ${t("syslog.downtime", { d: down })}` : base;
+  }
+  return log.message;
+}
+
+/** Device / camera shown for a log; platform-level records have no device. */
+export function logSource(log: EdgeLog, t: T): { primary: string; secondary: string } {
+  if (!log.edge_device_id) return { primary: t("syslog.platform"), secondary: "--" };
+  return {
+    primary: log.camera_name ?? log.camera_code ?? log.edge_device_name ?? log.edge_device_uuid ?? "--",
+    secondary: `${log.site_name ?? "--"} · ${log.edge_device_name ?? log.edge_device_uuid}`,
+  };
+}
+
+/** "Site › Edge device › Camera" — which box and which camera a record came from (empty parts skipped). */
+export function sourcePath(site: string | null | undefined, device: string | null | undefined,
+                           camera: string | null | undefined): string {
+  return [site, device, camera].filter((x) => x && x.trim()).join(" › ") || "--";
+}

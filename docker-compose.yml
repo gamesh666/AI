@@ -1,0 +1,11 @@
+# AIBOX SERVER. From the repository root (variables come from ./.env):
+#
+#   ./scripts/install.sh       first install / update (generates .env, sets the address, builds, starts)
+#   docker compose up -d       start with the current settings
+#
+# The services live in infra/docker-compose.yml.
+name: aivms
+
+include:
+  - path: infra/docker-compose.yml
+    env_file: .env

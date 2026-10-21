@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2300" height="1180" viewBox="0 0 2300 1180" font-family="&#x27;Noto Sans TC&#x27;,&#x27;Noto Sans CJK TC&#x27;,&#x27;PingFang TC&#x27;,&#x27;Microsoft JhengHei&#x27;,&#x27;WenQuanYi Zen Hei&#x27;,sans-serif">
+<rect width="2300" height="1180" fill="#ffffff"/>
+<text x="1150.0" y="58" text-anchor="middle" font-size="34" font-weight="700" fill="#0f172a">AIBOX SERVER × REACH01 / REACH02 串接運作</text>
+<text x="1150.0" y="94" text-anchor="middle" font-size="19" fill="#475569">REACH 自己辨識，主動把「已畫框影像」與「辨識結果」推給平台；平台只接收、保存、顯示，從不連進 REACH</text>
+<path d="M1025.0,620.0 C937.5,620.0 937.5,380.0 850.0,380.0" fill="none" stroke="#0f766e" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M617.9,380.0 C587.9,380.0 587.9,308.0 557.9,308.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M617.9,380.0 C587.9,380.0 587.9,356.0 557.9,356.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M617.9,380.0 C587.9,380.0 587.9,404.0 557.9,404.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M617.9,380.0 C587.9,380.0 587.9,452.0 557.9,452.0" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1025.0,620.0 C937.5,620.0 937.5,596.0 850.0,596.0" fill="none" stroke="#b91c1c" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M701.0,596.0 C629.5,596.0 629.5,524.0 557.9,524.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M701.0,596.0 C629.5,596.0 629.5,572.0 557.9,572.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M701.0,596.0 C629.5,596.0 629.5,620.0 557.9,620.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M701.0,596.0 C629.5,596.0 629.5,668.0 557.9,668.0" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1025.0,620.0 C937.5,620.0 937.5,836.0 850.0,836.0" fill="none" stroke="#4338ca" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,740.0 557.9,740.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,788.0 557.9,788.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,836.0 557.9,836.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,884.0 557.9,884.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M680.0,836.0 C619.0,836.0 619.0,932.0 557.9,932.0" fill="none" stroke="#4338ca" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1275.0,620.0 C1362.5,620.0 1362.5,320.0 1450.0,320.0" fill="none" stroke="#15803d" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1611.9,320.0 C1680.6,320.0 1680.6,248.0 1749.3,248.0" fill="none" stroke="#15803d" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1611.9,320.0 C1680.6,320.0 1680.6,296.0 1749.3,296.0" fill="none" stroke="#15803d" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1611.9,320.0 C1680.6,320.0 1680.6,344.0 1749.3,344.0" fill="none" stroke="#15803d" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1611.9,320.0 C1680.6,320.0 1680.6,392.0 1749.3,392.0" fill="none" stroke="#15803d" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1275.0,620.0 C1362.5,620.0 1362.5,536.0 1450.0,536.0" fill="none" stroke="#7e22ce" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1689.3,536.0 C1719.3,536.0 1719.3,464.0 1749.3,464.0" fill="none" stroke="#7e22ce" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1689.3,536.0 C1719.3,536.0 1719.3,512.0 1749.3,512.0" fill="none" stroke="#7e22ce" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1689.3,536.0 C1719.3,536.0 1719.3,560.0 1749.3,560.0" fill="none" stroke="#7e22ce" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1689.3,536.0 C1719.3,536.0 1719.3,608.0 1749.3,608.0" fill="none" stroke="#7e22ce" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1275.0,620.0 C1362.5,620.0 1362.5,728.0 1450.0,728.0" fill="none" stroke="#1d4ed8" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1664.1,728.0 C1706.7,728.0 1706.7,680.0 1749.3,680.0" fill="none" stroke="#1d4ed8" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1664.1,728.0 C1706.7,728.0 1706.7,728.0 1749.3,728.0" fill="none" stroke="#1d4ed8" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1664.1,728.0 C1706.7,728.0 1706.7,776.0 1749.3,776.0" fill="none" stroke="#1d4ed8" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1275.0,620.0 C1362.5,620.0 1362.5,920.0 1450.0,920.0" fill="none" stroke="#c2410c" stroke-width="6" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1614.0,920.0 C1681.7,920.0 1681.7,848.0 1749.3,848.0" fill="none" stroke="#c2410c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1614.0,920.0 C1681.7,920.0 1681.7,896.0 1749.3,896.0" fill="none" stroke="#c2410c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1614.0,920.0 C1681.7,920.0 1681.7,944.0 1749.3,944.0" fill="none" stroke="#c2410c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<path d="M1614.0,920.0 C1681.7,920.0 1681.7,992.0 1749.3,992.0" fill="none" stroke="#c2410c" stroke-width="2.2" stroke-opacity="0.75" stroke-linecap="round"/>
+<rect x="1025.0" y="558.0" width="250" height="124" rx="24" fill="#0f172a"/>
+<text x="1150.0" y="606.0" text-anchor="middle" font-size="27" font-weight="700" fill="#ffffff">AIBOX SERVER</text>
+<text x="1150.0" y="640.0" text-anchor="middle" font-size="18" fill="#cbd5e1">× REACH 邊緣辨識</text>
+<text x="1150.0" y="664.0" text-anchor="middle" font-size="14" fill="#94a3b8">連線方向：REACH → 平台</text>
+<rect x="617.9" y="346.0" width="232.1" height="68" rx="16" fill="#0f766e"/>
+<text x="734.0" y="374.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">AIBOX SERVER</text>
+<text x="734.0" y="399.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">平台 VM 192.168.0.179</text>
+<rect x="289.9" y="289.0" width="268.0" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
+<text x="304.9" y="314.0" font-size="17" fill="#0f172a">只接收、只顯示，不做任何辨識</text>
+<rect x="325.3" y="337.0" width="232.6" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
+<text x="340.3" y="362.0" font-size="17" fill="#0f172a">網頁 3000 · API 8000</text>
+<rect x="322.9" y="385.0" width="235.0" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
+<text x="337.9" y="410.0" font-size="17" fill="#0f172a">串流 8554 · 快照 9000</text>
+<rect x="215.1" y="433.0" width="342.8" height="38" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.5"/>
+<text x="230.1" y="458.0" font-size="17" fill="#0f172a">PostgreSQL 保存 · Redis 即時推播</text>
+<rect x="701.0" y="562.0" width="149.0" height="68" rx="16" fill="#b91c1c"/>
+<text x="775.5" y="590.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">身分與金鑰</text>
+<text x="775.5" y="615.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">哪一把用在哪</text>
+<rect x="226.7" y="505.0" width="331.2" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="241.7" y="530.0" font-size="17" fill="#0f172a">裝置金鑰：每台一把，API + 推流密碼</text>
+<rect x="238.9" y="553.0" width="319.0" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="253.9" y="578.0" font-size="17" fill="#0f172a">裝置金鑰外流：按「更換金鑰」即作廢</text>
+<rect x="213.7" y="601.0" width="344.2" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="228.7" y="626.0" font-size="17" fill="#0f172a">佈建權杖：每個業主一把，MAC 自動註冊</text>
+<rect x="201.5" y="649.0" width="356.4" height="38" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+<text x="216.5" y="674.0" font-size="17" fill="#0f172a">Tailscale 金鑰：只管網路，與平台無關</text>
+<rect x="680.0" y="802.0" width="170.0" height="68" rx="16" fill="#4338ca"/>
+<text x="765.0" y="830.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">平台上看得到</text>
+<text x="765.0" y="855.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">給使用者</text>
+<rect x="238.9" y="721.0" width="319.0" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="253.9" y="746.0" font-size="17" fill="#0f172a">總覽：在線台數、今日斷線、即時紀錄</text>
+<rect x="340.9" y="769.0" width="217.0" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="355.9" y="794.0" font-size="17" fill="#0f172a">即時監看：已畫框的影像</text>
+<rect x="86.6" y="817.0" width="471.3" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="101.6" y="842.0" font-size="17" fill="#0f172a">Edge 紀錄：辨識結果、離席 / 回座、斷線、攝影機增減</text>
+<rect x="224.3" y="865.0" width="333.6" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="239.3" y="890.0" font-size="17" fill="#0f172a">AI 模型：哪台、哪支攝影機用哪個模型</text>
+<rect x="185.2" y="913.0" width="372.7" height="38" rx="10" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.5"/>
+<text x="200.2" y="938.0" font-size="17" fill="#0f172a">業主 / 場域：合約資料 → site_profile</text>
+<rect x="1450.0" y="286.0" width="161.9" height="68" rx="16" fill="#15803d"/>
+<text x="1531.0" y="314.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">REACH01</text>
+<text x="1531.0" y="339.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">同區網 · 直接連</text>
+<rect x="1749.3" y="229.0" width="298.9" height="38" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+<text x="1764.3" y="254.0" font-size="17" fill="#0f172a">192.168.0.x，與平台同一個網段</text>
+<rect x="1749.3" y="277.0" width="370.0" height="38" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+<text x="1764.3" y="302.0" font-size="17" fill="#0f172a">辦公室離席辨識（前鏡頭捕捉、後鏡頭確認）</text>
+<rect x="1749.3" y="325.0" width="269.7" height="38" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+<text x="1764.3" y="350.0" font-size="17" fill="#0f172a">2 支攝影機：大門右側 / 後左</text>
+<rect x="1749.3" y="373.0" width="201.0" height="38" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+<text x="1764.3" y="398.0" font-size="17" fill="#0f172a">場域 BIMer Office</text>
+<rect x="1450.0" y="502.0" width="239.3" height="68" rx="16" fill="#7e22ce"/>
+<text x="1569.7" y="530.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">REACH02 · aibox</text>
+<text x="1569.7" y="555.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">跨網段 · Tailscale</text>
+<rect x="1749.3" y="445.0" width="258.5" height="38" rx="10" fill="#f3e8ff" stroke="#7e22ce" stroke-width="1.5"/>
+<text x="1764.3" y="470.0" font-size="17" fill="#0f172a">192.168.89.x，另一個區網</text>
+<rect x="1749.3" y="493.0" width="349.3" height="38" rx="10" fill="#f3e8ff" stroke="#7e22ce" stroke-width="1.5"/>
+<text x="1764.3" y="518.0" font-size="17" fill="#0f172a">平台 VM 當子網路由 192.168.0.0/24</text>
+<rect x="1749.3" y="541.0" width="330.6" height="38" rx="10" fill="#f3e8ff" stroke="#7e22ce" stroke-width="1.5"/>
+<text x="1764.3" y="566.0" font-size="17" fill="#0f172a">一樣連 192.168.0.179，設定不用改</text>
+<rect x="1749.3" y="589.0" width="311.9" height="38" rx="10" fill="#f3e8ff" stroke="#7e22ce" stroke-width="1.5"/>
+<text x="1764.3" y="614.0" font-size="17" fill="#0f172a">1 支攝影機（清單由 aibox 同步）</text>
+<rect x="1450.0" y="694.0" width="214.1" height="68" rx="16" fill="#1d4ed8"/>
+<text x="1557.0" y="722.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">三條通道</text>
+<text x="1557.0" y="747.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">全部由 REACH 主動連出</text>
+<rect x="1749.3" y="661.0" width="328.9" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+<text x="1764.3" y="686.0" font-size="17" fill="#0f172a">HTTP 8000：註冊、設定、心跳、紀錄</text>
+<rect x="1749.3" y="709.0" width="317.6" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+<text x="1764.3" y="734.0" font-size="17" fill="#0f172a">RTSP 8554：已畫框的 H.264 影像</text>
+<rect x="1749.3" y="757.0" width="220.4" height="38" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+<text x="1764.3" y="782.0" font-size="17" fill="#0f172a">MinIO 9000：事件快照</text>
+<rect x="1450.0" y="886.0" width="164.0" height="68" rx="16" fill="#c2410c"/>
+<text x="1532.0" y="914.0" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">運作流程</text>
+<text x="1532.0" y="939.0" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity="0.9">從上線到斷線恢復</text>
+<rect x="1749.3" y="829.0" width="273.8" height="38" rx="10" fill="#ffedd5" stroke="#c2410c" stroke-width="1.5"/>
+<text x="1764.3" y="854.0" font-size="17" fill="#0f172a">① 建立裝置／以 MAC 自動註冊</text>
+<rect x="1749.3" y="877.0" width="303.7" height="38" rx="10" fill="#ffedd5" stroke="#c2410c" stroke-width="1.5"/>
+<text x="1764.3" y="902.0" font-size="17" fill="#0f172a">② 同步攝影機清單 → 取得推流路徑</text>
+<rect x="1749.3" y="925.0" width="267.3" height="38" rx="10" fill="#ffedd5" stroke="#c2410c" stroke-width="1.5"/>
+<text x="1764.3" y="950.0" font-size="17" fill="#0f172a">③ 心跳 + 推流 + 送辨識紀錄</text>
+<rect x="1749.3" y="973.0" width="352.3" height="38" rx="10" fill="#ffedd5" stroke="#c2410c" stroke-width="1.5"/>
+<text x="1764.3" y="998.0" font-size="17" fill="#0f172a">④ 斷線 → 平台記錄 → 恢復時記中斷多久</text>
+<text x="1150.0" y="1156" text-anchor="middle" font-size="15" fill="#94a3b8">金鑰、密碼、權杖不在此圖中，一律另以安全管道交付 · docs/partners/reach/03-AIBOX-SERVER與REACH01-02串接說明.md</text>
+</svg>

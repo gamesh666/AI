@@ -1,0 +1,40 @@
+{
+  "$defs": {
+    "CommandType": {
+      "enum": [
+        "reload_config",
+        "restart_camera",
+        "capture_snapshot",
+        "ping"
+      ],
+      "title": "CommandType",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "command_id": {
+      "format": "uuid",
+      "title": "Command Id",
+      "type": "string"
+    },
+    "command": {
+      "$ref": "#/$defs/CommandType"
+    },
+    "params": {
+      "additionalProperties": true,
+      "title": "Params",
+      "type": "object"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "title": "Issued At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "command"
+  ],
+  "title": "Command",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

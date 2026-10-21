@@ -1,0 +1,74 @@
+"""ORM -> DTO mapping that needs joined data or must hide sensitive fields."""
+
+from __future__ import annotations
+
+from app.models.camera import Camera
+from app.models.edge_device import EdgeDevice
+from app.schemas.camera import CameraRead
+from app.schemas.edge_device import EdgeDeviceRead
+
+
+def device_to_read(device: EdgeDevice, camera_count: int = 0, disconnects_24h: int = 0) -> EdgeDeviceRead:
+    dto = EdgeDeviceRead.model_validate(device)
+    dto.site_name = device.site.name if device.site else None
+    dto.owner_name = device.owner.name if device.owner else None
+    dto.camera_count = camera_count
+    dto.disconnects_24h = disconnects_24h
+    return dto
+
+
+def model_label(model: dict) -> str:
+    return " ".join(str(x) for x in (model.get("name"), model.get("version")) if x)
+
+
+def model_for_camera(reported: list[dict] | None, camera_code: str) -> str | None:
+    """Model(s) an edge reports for one camera; a single model without a camera list applies to all."""
+    if not reported:
+        return None
+    names = [model_label(m) for m in reported if camera_code in (m.get("cameras") or [])]
+    if not names and len(reported) == 1 and not reported[0].get("cameras"):
+        names = [model_label(reported[0])]
+    return ", ".join(names) or None
+
+
+def camera_to_read(camera: Camera) -> CameraRead:
+    device = camera.edge_device
+    site = device.site if device else None
+    return CameraRead(
+        id=camera.id,
+        code=camera.code,
+        edge_device_id=camera.edge_device_id,
+        edge_device_uuid=device.device_uuid if device else None,
+        edge_device_name=device.name if device else None,
+        edge_device_status=device.status.value if device else None,
+        site_id=site.id if site else None,
+        site_code=site.code if site else None,
+        site_name=site.name if site else None,
+        name=camera.name,
+        # the source address stays on the edge side: only say whether it is configured
+        source_configured=bool(camera.rtsp_url),
+        has_credentials=bool(camera.rtsp_username or camera.rtsp_password_encrypted),
+        enabled=camera.enabled,
+        ai_enabled=camera.ai_enabled,
+        stream_enabled=camera.stream_enabled,
+        annotated_stream_enabled=camera.annotated_stream_enabled,
+        original_stream_enabled=camera.original_stream_enabled,
+        ai_model_id=camera.ai_model_id,
+        ai_model_name=camera.ai_model.name if camera.ai_model else None,
+        stream_path=camera.stream_path,
+        resolution=camera.resolution,
+        stream_fps=camera.stream_fps,
+        inference_fps=camera.inference_fps,
+        bitrate=camera.bitrate,
+        gop_size=camera.gop_size,
+        status=camera.status,
+        stream_status=camera.stream_status,
+        ai_status=camera.ai_status,
+        last_frame_at=camera.last_frame_at,
+        runtime_stats=camera.runtime_stats or {},
+        missing_from_edge_at=camera.missing_from_edge_at,
+        active_model=model_for_camera(device.reported_models if device else None, camera.code),
+        created_at=camera.created_at,
+    )
+
+

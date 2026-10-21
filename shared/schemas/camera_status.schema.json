@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "AiStatus": {
+      "enum": [
+        "disabled",
+        "loading",
+        "running",
+        "error"
+      ],
+      "title": "AiStatus",
+      "type": "string"
+    },
+    "RtspStatus": {
+      "enum": [
+        "connecting",
+        "online",
+        "offline",
+        "error"
+      ],
+      "title": "RtspStatus",
+      "type": "string"
+    },
+    "StreamStatus": {
+      "enum": [
+        "offline",
+        "connecting",
+        "streaming",
+        "error"
+      ],
+      "title": "StreamStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "camera_id": {
+      "title": "Camera Id",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "rtsp_status": {
+      "$ref": "#/$defs/RtspStatus"
+    },
+    "ai_status": {
+      "$ref": "#/$defs/AiStatus"
+    },
+    "stream_status": {
+      "$ref": "#/$defs/StreamStatus"
+    },
+    "input_fps": {
+      "default": 0.0,
+      "title": "Input Fps",
+      "type": "number"
+    },
+    "inference_fps": {
+      "default": 0.0,
+      "title": "Inference Fps",
+      "type": "number"
+    },
+    "output_fps": {
+      "default": 0.0,
+      "title": "Output Fps",
+      "type": "number"
+    },
+    "resolution": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source resolution, e.g. 1920x1080",
+      "title": "Resolution"
+    },
+    "last_frame_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Frame At"
+    },
+    "dropped_frames": {
+      "default": 0,
+      "title": "Dropped Frames",
+      "type": "integer"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    }
+  },
+  "required": [
+    "camera_id",
+    "rtsp_status",
+    "ai_status",
+    "stream_status"
+  ],
+  "title": "CameraRuntimeStatus",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
