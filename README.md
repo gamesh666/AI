@@ -24,7 +24,7 @@ cd /opt/ai-monitor
 ```
 
 完整步驟（安裝 Docker、防火牆、接 AI BOX、備份、搬家）：
-**[docs/AIBOX-SERVER-建置SOP.md](docs/AIBOX-SERVER-建置SOP.md)**（圖解版：[docs/AIBOX-SERVER-圖解SOP.md](docs/AIBOX-SERVER-圖解SOP.md)）
+**[docs/AIBOX-SERVER-建置SOP.md](docs/AIBOX-SERVER-建置SOP.md)**（圖解版：[docs/AIBOX-SERVER-圖解SOP.md](docs/AIBOX-SERVER-圖解SOP.md)；PDF：[docs/pdf/](docs/pdf/)）
 
 | 常用指令（在 `/opt/ai-monitor`） | 用途 |
 |---|---|
