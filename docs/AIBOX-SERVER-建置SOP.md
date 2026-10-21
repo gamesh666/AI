@@ -1,22 +1,13 @@
 # AIBOX SERVER 建置 SOP（新虛擬機從零到上線）
 
 > 適用：在任何一台新的 Linux 虛擬機上，從 `git clone` 開始架起 AIBOX SERVER 平台，接上 REACH 等 AI BOX。
-> 圖解版：[AIBOX-SERVER-圖解SOP.md](AIBOX-SERVER-圖解SOP.md)
+> 圖解版：[AIBOX-SERVER-圖解SOP.md](AIBOX-SERVER-圖解SOP.md)　PDF：[pdf/](pdf/)
 > 全程約 20～30 分鐘，其中第一次建置映像檔約佔 5～15 分鐘。
 > 需要的指令都在本文件，照順序貼上即可。
 
 ## 總覽
 
-```mermaid
-flowchart LR
-    A["① 準備 VM<br/>Ubuntu 24.04<br/>固定 IP"] --> B["② 安裝 Docker"]
-    B --> C["③ git clone"]
-    C --> D["④ ./scripts/install.sh<br/>產生密碼、設定 IP、建置、啟動"]
-    D --> E["⑤ 第一次登入<br/>改管理員密碼"]
-    E --> F["⑥ 開防火牆"]
-    F --> G["⑦ 接邊緣裝置<br/>業主 → 佈建權杖 → AI BOX 自動註冊"]
-    G --> H["⑧ 驗收"]
-```
+![建置流程](images/sop/00-overview.png)
 
 裝好之後的樣子：
 
@@ -190,14 +181,7 @@ AI BOX 端要改什麼，見 `docs/partners/reach/05-REACH-更新規格v2.md`。
 
 `git clone` 只帶程式，**資料不會跟著過去**（裝置、金鑰、業主、紀錄、快照都在舊 VM 的 Docker volume 裡）。要保留資料：
 
-```mermaid
-flowchart LR
-    O["舊 VM<br/>./scripts/backup.sh"] -- "複製整個備份資料夾<br/>（scp / 隨身碟）" --> N1["新 VM<br/>git clone"]
-    N1 --> N2["備份裡的 env<br/>複製成 .env"]
-    N2 --> N3["./scripts/install.sh 新IP"]
-    N3 --> N4["./scripts/restore.sh 備份資料夾"]
-    N4 --> N5["AI BOX 改連新 IP<br/>（金鑰不變）"]
-```
+![搬家流程](images/sop/09-migrate.png)
 
 ```bash
 # 舊 VM

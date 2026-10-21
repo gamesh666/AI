@@ -1,7 +1,7 @@
 # AIBOX SERVER 圖解 SOP
 
 > 一張圖一個步驟。每一步的完整指令與說明在文字版 [AIBOX-SERVER-建置SOP.md](AIBOX-SERVER-建置SOP.md)。
-> 圖中畫面都是實際安裝後的截圖，IP 以 `192.168.0.179` 為例。
+> 圖中畫面都是實際安裝後的截圖，IP 以 `192.168.0.179` 為例。PDF 版：[pdf/AIBOX-SERVER-圖解SOP.pdf](pdf/AIBOX-SERVER-圖解SOP.pdf)
 
 ![建置流程](images/sop/00-overview.png)
 
