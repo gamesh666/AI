@@ -9,5 +9,5 @@ def configure_logging(level: str = "INFO") -> None:
         format="%(asctime)s %(levelname)-7s [%(name)s] %(message)s",
     )
     # quiet noisy libraries
-    for name in ("uvicorn.access", "aiomqtt"):
+    for name in ("uvicorn.access",):
         logging.getLogger(name).setLevel(logging.WARNING)

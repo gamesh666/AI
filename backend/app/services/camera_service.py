@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.crypto import decrypt_secret, encrypt_secret
 from app.core.enums import StreamType
 from app.core.exceptions import ConflictError, NotFoundError
-from app.messaging import publisher
 from app.models.camera import Camera
 from app.models.edge_device import EdgeDevice
 from app.repositories.ai_model_repository import AIModelRepository
@@ -17,6 +16,7 @@ from app.repositories.camera_repository import CameraRepository
 from app.repositories.device_repository import DeviceRepository
 from app.schemas.camera import CameraCreate, CameraRead, CameraUpdate
 from app.schemas.common import Page, PageParams
+from app.services import telemetry
 from app.services.mappers import camera_to_read
 
 UNASSIGNED_SITE = "unassigned"
@@ -133,7 +133,7 @@ class CameraService:
         except IntegrityError as exc:
             await self.session.rollback()
             raise ConflictError("camera code already exists on this edge device") from exc
-        await publisher.notify_config_changed(device.device_uuid, "camera_created")
+        await telemetry.notify_config_changed(device.device_uuid, "camera_created")
         return await self.get_read(camera.id)
 
     async def update(self, camera_id: uuid.UUID, data: CameraUpdate) -> CameraRead:
@@ -176,9 +176,9 @@ class CameraService:
             raise ConflictError("camera code already exists on this edge device") from exc
 
         camera = await self.get(camera_id)
-        await publisher.notify_config_changed(camera.edge_device.device_uuid, "camera_updated")
+        await telemetry.notify_config_changed(camera.edge_device.device_uuid, "camera_updated")
         if camera.edge_device.device_uuid != old_device_uuid:
-            await publisher.notify_config_changed(old_device_uuid, "camera_moved")
+            await telemetry.notify_config_changed(old_device_uuid, "camera_moved")
         return camera_to_read(camera)
 
     async def delete(self, camera_id: uuid.UUID) -> None:
@@ -186,7 +186,7 @@ class CameraService:
         device_uuid = camera.edge_device.device_uuid
         await self.repo.delete(camera)
         await self.session.commit()
-        await publisher.notify_config_changed(device_uuid, "camera_deleted")
+        await telemetry.notify_config_changed(device_uuid, "camera_deleted")
 
     async def refresh_stream_paths(self, device: EdgeDevice) -> None:
         """Re-derive stream paths after the device moved site or the site code changed (caller commits)."""

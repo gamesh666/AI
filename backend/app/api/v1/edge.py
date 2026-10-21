@@ -36,9 +36,8 @@ async def register(
 ) -> EdgeRegisterResponse:
     """Edge self-registration.
 
-    - with `mac_address` (REACH AI BOX contract): owner provisioning token, identity = MAC, platform-assigned
-      device ID, the key is rotated on every call, `site_profile` is returned
-    - without (edge-agent): platform-wide token from EDGE_PROVISIONING_TOKEN, agent-chosen device ID
+    REACH AI BOX contract: owner provisioning token, identity = MAC, platform-assigned device ID, the key is
+    rotated on every call, `site_profile` is returned.
     Errors are always {"detail": "<text>"}.
     """
     ip = request.client.host if request.client else "unknown"
@@ -55,12 +54,9 @@ async def register(
     if not isinstance(device_uuid, str):
         raise UnprocessableError("device_uuid is required")
     mac = body.get("mac_address")
-    if mac is not None:
-        if not isinstance(mac, str):
-            raise UnprocessableError("mac_address must be a string")
-        result = await service.register_mac(scope, device_uuid, mac, ip)
-    else:
-        result = await service.register_legacy(scope, device_uuid, body, ip)
+    if not isinstance(mac, str):
+        raise UnprocessableError("mac_address is required")
+    result = await service.register_mac(scope, device_uuid, mac, ip)
     return EdgeRegisterResponse(
         api_key=result.api_key,
         device_uuid=result.device.device_uuid,

@@ -8,7 +8,6 @@ asyncpg>=0.29,<1
 alembic>=1.13,<2
 psycopg[binary]>=3.1,<4
 redis>=5.0,<9
-aiomqtt>=2.3,<3
 PyJWT>=2.8,<3
 bcrypt>=4.1,<6
 cryptography>=42

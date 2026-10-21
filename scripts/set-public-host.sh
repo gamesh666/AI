@@ -4,7 +4,7 @@
 #   ./scripts/set-public-host.sh 192.168.56.10
 #   ./scripts/set-public-host.sh vms.example.local
 # Then rebuild/recreate (NEXT_PUBLIC_API_URL is baked into the frontend at build time):
-#   docker compose up -d --build frontend backend mediamtx   (add --profile demo for the demo stack)
+#   ./scripts/install.sh   (or: docker compose up -d --build frontend backend mediamtx)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,12 +24,11 @@ set_var MINIO_EDGE_URL "http://$HOST:9000"     # snapshot uploads from edges
 set_var MEDIAMTX_WEBRTC_PUBLIC_URL "http://$HOST:8889"
 set_var MEDIAMTX_HLS_PUBLIC_URL "http://$HOST:8888"
 set_var MEDIAMTX_WEBRTC_ADDITIONAL_HOSTS "$HOST"
-# for REAL edge devices elsewhere on the network (the demo edges use the internal service names)
-set_var MQTT_PUBLIC_HOST "$HOST"
+# edge devices push video here
 set_var MEDIAMTX_RTSP_PUBLISH_URL "rtsp://$HOST:8554"
 set_var MEDIAMTX_SRT_PUBLISH_URL "srt://$HOST:8890"
 
 echo "public host set to $HOST (previous .env saved as .env.bak)"
 echo "open: http://$HOST:3000"
 echo "apply: docker compose up -d --build frontend backend mediamtx   (or ./scripts/install.sh)"
-echo "firewall: allow TCP 3000 8000 8888 8889 9000 (+ UDP 8189 for WebRTC; 1883/8554 for real edges)"
+echo "firewall: allow TCP 3000 8000 8554 8888 8889 9000 and UDP 8189"

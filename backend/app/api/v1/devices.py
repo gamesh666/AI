@@ -3,7 +3,6 @@ import uuid
 from fastapi import APIRouter, status
 
 from app.api.deps import AdminUser, DBSession, OperatorUser, Pagination, ViewerUser
-from app.core.config import get_settings
 from app.core.enums import DeviceStatus, UserRole
 from app.core.exceptions import PermissionDeniedError
 from app.schemas.common import Page
@@ -40,18 +39,11 @@ def _admin_fields(body, user) -> None:
         raise PermissionDeniedError(f"only administrators may change {', '.join(sorted(sensitive))}")
 
 
-@router.get("/telemetry-settings")
-async def telemetry_settings(_: ViewerUser) -> dict:
-    """Whether the shared edge MQTT account is still on (MQTT_EDGE_ENABLED); for the cut-over status bar."""
-    return {"mqtt_edge_enabled": get_settings().mqtt_edge_enabled}
-
-
 @router.post("", response_model=EdgeDeviceWithKey, status_code=status.HTTP_201_CREATED)
 async def create_device(body: EdgeDeviceCreate, db: DBSession, user: OperatorUser) -> EdgeDeviceWithKey:
     _admin_fields(body, user)
-    """Pre-provision a device. The returned `api_key` is shown ONCE, with the connection info to hand over
-    (the shared MQTT password only to admins)."""
-    return await DeviceService(db).create(body, include_mqtt_password=user.role == UserRole.ADMIN)
+    """Pre-provision a device. The returned `api_key` is shown ONCE, with the connection info to hand over."""
+    return await DeviceService(db).create(body)
 
 
 @router.get("/{device_id}", response_model=EdgeDeviceRead)

@@ -3,183 +3,44 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
+import { Checkbox, Field, Input } from "@/components/ui/Field";
 import type { CameraInput } from "@/lib/api/cameras";
-import type { AIModel, Camera, EdgeDevice } from "@/types";
+import type { Camera } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 /**
- * The camera source (RTSP URL, username, password) is WRITE-ONLY: the API never sends it back,
- * because the camera address is an edge-site internal. Leave the fields empty to keep what is stored.
+ * Cameras come from the edge's own list (PUT /edge/cameras); its source and AI stay on the edge.
+ * The platform only names them and switches them on / off.
  */
 export function CameraForm({
   initial,
-  devices,
-  models,
   busy,
   onSubmit,
 }: {
-  initial?: Camera | null;
-  devices: EdgeDevice[];
-  models: AIModel[];
+  initial: Camera;
   busy: boolean;
   onSubmit: (v: Partial<CameraInput>) => void;
 }) {
   const { t } = useI18n();
-  const [v, setV] = useState({
-    edge_device_id: initial?.edge_device_id ?? devices[0]?.id ?? "",
-    code: initial?.code ?? "",
-    name: initial?.name ?? "",
-    rtsp_url: "",
-    rtsp_username: "",
-    rtsp_password: "",
-    onvif_url: "",
-    enabled: initial?.enabled ?? true,
-    ai_enabled: initial?.ai_enabled ?? true,
-    ai_model_id: initial?.ai_model_id ?? models[0]?.id ?? "",
-    stream_enabled: initial?.stream_enabled ?? true,
-    annotated_stream_enabled: initial?.annotated_stream_enabled ?? true,
-    original_stream_enabled: initial?.original_stream_enabled ?? false,
-    resolution: initial?.resolution ?? "",
-    stream_fps: initial?.stream_fps ?? 25,
-    inference_fps: initial?.inference_fps ?? 5,
-    bitrate: initial?.bitrate ?? "2M",
-    gop_size: initial?.gop_size ?? 50,
-  });
-  const set = <K extends keyof typeof v>(key: K, value: (typeof v)[K]) => setV({ ...v, [key]: value });
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const body: Partial<CameraInput> = {
-      edge_device_id: v.edge_device_id,
-      code: v.code,
-      name: v.name,
-      enabled: v.enabled,
-      ai_enabled: v.ai_enabled,
-      ai_model_id: v.ai_model_id || null,
-      stream_enabled: v.stream_enabled,
-      annotated_stream_enabled: v.annotated_stream_enabled,
-      original_stream_enabled: v.original_stream_enabled,
-      resolution: v.resolution || null,
-      stream_fps: Number(v.stream_fps),
-      inference_fps: Number(v.inference_fps),
-      bitrate: v.bitrate,
-      gop_size: Number(v.gop_size),
-    };
-    if (v.rtsp_url) body.rtsp_url = v.rtsp_url;
-    if (v.rtsp_username) body.rtsp_username = v.rtsp_username;
-    if (v.rtsp_password) body.rtsp_password = v.rtsp_password;
-    if (v.onvif_url) body.onvif_url = v.onvif_url;
-    onSubmit(body);
-  };
-
-  const unchanged = initial ? t("cameras.unchanged") : "";
+  const [name, setName] = useState(initial.name);
+  const [enabled, setEnabled] = useState(initial.enabled);
 
   return (
-    <form className="space-y-3" onSubmit={submit}>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2">
-          <Field label={t("common.name")}>
-            <Input required value={v.name} onChange={(e) => set("name", e.target.value)} />
-          </Field>
-        </div>
-        <Field label={t("cameras.cameraId")} hint={t("cameras.cameraIdHint")}>
-          <Input required pattern="[A-Za-z0-9][A-Za-z0-9_\-]{1,31}" value={v.code} onChange={(e) => set("code", e.target.value)} />
-        </Field>
-      </div>
-      <Field label={t("common.edgeDevice")} hint={t("cameras.edgeDeviceHint")}>
-        <Select required value={v.edge_device_id} onChange={(e) => set("edge_device_id", e.target.value)}>
-          {devices.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name} ({d.device_uuid}) · {d.site_name ?? t("common.noSite")}
-            </option>
-          ))}
-        </Select>
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit({ name, enabled });
+      }}
+    >
+      <Field label={t("common.name")}>
+        <Input required value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-
-      <fieldset className="space-y-3 rounded-item border border-line p-3">
-        <legend className="px-1 text-xs uppercase text-muted">{t("cameras.sourceLegend")}</legend>
-        <Field label={t("cameras.rtspUrl")} hint={t("cameras.rtspUrlHint")}>
-          <Input
-            value={v.rtsp_url}
-            placeholder={
-              initial ? (initial.source_configured ? unchanged : t("cameras.edgeManaged")) : "rtsp://192.168.1.101:554/stream1"
-            }
-            onChange={(e) => set("rtsp_url", e.target.value)}
-            autoComplete="off"
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={t("common.username")}>
-            <Input value={v.rtsp_username} placeholder={unchanged} onChange={(e) => set("rtsp_username", e.target.value)} autoComplete="off" />
-          </Field>
-          <Field label={t("common.password")}>
-            <Input
-              type="password"
-              value={v.rtsp_password}
-              placeholder={unchanged}
-              onChange={(e) => set("rtsp_password", e.target.value)}
-              autoComplete="new-password"
-            />
-          </Field>
-        </div>
-      </fieldset>
-
-      <fieldset className="space-y-3 rounded-item border border-line p-3">
-        <legend className="px-1 text-xs uppercase text-muted">AI</legend>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={t("cameras.aiModel")}>
-            <Select value={v.ai_model_id} onChange={(e) => set("ai_model_id", e.target.value)}>
-              <option value="">{t("common.none")}</option>
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} {m.version}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label={t("cameras.inferenceFps")}>
-            <Input type="number" min={0.1} max={60} step={0.1} value={v.inference_fps} onChange={(e) => set("inference_fps", Number(e.target.value))} />
-          </Field>
-        </div>
-      </fieldset>
-
-      <fieldset className="space-y-3 rounded-item border border-line p-3">
-        <legend className="px-1 text-xs uppercase text-muted">{t("cameras.streamLegend")}</legend>
-        <div className="grid grid-cols-4 gap-3">
-          <Field label={t("cameras.resolution")} hint={t("cameras.resolutionHint")}>
-            <Input pattern="\d{2,5}x\d{2,5}" placeholder="1920x1080" value={v.resolution} onChange={(e) => set("resolution", e.target.value)} />
-          </Field>
-          <Field label={t("cameras.streamFps")}>
-            <Input type="number" min={1} max={60} value={v.stream_fps} onChange={(e) => set("stream_fps", Number(e.target.value))} />
-          </Field>
-          <Field label={t("cameras.bitrate")}>
-            <Input pattern="\d+(\.\d+)?[kKmM]?" value={v.bitrate} onChange={(e) => set("bitrate", e.target.value)} />
-          </Field>
-          <Field label="GOP">
-            <Input type="number" min={1} max={600} value={v.gop_size} onChange={(e) => set("gop_size", Number(e.target.value))} />
-          </Field>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Checkbox label={t("cameras.streaming")} checked={v.stream_enabled} onChange={(e) => set("stream_enabled", e.target.checked)} />
-          <Checkbox
-            label={t("cameras.annotatedStream")}
-            checked={v.annotated_stream_enabled}
-            onChange={(e) => set("annotated_stream_enabled", e.target.checked)}
-          />
-          <Checkbox
-            label={t("cameras.originalStream")}
-            checked={v.original_stream_enabled}
-            onChange={(e) => set("original_stream_enabled", e.target.checked)}
-          />
-        </div>
-      </fieldset>
-
-      <div className="flex gap-6">
-        <Checkbox label={t("cameras.enabled")} checked={v.enabled} onChange={(e) => set("enabled", e.target.checked)} />
-        <Checkbox label={t("cameras.aiDetection")} checked={v.ai_enabled} onChange={(e) => set("ai_enabled", e.target.checked)} />
+      <div className="text-xs text-muted">
+        {t("cameras.cameraId")}: <code>{initial.code}</code> · {initial.edge_device_name ?? "--"}
       </div>
-      <Button type="submit" disabled={busy || !v.edge_device_id} className="w-full">
+      <Checkbox label={t("cameras.enabled")} checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+      <Button type="submit" disabled={busy} className="w-full">
         {t("common.save")}
       </Button>
     </form>

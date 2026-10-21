@@ -47,12 +47,10 @@ export function CorePanels({
   summary,
   devices,
   connected,
-  mqttEnabled,
 }: {
   summary: DashboardSummary | null;
   devices: EdgeDevice[];
   connected: boolean;
-  mqttEnabled: boolean | null;
 }) {
   const { t } = useI18n();
   const active = devices.filter((d) => d.admin_state === "active");
@@ -155,11 +153,6 @@ export function CorePanels({
             </div>
           ))}
         </div>
-        {mqttEnabled !== null && (
-          <div className="core-muted mt-3 text-xs">
-            {t("dashboard.platformMqtt")}: {t(mqttEnabled ? "dashboard.mqttOn" : "dashboard.mqttOff")}
-          </div>
-        )}
       </section>
     </div>
   );

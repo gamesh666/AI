@@ -33,7 +33,7 @@ CAMERA_SYNC = "system.camera_sync"
 
 # why a device was marked offline
 REASON_HEARTBEAT_TIMEOUT = "heartbeat_timeout"
-REASON_EDGE_REPORTED = "edge_reported_offline"  # MQTT Last Will or a graceful "offline"
+REASON_EDGE_REPORTED = "edge_reported_offline"  # the edge sent {"state": "offline"} (clean shutdown)
 
 
 def _iso(dt: datetime | None) -> str | None:

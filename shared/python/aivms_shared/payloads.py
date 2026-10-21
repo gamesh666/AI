@@ -1,10 +1,7 @@
-"""MQTT payload contracts (Pydantic v2).
+"""Edge -> platform payload contracts (Pydantic v2), sent as JSON over HTTP with the device key.
 
-Both the backend (consumer) and the edge agent (producer) import these models,
-so a contract change is a single edit here.
-
-Video never travels over MQTT: these payloads carry metadata only. Annotated video is
-an H.264 stream pushed from the edge to MediaMTX.
+POST /api/v1/edge/heartbeat, /edge/status, /edge/cameras/{code}/status, /edge/logs.
+They carry metadata only: annotated video is an H.264 stream pushed from the edge to MediaMTX.
 """
 
 from __future__ import annotations
@@ -62,7 +59,7 @@ class Heartbeat(_Payload):
     models: list[ReportedModel] | None = Field(default=None, max_length=50)
 
 
-# ---- device status (edge/{device}/status, retained, also the MQTT Last Will) -----
+# ---- device status (POST /edge/status) -------------------------------------------
 
 
 class DeviceState(StrEnum):
@@ -76,7 +73,7 @@ class DeviceStatus(_Payload):
     state: DeviceState
 
 
-# ---- per-camera health (edge/{device}/cameras/{camera}/status) --------------------
+# ---- per-camera health (POST /edge/cameras/{code}/status) --------------------------
 
 
 class RtspStatus(StrEnum):
@@ -139,18 +136,6 @@ class FrameInfo(BaseModel):
     height: int
 
 
-class DetectionEvent(_Payload):
-    event_id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    device_id: str
-    camera_id: str
-    timestamp: datetime = Field(default_factory=utcnow)
-    model: str
-    frame: FrameInfo | None = None
-    detections: list[Detection]
-    snapshot_key: str | None = Field(default=None, description="MinIO object key of the annotated snapshot")
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
 # ---- generic edge log -------------------------------------------------------
 
 LOG_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:\-]{0,63}$"
@@ -188,7 +173,7 @@ class EdgeLog(_Payload):
     snapshot_key: str | None = Field(default=None, max_length=512)
 
 
-# ---- server -> edge --------------------------------------------------------
+# ---- platform -> edge (in the heartbeat answer) --------------------------------------------------------
 
 
 class CommandType(StrEnum):
@@ -205,20 +190,10 @@ class Command(_Payload):
     issued_at: datetime = Field(default_factory=utcnow)
 
 
-class ConfigChanged(_Payload):
-    """Notification only. Config content (incl. RTSP credentials) is fetched over REST."""
-
-    version: int
-    changed_at: datetime = Field(default_factory=utcnow)
-    reason: str | None = None
-
-
 ALL_PAYLOADS: dict[str, type[BaseModel]] = {
     "heartbeat": Heartbeat,
     "device_status": DeviceStatus,
     "camera_status": CameraRuntimeStatus,
-    "detection_event": DetectionEvent,
     "edge_log": EdgeLog,
     "command": Command,
-    "config_changed": ConfigChanged,
 }

@@ -13,8 +13,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useAsync } from "@/hooks/useAsync";
 import { useMutation } from "@/hooks/useMutation";
 import { camerasApi, type CameraInput } from "@/lib/api/cameras";
-import { devicesApi } from "@/lib/api/devices";
-import { modelsApi } from "@/lib/api/models";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { applyCameraStatus } from "@/lib/cameraStatus";
 import { useRealtime } from "@/lib/realtime/RealtimeProvider";
@@ -26,10 +24,8 @@ export default function CamerasPage() {
   const { hasRole } = useAuth();
   const canEdit = hasRole("operator");
   const cameras = useAsync(async () => (await camerasApi.list()).items);
-  const devices = useAsync(async () => (await devicesApi.list()).items);
-  const models = useAsync(async () => (await modelsApi.list()).items);
   const m = useMutation();
-  const [editing, setEditing] = useState<Camera | null | "new">(null);
+  const [editing, setEditing] = useState<Camera | null>(null);
   const [onlyMissing, setOnlyMissing] = useState(false);
   const missingCount = cameras.data?.filter((c) => c.missing_from_edge_at).length ?? 0;
   const rows = onlyMissing ? (cameras.data ?? []).filter((c) => c.missing_from_edge_at) : (cameras.data ?? []);
@@ -50,7 +46,7 @@ export default function CamerasPage() {
 
   const save = async (body: Partial<CameraInput>) => {
     const res = await m.run(() =>
-      editing === "new" ? camerasApi.create(body as CameraInput) : camerasApi.update((editing as Camera).id, body),
+      camerasApi.update((editing as Camera).id, body),
     );
     if (res.ok) {
       setEditing(null);
@@ -78,11 +74,6 @@ export default function CamerasPage() {
             {canEdit && onlyMissing && missingCount > 0 && (
               <Button variant="danger" onClick={removeMissing} disabled={m.busy}>
                 {t("cameras.deleteMissing", { n: missingCount })}
-              </Button>
-            )}
-            {canEdit && (
-              <Button onClick={() => setEditing("new")} disabled={!devices.data?.length}>
-                {t("cameras.add")}
               </Button>
             )}
           </>
@@ -142,14 +133,8 @@ export default function CamerasPage() {
           },
         ]}
       />
-      <Modal open={editing !== null} title={editing === "new" ? t("cameras.addTitle") : t("cameras.editTitle")} onClose={() => setEditing(null)}>
-        <CameraForm
-          initial={editing === "new" ? null : editing}
-          devices={devices.data ?? []}
-          models={models.data ?? []}
-          busy={m.busy}
-          onSubmit={save}
-        />
+      <Modal open={editing !== null} title={t("cameras.editTitle")} onClose={() => setEditing(null)}>
+        {editing && <CameraForm key={editing.id} initial={editing} busy={m.busy} onSubmit={save} />}
       </Modal>
     </>
   );

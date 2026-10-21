@@ -1,6 +1,6 @@
-"""Shared contracts between the central backend and edge agents."""
+"""Payload contracts shared by the platform and its documentation (shared/schemas)."""
 
-from aivms_shared import payloads, topics
+from aivms_shared import payloads
 
-__all__ = ["payloads", "topics"]
-__version__ = "0.1.0"
+__all__ = ["payloads"]
+__version__ = "0.2.0"

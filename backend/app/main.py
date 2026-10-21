@@ -16,8 +16,6 @@ from app.core.exceptions import DomainError
 from app.core.logging import configure_logging
 from app.core.redis import close_redis
 from app.db.session import dispose_engine, get_session_factory
-from app.messaging.registry import build_broker
-from app.messaging.runtime import set_broker
 from app.realtime.broadcaster import broadcaster
 from app.realtime.router import router as ws_router
 from app.services import storage_service
@@ -53,11 +51,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     broadcaster.start()
     monitor.start()
 
-    broker = None
-    if settings.mqtt_enabled:
-        broker = build_broker(settings)
-        set_broker(broker)
-        await broker.start()
 
     logger.info("%s started (env=%s)", settings.app_name, settings.environment)
     await _record_platform("started")
@@ -65,9 +58,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         await _record_platform("stopped")
-        if broker:
-            await broker.stop()
-            set_broker(None)
         await monitor.stop()
         await broadcaster.stop()
         await close_redis()

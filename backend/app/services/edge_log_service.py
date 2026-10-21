@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections import Counter
 from datetime import UTC
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aivms_shared.payloads import DetectionEvent
 from aivms_shared.payloads import EdgeLog as EdgeLogPayload
 from app.core.exceptions import NotFoundError
 from app.models.edge_log import EdgeLog
@@ -22,31 +20,10 @@ from app.services import storage_service
 
 logger = logging.getLogger(__name__)
 
-# upper bound for the free-form part of one log (the MQTT message itself is capped by the handler)
+# upper bound for the free-form part of one log (the whole request is capped at 256 KB by the API)
 MAX_DATA_BYTES = 64 * 1024
 # written only by the platform itself (see connection_history); edges cannot forge them
 RESERVED_EVENT_TYPES = frozenset({"system.connection", "system.platform", "system.camera_sync"})
-
-
-DETECTION_EVENT_TYPE = "ai.detection"
-
-
-def detection_to_log(event: DetectionEvent) -> EdgeLogPayload:
-    """edge-agent detection event -> Edge log, so every edge's recognition ends up in one place."""
-    classes = Counter(d.class_name for d in event.detections)
-    message = " · ".join(f"{name} ×{n}" if n > 1 else name for name, n in classes.most_common())
-    return EdgeLogPayload(
-        event_id=str(event.event_id),
-        device_id=event.device_id,
-        camera_id=event.camera_id,
-        timestamp=event.timestamp,
-        event_type=DETECTION_EVENT_TYPE,
-        message=message[:1000] or None,
-        data={**event.metadata, "model": event.model, "classes": dict(classes)},
-        detections=event.detections[:200],
-        frame=event.frame,
-        snapshot_key=event.snapshot_key,
-    )
 
 
 def log_to_read(log: EdgeLog) -> EdgeLogRead:
@@ -115,10 +92,10 @@ class EdgeLogService:
             return f"data too large ({data_size} bytes, max {MAX_DATA_BYTES})"
         return None
 
-    async def ingest(self, payload: EdgeLogPayload, topic_device_id: str) -> EdgeLogRead | None:
-        """MQTT / HTTP -> DB (insert or update by event_id) -> WebSocket."""
-        if payload.device_id != topic_device_id:
-            logger.warning("log device mismatch topic=%s payload=%s; dropped", topic_device_id, payload.device_id)
+    async def ingest(self, payload: EdgeLogPayload, device_uuid: str) -> EdgeLogRead | None:
+        """HTTP -> DB (insert or update by event_id) -> WebSocket."""
+        if payload.device_id != device_uuid:
+            logger.warning("log device mismatch key=%s payload=%s; dropped", device_uuid, payload.device_id)
             return None
         if reason := self.rejection(payload):
             logger.warning("log %s from %s dropped: %s", payload.event_id, payload.device_id, reason)

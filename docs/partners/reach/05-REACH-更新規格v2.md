@@ -19,8 +19,8 @@
 | 9 | 安全與 HTTPS 準備 | 要（小） | P1 |
 | 10 | 測試、驗收、回報 | — | — |
 
-**相容性**：平台目前同時接受 HTTP 與 MQTT，REACH 可以分批上線，不影響現有運作。設定名稱只有 REACH 自己讀，改名不影響平台。
-REACH01、REACH02 都驗收通過後，平台才會停用 MQTT 共用帳號；之後未更新的設備會無法回報狀態與紀錄。
+**重要**：平台已**移除 MQTT**，只接受 HTTP。尚未更新的 REACH 會無法回報心跳與紀錄（平台上顯示離線），
+即時影像（RTSP 推流）不受影響。請優先完成第 2、3 節。設定名稱只有 REACH 自己讀，改名不影響平台。
 
 ---
 
@@ -34,11 +34,11 @@ AIBOX_ENABLED=true
 AIBOX_API_URL='http://192.168.0.179:8000/api/v1'   # 正式環境會改 https://，見第 9 節
 AIBOX_DEVICE_ID='REACH01'
 AIBOX_DEVICE_KEY='<平台提供，只顯示一次>'
-AIBOX_TELEMETRY=http                  # 新增：http（預設）| mqtt（舊方式，只供過渡期退回）
 AIBOX_STREAM_URL='rtsp://192.168.0.179:8554'
 AIBOX_CA_FILE=                        # 新增：自簽憑證時的 CA 檔路徑，見第 9 節
 AIBOX_PROVISIONING_TOKEN=             # MAC 自動綁定用（出廠設定），見第 4 節
 # 其餘 02 號規格的 AIVMS_STREAM_* / AIVMS_VIDEO_ENCODER / AIVMS_SEND_* 一律改成 AIBOX_ 開頭，意義不變
+# 所有 AIVMS_MQTT_* 設定刪除（平台已無 MQTT）
 ```
 
 **相容規則**：
@@ -83,7 +83,7 @@ AIBOX_PROVISIONING_TOKEN=             # MAC 自動綁定用（出廠設定），
 
 ### 2.3 模組結構
 
-保留 `aivms_mqtt.py`，新增 `aibox_http.py`（或 `aivms_http.py`），兩者提供相同介面，由 `AIBOX_TELEMETRY` 選擇：
+新增 `aibox_http.py`（或 `aivms_http.py`）取代 `aivms_mqtt.py`，提供相同介面：
 
 ```python
 class Telemetry(Protocol):
@@ -94,7 +94,7 @@ class Telemetry(Protocol):
     def event(self, event: dict) -> None: ...          # 只放進佇列，立即返回
 ```
 
-REACH 主程式的呼叫點不用改。`AIBOX_TELEMETRY=http` 時**不可**建立任何 MQTT 連線，也不需要 MQTT 設定。
+REACH 主程式的呼叫點不用改。`aivms_mqtt.py` 與 paho-mqtt 依賴可以移除。
 
 ### 2.4 上線 / 離線
 
@@ -177,7 +177,7 @@ POST {AIBOX_API_URL}/edge/logs
 {
   "config_version": 1791800049,
   "commands": [{"command_id": "d9e75f7f-...", "command": "reload_config", "params": {}, "issued_at": "..."}],
-  "mqtt_enabled": true,
+  "mqtt_enabled": false,
   "server_time": "2026-10-13T01:14:09Z"
 }
 ```
@@ -186,7 +186,7 @@ POST {AIBOX_API_URL}/edge/logs
 |------|----------------|
 | `config_version` | 記住這個值。下一次的值不同，就重新 `GET /edge/config` 並套用（第 4.3 節）。第一次收到只記下來 |
 | `commands` | 依序執行，每個指令只送一次。不認得的記 info 後略過，不可拋例外 |
-| `mqtt_enabled` | `false` = 平台已停用 MQTT。若 `AIBOX_TELEMETRY=mqtt`，每 10 分鐘記一次 error 提醒改設定 |
+| `mqtt_enabled` | 固定 `false`，可忽略 |
 | `server_time` | 與本機時間差超過 60 秒時記 warning（第 8 節） |
 
 目前的指令：
@@ -231,7 +231,6 @@ POST {AIBOX_API_URL}/edge/logs
 | `cameras[].camera_id` / `stream_path` | 每支攝影機要推流的路徑（以平台回傳為準，不要自己組） |
 | `site_id` / `site_profile` | 業主、場域、合約資料，照 register 契約 §3.6 存進 REACH 的場域設定 |
 | `heartbeat_interval_seconds` | 心跳間隔（目前 10） |
-| `telemetry.mqtt_enabled` | 同第 3 節 `mqtt_enabled` |
 
 畫面上的「重新同步業主資料」按鈕可改呼叫較輕量的 `GET /edge/site-profile`。
 
@@ -326,7 +325,7 @@ POST {AIBOX_API_URL}/edge/logs
   - 推流在正式環境可能改用 SRT（`srt://...:8890`），02 號規格已支援，請一併測試。
 - 金鑰、佈建權杖只存在 env 檔（權限 600 / 640），**任何 log、錯誤訊息、畫面都不可出現**。
   - 例外：畫面可顯示前 4 碼供辨識。
-- 平台停用 MQTT 後，請從設定檔**刪除**所有 `AIVMS_MQTT_*` / `AIBOX_MQTT_*`。
+- 設定檔**刪除**所有 `AIVMS_MQTT_*` / `AIBOX_MQTT_*`（平台已無 MQTT，舊帳密也已失效）。
 - 只需要連出（REACH → 平台）：
   - API：8000，未來改 HTTPS 為 443。
   - RTSP：8554（或 SRT：8890）。
@@ -338,8 +337,7 @@ POST {AIBOX_API_URL}/edge/logs
 ### 10.1 自動化測試（REACH 端）
 
 - [ ] `AIBOX_*` 與舊的 `AIVMS_*` 都能讀到，兩者都有時以 `AIBOX_*` 為準，用到舊名會記 warning
-- [ ] `AIBOX_TELEMETRY=http` 時不會建立 MQTT 連線，沒有 MQTT 設定也能啟動
-- [ ] `AIBOX_TELEMETRY=mqtt` 時行為與改版前相同
+- [ ] 不會建立任何 MQTT 連線，沒有 MQTT 設定也能啟動
 - [ ] `config_version` 改變會重抓 `/edge/config`，第一次不重抓
 - [ ] `reload_config`、`ping`、`restart_camera` 會被執行；未知指令不會拋例外
 - [ ] 平台關閉期間的事件，恢復後以多筆方式依序補送；`422` 的事件不會無限重送
@@ -349,10 +347,10 @@ POST {AIBOX_API_URL}/edge/logs
 
 ### 10.2 驗收（REACH01、REACH02 各做一次）
 
-1. 設定改用 `AIBOX_*`，`AIBOX_TELEMETRY=http`，刪除 MQTT 設定，重啟 REACH。
+1. 設定改用 `AIBOX_*`，刪除 MQTT 設定，重啟 REACH。
 2. 平台「邊緣裝置」頁：
    - 在線。
-   - **通訊方式**顯示 `HTTP`（切換後 5 分鐘內顯示 `HTTP + MQTT` 屬正常）。
+   - 「最後回報」每 10 秒更新。
    - CPU、模型欄位有資料。
    - 「Agent」欄顯示新版本號。
 3. 「Edge 紀錄」：
@@ -374,14 +372,14 @@ POST {AIBOX_API_URL}/edge/logs
 - REACH01、REACH02 各自 10.2 驗收結果（可附截圖）
 - 已刪除兩台設定檔中 MQTT 帳密的確認
 
-平台收到後會停用 MQTT 共用帳號並通知 REACH。
+
 
 ---
 
 **參考**
 
 - 平台規格：[`docs/edge-integration.md`](../../edge-integration.md)
-- 可執行範例：[`examples/third-party-edge/generic_edge.py`](../../../examples/third-party-edge/generic_edge.py)
+- 可執行範例：[`examples/edge-http/generic_edge.py`](../../../examples/edge-http/generic_edge.py)
   - 只用 Python 標準函式庫。
   - `HttpTelemetry` 類別示範第 2、3 節。
 - 串接全貌：[`03-AIBOX-SERVER與REACH01-02串接說明.md`](03-AIBOX-SERVER與REACH01-02串接說明.md)

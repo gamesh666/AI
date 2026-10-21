@@ -1,8 +1,6 @@
 import type { MessageKey } from "@/lib/i18n/messages";
 import type { EdgeConnectionInfo } from "@/types";
 
-export type SheetFormat = "partner" | "agent";
-
 type T = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 function hostPort(url: string, fallbackPort: string): string {
@@ -18,68 +16,26 @@ function hostPort(url: string, fallbackPort: string): string {
  * Text handed to whoever sets up the edge: env lines + the steps of docs/edge-integration.md.
  * `apiKey` is null when the key is not available any more (it is only shown once).
  */
-export function buildConnectionSheet(
-  info: EdgeConnectionInfo,
-  apiBase: string,
-  apiKey: string | null,
-  format: SheetFormat,
-  t: T,
-): string {
+export function buildConnectionSheet(info: EdgeConnectionInfo, apiBase: string, apiKey: string | null, t: T): string {
   const id = info.device_id;
   const key = apiKey ?? "<DEVICE_KEY>";
-  const mqttPassword = info.mqtt_password ?? "<MQTT_PASSWORD>";
   const rtsp = hostPort(info.rtsp_publish_url, "8554");
   const srt = info.srt_publish_url ? hostPort(info.srt_publish_url, "8890") : null;
-  const mqtt = info.mqtt_enabled !== false;
-  const ports = [
-    hostPort(apiBase, "80"),
-    ...(mqtt ? [`${info.mqtt_host}:${info.mqtt_port}`] : []),
-    rtsp,
-    hostPort(info.snapshot_upload_url, "80"),
-  ];
+  const ports = [hostPort(apiBase, "80"), rtsp, hostPort(info.snapshot_upload_url, "80")];
   const http = (name: string, fallback: string) => `${apiBase}${info.http_endpoints?.[name] ?? fallback}`;
 
   const lines = [`# ${t("sheet.title", { id })}`, `# ${t("sheet.secretWarning")}`];
   if (!apiKey) lines.push(`# ${t("sheet.keyMissing")}`);
-  if (!mqtt) lines.push(`# ${t("sheet.mqttOff")}`);
-  else if (!info.mqtt_password) lines.push(`# ${t("sheet.askAdmin")}`);
-  lines.push("");
-
-  if (format === "agent") {
-    lines.push(
-      `EDGE_DEVICE_UUID=${id}`,
-      `EDGE_API_URL=${apiBase}`,
-      `EDGE_DEVICE_KEY=${key}`,
-      ...(mqtt
-        ? [`EDGE_MQTT_USERNAME=${info.mqtt_username}`, `EDGE_MQTT_PASSWORD=${mqttPassword}`]
-        : ["EDGE_TELEMETRY=http"]),
-      `EDGE_DETECTOR=yolo`,
-      "",
-      `# ${t("sheet.agentNote")}`,
-      `# ${t("sheet.ports", { ports: ports.join(", ") })}`,
-    );
-    return lines.join("\n") + "\n";
-  }
-
   lines.push(
+    "",
     "AIBOX_ENABLED=true",
     `AIBOX_API_URL=${apiBase}`,
     `AIBOX_DEVICE_ID=${id}`,
     `AIBOX_DEVICE_KEY=${key}`,
-    "AIBOX_TELEMETRY=http",
-    ...(mqtt
-      ? [
-          `AIBOX_MQTT_HOST=${info.mqtt_host}`,
-          `AIBOX_MQTT_PORT=${info.mqtt_port}`,
-          `AIBOX_MQTT_TLS=${info.mqtt_tls}`,
-          `AIBOX_MQTT_USERNAME=${info.mqtt_username}`,
-          `AIBOX_MQTT_PASSWORD=${mqttPassword}`,
-        ]
-      : []),
     `AIBOX_STREAM_URL=${info.stream_protocol === "srt" && info.srt_publish_url ? info.srt_publish_url : info.rtsp_publish_url}`,
     "",
     `# ${t("sheet.step1")}`,
-    `#    PUT ${apiBase}/edge/cameras/<camera_code>   (X-Device-Key: <DEVICE_KEY>)  {"name": "..."}`,
+    `#    PUT ${apiBase}/edge/cameras   (X-Device-Key: <DEVICE_KEY>)  {"cameras": [{"code": "...", "name": "..."}]}`,
     `# ${t("sheet.step2")}`,
     `#    rtsp://${id}:<DEVICE_KEY>@${rtsp}/<stream_path>`,
   );
@@ -90,16 +46,6 @@ export function buildConnectionSheet(
     `#    POST ${http("camera_status", "/edge/cameras/{camera_id}/status")}   (5 s)`,
     `#    POST ${http("logs", "/edge/logs")}   (1 log or [≤100])`,
     `#    POST ${http("status", "/edge/status")}   {"state": "offline"}`,
-  );
-  if (mqtt)
-    lines.push(
-      `# ${t("sheet.step3Mqtt")}`,
-      `#    ${info.topics.heartbeat}   (10 s)`,
-      `#    ${info.topics.status}   (retained + Last Will)`,
-      `#    ${info.topics.camera_status}   (5 s)`,
-      `#    ${info.topics.camera_logs}`,
-    );
-  lines.push(
     `# ${t("sheet.step4")}`,
     `#    POST ${apiBase}/edge/snapshots/presign  {"camera_code": "..."}  →  PUT upload_url`,
     `# ${t("sheet.ports", { ports: ports.join(", ") })}`,

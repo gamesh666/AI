@@ -7,10 +7,8 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aivms_shared import topics
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError
-from app.messaging import publisher
 from app.models.camera import Camera
 from app.models.edge_device import EdgeDevice
 from app.repositories.camera_repository import CameraRepository
@@ -21,7 +19,6 @@ from app.schemas.edge import (
     EdgeCameraSyncResult,
     EdgeConfig,
     EdgeModelConfig,
-    EdgeMQTTConfig,
     EdgeStreamingConfig,
     EdgeTelemetryConfig,
     EdgeVideoConfig,
@@ -87,23 +84,7 @@ class EdgeService:
             site_profile=site_profile,
             version=version,
             cameras=[_camera_config(c) for c in cameras],
-            mqtt=EdgeMQTTConfig(
-                host=settings.mqtt_public_host,
-                port=settings.mqtt_public_port,
-                tls=settings.mqtt_tls,
-                topics={
-                    "heartbeat": topics.heartbeat(device.device_uuid),
-                    "status": topics.status(device.device_uuid),
-                    "events": topics.device_events(device.device_uuid),
-                    "camera_events": topics.camera_events(device.device_uuid, "{camera_id}"),
-                    "camera_status": topics.camera_status(device.device_uuid, "{camera_id}"),
-                    "logs": topics.device_logs(device.device_uuid),
-                    "camera_logs": topics.camera_logs(device.device_uuid, "{camera_id}"),
-                    "command": topics.command(device.device_uuid),
-                    "config": topics.config(device.device_uuid),
-                },
-            ),
-            telemetry=EdgeTelemetryConfig(mqtt_enabled=settings.mqtt_edge_enabled, http=dict(telemetry.HTTP_PATHS)),
+            telemetry=EdgeTelemetryConfig(http=dict(telemetry.HTTP_PATHS)),
             streaming=EdgeStreamingConfig(
                 protocol=settings.edge_stream_protocol,
                 rtsp_publish_url=settings.mediamtx_rtsp_publish_url,
@@ -165,8 +146,8 @@ class EdgeService:
 
         Listed cameras are created / renamed / restored. Edge-managed cameras (no source configured on the
         platform) that are not listed any more are disabled and flagged, never deleted: history is kept and
-        they come back automatically when listed again. Cameras whose source the platform configures (the
-        edge-agent) are never touched by a sync.
+        they come back automatically when listed again. Cameras whose source the platform configures are
+        never touched by a sync.
         """
         added: list[str] = []
         restored: list[str] = []
@@ -192,7 +173,7 @@ class EdgeService:
 
         if added or restored or missing:
             await ConnectionHistory(self.session).camera_sync(device, added, restored, missing)
-            await publisher.notify_config_changed(device.device_uuid, "camera_sync")
+            await telemetry.notify_config_changed(device.device_uuid, "camera_sync")
         configs = []
         for camera_id in ids:
             full = await self.cameras.get_full(camera_id)

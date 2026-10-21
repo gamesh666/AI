@@ -19,7 +19,7 @@ AIBOX SERVER 只負責接收、保存、顯示，不做任何辨識，也從不�
           REACH01（同區網）                               AIBOX SERVER 平台（VM 192.168.0.179）
   攝影機 ─► 拉流 ─► YOLO / 離席判斷 ─► 畫框 ──┐
                                                │  HTTP 8000   登記攝影機、取設定、快照上傳簽章
-          REACH02 / aibox（192.168.89.x）      ├─►MQTT 1883   心跳、狀態、辨識紀錄
+          REACH02 / aibox（192.168.89.x）      ├─►HTTP 8000   心跳、狀態、辨識紀錄
   攝影機 ─► 拉流 ─► 辨識 ─► 畫框 ──Tailscale──┤  RTSP 8554   已畫框的 H.264 即時影像
                                                │  MinIO 9000  快照圖片
                                                └──────────────► 網頁 3000：總覽 / 即時監看 / Edge 紀錄 …
@@ -42,7 +42,6 @@ AIBOX SERVER 只負責接收、保存、顯示，不做任何辨識，也從不�
 |------|------|------|--------|
 | 網頁（frontend） | 3000 | 管理與監看介面 | 使用者瀏覽器 |
 | API（backend） | 8000 | REST API（含 Edge 用的 `/api/v1/edge/*`） | 瀏覽器、REACH |
-| MQTT（Mosquitto） | 1883 | 心跳、狀態、辨識紀錄 | REACH |
 | 串流（MediaMTX） | 8554 / 8889 / 8888 | 收 REACH 推來的影像；轉給瀏覽器（WebRTC / HLS） | REACH 推；瀏覽器看 |
 | 物件儲存（MinIO） | 9000 | 快照圖片 | REACH 上傳；瀏覽器下載 |
 | PostgreSQL / Redis | 內部 | 資料庫 / 即時推播 | 只有平台自己 |
@@ -54,7 +53,7 @@ AIBOX SERVER 只負責接收、保存、顯示，不做任何辨識，也從不�
 ### REACH01：同一個區網，直接連
 
 ```text
-REACH01 (192.168.0.x) ──區網──► 192.168.0.179 : 8000 / 1883 / 8554 / 9000
+REACH01 (192.168.0.x) ──區網──► 192.168.0.179 : 8000 / 8554 / 9000
 ```
 
 - 不需要 VPN，也不需要在 REACH01 開任何對外 port。
@@ -69,7 +68,7 @@ REACH01 (192.168.0.x) ──區網──► 192.168.0.179 : 8000 / 1883 / 8554 /
 ### REACH02（aibox）：不同區網，經 Tailscale
 
 ```text
-aibox (192.168.89.x) ──Tailscale──► 平台 VM（子網路由 192.168.0.0/24）──► 192.168.0.179 : 8000 / 1883 / 8554 / 9000
+aibox (192.168.89.x) ──Tailscale──► 平台 VM（子網路由 192.168.0.0/24）──► 192.168.0.179 : 8000 / 8554 / 9000
 ```
 
 - 平台 VM 在 Tailscale 宣告 `192.168.0.0/24`（子網路由），並已在 B 帳號後台核准。
@@ -83,24 +82,17 @@ aibox (192.168.89.x) ──Tailscale──► 平台 VM（子網路由 192.168.0
 
 ---
 
-## 4. 四條通道：各傳什麼
+## 4. 三條通道：各傳什麼
 
 | 通道 | 方向 | 內容 | 頻率 |
 |------|------|------|------|
-| **HTTP API**（8000） | REACH → 平台 | 註冊 / 取設定（`/edge/register`、`/edge/config`）；**同步攝影機清單**（`PUT /edge/cameras`，回傳每支攝影機的推流路徑）；快照上傳簽章（`/edge/snapshots/presign`） | 啟動時、攝影機增減時、要上傳快照時 |
-| **MQTT**（1883） | REACH → 平台 | `edge/{裝置}/heartbeat` 心跳（含 CPU / GPU、**正在用的模型**）<br>`edge/{裝置}/status` 上線 / 離線（含 Last Will）<br>`edge/{裝置}/cameras/{攝影機}/status` 攝影機健康與 FPS<br>`edge/{裝置}/cameras/{攝影機}/logs` 辨識紀錄（例：`office.leave` 離席） | 心跳 10 秒、攝影機狀態 5 秒、紀錄即時 |
+| **HTTP API**（8000） | REACH → 平台 | 註冊 / 取設定（`/edge/register`、`/edge/config`）；**同步攝影機清單**（`PUT /edge/cameras`）；快照上傳簽章（`/edge/snapshots/presign`）<br>`/edge/heartbeat` 心跳（含 CPU / GPU、**正在用的模型**；回應帶指令與設定版本）<br>`/edge/status` 上線 / 離線<br>`/edge/cameras/{攝影機}/status` 攝影機健康與 FPS<br>`/edge/logs` 辨識紀錄（例：`office.leave` 離席） | 心跳 10 秒、攝影機狀態 5 秒、紀錄即時 |
 | **RTSP 推流**（8554） | REACH → 平台 | 已畫框、已畫 ROI 的 H.264 即時影像，推到 `ai/<場域>/<裝置>/<攝影機>` | 持續 |
 | **快照上傳**（9000） | REACH → MinIO | 事件發生當下的畫框 JPEG（用一次性簽章網址 PUT） | 事件成立時（選用） |
 
-**影像不會走 MQTT，辨識結果也不會走影像串流**——兩者分開，任何一條斷了另一條不受影響。
+**影像不會走 API，辨識結果也不會走影像串流**——兩者分開，任何一條斷了另一條不受影響。
 
-> **轉換中：MQTT → HTTP。** 平台已提供同樣功能的 HTTP 端點：
-> `POST /edge/heartbeat`、`/edge/status`、`/edge/cameras/{攝影機}/status`、`/edge/logs`。
-> JSON 內容與 MQTT 相同，改用每台自己的裝置金鑰驗證，不再需要共用的 MQTT 帳密。
->
-> - REACH 要改的地方見 [`05-REACH-更新規格v2.md`](05-REACH-更新規格v2.md)。
-> - REACH01、REACH02 都改好之後，平台會停用 MQTT 共用帳號，四條通道就只剩 HTTP、RTSP、快照三種連線。
-> - 進度可在「邊緣裝置」頁的**通訊方式**欄位查看。
+> 平台已移除 MQTT。REACH 要改的地方見 [`05-REACH-更新規格v2.md`](05-REACH-更新規格v2.md)。
 
 ### 辨識紀錄如何「更新同一筆」
 
@@ -119,7 +111,6 @@ REACH 的離席事件從「離開」到「回座」會送兩次，**用同一個
 | 憑證 | 一台一把？ | 用在 | 誰保管 | 外洩時 |
 |------|-----------|------|--------|--------|
 | **裝置金鑰**（Device Key） | ✅ 每台不同 | HTTP 的 `X-Device-Key`；RTSP 推流密碼（帳號 = 裝置 ID） | REACH 的 env 檔 | 平台「邊緣裝置 → 更換金鑰」，舊的立即失效 |
-| **MQTT 帳密** | ❌ 所有 Edge 共用 | 連 MQTT | REACH 的 env 檔 | 改 `.env` 的 `MQTT_EDGE_PASSWORD` 並通知所有 Edge |
 | **佈建權杖**（Provisioning Token） | 每個**業主**一把 | 新設備以 MAC 自動註冊（`/edge/register`） | 設備出廠設定 | 平台「業主 → 佈建權杖 → 撤銷」；已註冊的設備不受影響 |
 | **Tailscale Auth Key** | — | 只用來讓機器加入 Tailscale 網路，**與平台無關** | 網管 | Tailscale 後台撤銷 |
 
@@ -162,8 +153,8 @@ REACH 的離席事件從「離開」到「回座」會送兩次，**用同一個
 
 | 狀況 | 平台多快知道 | 紀錄 |
 |------|-------------|------|
-| REACH 正常關機 | 立即（REACH 送出 offline） | `system.connection`，原因「Edge / MQTT 回報」 |
-| REACH 當機 / 斷電 | 數秒～45 秒（MQTT Last Will） | 同上 |
+| REACH 正常關機 | 立即（REACH 送出 offline） | `system.connection`，原因「Edge 回報」 |
+| REACH 當機 / 斷電 | 30 秒內（心跳停止） | `system.connection`，原因「沒有心跳」 |
 | 網路中斷 | 30 秒沒有心跳 | 原因「心跳逾時」，離線時間 = 最後一次心跳 |
 | 恢復 | 下一次心跳 | 同一筆改成「已恢復，中斷 X 分 Y 秒」 |
 
@@ -173,7 +164,7 @@ REACH 的離席事件從「離開」到「回座」會送兩次，**用同一個
 
 | 現象 | 先檢查 | 再檢查 |
 |------|--------|--------|
-| 裝置一直「待連線 / 離線」 | REACH 上 `curl http://192.168.0.179:8000/api/v1/health` | MQTT 帳密是否正確；VM 防火牆 1883 |
+| 裝置一直「待連線 / 離線」 | REACH 上 `curl http://192.168.0.179:8000/api/v1/health` | 裝置金鑰是否正確（401）；VM 防火牆 8000 |
 | REACH02 連不到平台 | aibox 上 `tailscale status`（看得到平台 VM？） | B 後台是否核准 `192.168.0.0/24`；aibox 是否接受路由；VM `sysctl net.ipv4.ip_forward = 1` |
 | 有心跳但沒畫面 | 平台「攝影機」該支的串流狀態 | 推流路徑是否用平台回傳的 `stream_path`；8554 是否被擋；裝置金鑰是否正確 |
 | 畫面有但 Edge 紀錄沒資料 | 平台 `docker compose logs backend \| grep -i dropped` | JSON 格式、`device_id` 是否與 topic 一致 |
@@ -194,11 +185,10 @@ docker compose logs -f mediamtx  | grep -i "REACH0[12]"                         
 ## 9. 安全重點
 
 - 攝影機位址與帳密**只留在 REACH**，平台不保存、不經手。
-- 金鑰、MQTT 密碼、佈建權杖只放在設備的 env 檔，不放 Git、不貼群組、不寫進 log。
+- 金鑰、佈建權杖只放在設備的 env 檔，不放 Git、不貼群組、不寫進 log。
 - 平台只存金鑰與權杖的 hash；裝置金鑰與權杖都只在產生時顯示一次。
 - 目前測試環境走 Tailscale（WireGuard 加密）＋ HTTP；**正式對外前要改 HTTPS**。
-- MQTT 目前所有 Edge 共用一組帳密，外流就能冒充任何一台。因此改走 HTTP（每台自己的裝置金鑰），
-  REACH 改好後停用共用帳號（[`05`](05-REACH-更新規格v2.md)、[`mqtt-to-http.md`](../../mqtt-to-http.md)）。
+- 每台只用自己的裝置金鑰，外流只影響那一台；平台按「更換金鑰」即可作廢。
 
 ---
 
@@ -209,6 +199,5 @@ docker compose logs -f mediamtx  | grep -i "REACH0[12]"                         
 | [`01-AIBOX-SERVER-平台說明與串接訴求.md`](01-AIBOX-SERVER-平台說明與串接訴求.md) | 平台定位與分工 |
 | [`02-REACH-需新增功能規格.md`](02-REACH-需新增功能規格.md) | REACH 端串接模組的開發與驗收規格 |
 | [`05-REACH-更新規格v2.md`](05-REACH-更新規格v2.md) | **最新**：改走 HTTP、平台更名、統一紀錄規範（REACH 要改的地方） |
-| [`../../mqtt-to-http.md`](../../mqtt-to-http.md) | 平台端停用 MQTT 共用帳號的步驟 |
 | [`../../edge-integration.md`](../../edge-integration.md) | 通用 Edge 串接規格（欄位、topic、範例 JSON） |
 | [`../../reach-edge-register/CLAUDE.md`](../../reach-edge-register/CLAUDE.md) / [`DELIVERY.md`](../../reach-edge-register/DELIVERY.md) | MAC 自動註冊契約與交付清單 |

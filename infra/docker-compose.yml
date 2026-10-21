@@ -1,4 +1,4 @@
-# AI VMS platform — full stack.
+# AIBOX SERVER — full stack.
 # Start from the repository root:  docker compose up -d
 # (the root docker-compose.yml includes this file and loads ../.env)
 #
@@ -72,23 +72,6 @@ services:
       timeout: 5s
       retries: 10
 
-  # --------------------------------------------------------------------------- messaging
-  mosquitto:
-    build: ./mosquitto
-    image: aivms/mosquitto:dev
-    <<: [*restart, *logging]
-    environment:
-      MQTT_BACKEND_USERNAME: ${MQTT_BACKEND_USERNAME:-backend}
-      MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:?MQTT_BACKEND_PASSWORD is required}
-      MQTT_EDGE_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
-      # required while MQTT_EDGE_ENABLED=true (checked at start); may be removed once it is false
-      MQTT_EDGE_PASSWORD: ${MQTT_EDGE_PASSWORD:-}
-      MQTT_EDGE_ENABLED: ${MQTT_EDGE_ENABLED:-true}
-    volumes:
-      - mosquitto-data:/mosquitto/data
-    ports:
-      - "${MQTT_PORT_PUBLISHED:-1883}:1883"
-
   # --------------------------------------------------------------------------- streaming
   mediamtx:
     image: bluenviron/mediamtx:1.21.1
@@ -114,7 +97,7 @@ services:
     image: aivms/backend:dev
     <<: [*restart, *logging]
     environment:
-      APP_ENV: ${APP_ENV:-development}
+      APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       POSTGRES_HOST: postgres
@@ -126,29 +109,16 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:?CREDENTIAL_ENCRYPTION_KEY is required}
-      EDGE_PROVISIONING_TOKEN: ${EDGE_PROVISIONING_TOKEN:?EDGE_PROVISIONING_TOKEN is required}
       INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-admin}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?INITIAL_ADMIN_PASSWORD is required}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
-      MQTT_HOST: mosquitto
-      MQTT_PORT: 1883
-      MQTT_USERNAME: ${MQTT_BACKEND_USERNAME:-backend}
-      MQTT_PASSWORD: ${MQTT_BACKEND_PASSWORD}
-      MQTT_SHARED_GROUP: ${MQTT_SHARED_GROUP:-backend}
-      MQTT_PUBLIC_HOST: ${MQTT_PUBLIC_HOST:-localhost}
-      MQTT_PUBLIC_PORT: ${MQTT_PORT_PUBLISHED:-1883}
-      # shown to admins in the device connection info (the broker itself is configured in mosquitto)
-      MQTT_EDGE_USERNAME: ${MQTT_EDGE_USERNAME:-edge}
-      # required while MQTT_EDGE_ENABLED=true (checked at start); may be removed once it is false
-      MQTT_EDGE_PASSWORD: ${MQTT_EDGE_PASSWORD:-}
-      MQTT_EDGE_ENABLED: ${MQTT_EDGE_ENABLED:-true}
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_SNAPSHOTS: ${MINIO_BUCKET_SNAPSHOTS:-snapshots}
       MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
-      # host edge agents use to upload snapshots (presigned URLs are signed for this exact host)
-      MINIO_EDGE_URL: ${MINIO_EDGE_URL:-http://minio:9000}
+      # address edge devices upload snapshots to (presigned URLs are signed for this exact host)
+      MINIO_EDGE_URL: ${MINIO_EDGE_URL:-http://localhost:9000}
       MEDIAMTX_WEBRTC_PUBLIC_URL: ${MEDIAMTX_WEBRTC_PUBLIC_URL:-http://localhost:8889}
       MEDIAMTX_HLS_PUBLIC_URL: ${MEDIAMTX_HLS_PUBLIC_URL:-http://localhost:8888}
       MEDIAMTX_RTSP_PUBLISH_URL: ${MEDIAMTX_RTSP_PUBLISH_URL:-rtsp://localhost:8554}
@@ -158,7 +128,6 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       minio: { condition: service_started }
-      mosquitto: { condition: service_started }
     ports:
       - "${BACKEND_PORT_PUBLISHED:-8000}:8000"
 
@@ -180,4 +149,3 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
-  mosquitto-data:

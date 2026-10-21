@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field
 
 
 class RealtimeEventType(StrEnum):
-    DETECTION_CREATED = "detection.created"
     DEVICE_HEARTBEAT = "device.heartbeat"
     DEVICE_STATUS = "device.status"
     CAMERA_STATUS = "camera.status"

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aivms-shared"
-version = "0.1.0"
-description = "Shared MQTT topics and payload contracts for the AI VMS platform"
+version = "0.2.0"
+description = "Edge payload contracts for AIBOX SERVER"
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.6,<3"]
 

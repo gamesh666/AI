@@ -1,6 +1,6 @@
 """Idempotent bootstrap: creates the initial admin (from env) and a default AI model.
 
-Demo sites / devices / cameras are NOT created here: see simulation/ (demo-seed, public API only).
+Only the first admin account is created; sites, devices and cameras are added in the web UI or by the edges.
 
     python -m app.cli.seed
 """

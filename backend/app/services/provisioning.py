@@ -1,11 +1,8 @@
 """Edge self-registration (POST /edge/register).
 
-Two flows:
-- MAC flow (REACH AI BOX contract, docs/reach-edge-register/CLAUDE.md): the body carries `mac_address`;
-  the device is identified by its MAC, belongs to the owner of the provisioning token, gets a platform ID
-  (<prefix>01, <prefix>02, ...) and a fresh key on every (re-)registration.
-- legacy flow (edge-agent): no MAC, the platform-wide token from EDGE_PROVISIONING_TOKEN, the
-  device ID chosen by the agent. It can never take over a device that has a MAC or an owner.
+REACH AI BOX contract (docs/reach-edge-register/CLAUDE.md): the body carries `mac_address`; the device is
+identified by its MAC, belongs to the owner of the provisioning token, gets a platform ID
+(<prefix>01, <prefix>02, ...) and a fresh key on every (re-)registration.
 
 Nothing here ever logs a token, a key, a tax ID or a phone number.
 """
@@ -24,7 +21,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.config import get_settings
 from app.core.enums import DeviceStatus
 from app.core.exceptions import AuthError, ConflictError, DomainError, PermissionDeniedError
 from app.core.redis import get_redis
@@ -32,7 +28,6 @@ from app.core.security import constant_time_equals, generate_opaque_token, hash_
 from app.models.edge_device import EdgeDevice
 from app.models.owner import EdgeDeviceAudit, ProvisioningToken
 from app.models.site import Site
-from app.schemas.edge_device import DEVICE_UUID_PATTERN
 from app.services.site_profile import build_site_profile
 
 logger = logging.getLogger(__name__)
@@ -117,7 +112,7 @@ async def reset_auth_failures(ip: str) -> None:
 
 @dataclass
 class TokenScope:
-    """Who a provisioning token registers devices for. token=None: the platform-wide legacy token."""
+    """Who a provisioning token registers devices for."""
 
     token: ProvisioningToken | None
     prefix: str  # first characters, for the audit log
@@ -163,9 +158,6 @@ class ProvisioningService:
             if row.revoked_at is None and (row.expires_at is None or row.expires_at > now):
                 await reset_auth_failures(ip)
                 return TokenScope(token=row, prefix=row.token_prefix)
-        elif constant_time_equals(token, get_settings().edge_provisioning_token.get_secret_value()):
-            await reset_auth_failures(ip)
-            return TokenScope(token=None, prefix="platform")
         await record_auth_failure(ip)
         await self._audit("rejected_401", ip, None, reason="invalid, revoked or expired token")
         await self.session.commit()
@@ -259,43 +251,6 @@ class ProvisioningService:
         owner = device.owner or (site.owner if site else None)
         return Registration(device=device, api_key=api_key, site=site,
                             site_profile=build_site_profile(device, site, owner))
-
-    async def register_legacy(self, scope: TokenScope, device_uuid: str, info: dict[str, Any],
-                              ip: str) -> Registration:
-        """edge-agent: platform-wide token, agent-chosen ID. Never takes over a provisioned box."""
-        if scope.token is not None:
-            raise UnprocessableError("mac_address is required with an owner provisioning token")
-        if not re.fullmatch(DEVICE_UUID_PATTERN, device_uuid or ""):
-            raise UnprocessableError("device_uuid must be 3-64 characters of A-Z a-z 0-9 _ -")
-        device = (
-            await self.session.execute(select(EdgeDevice).where(EdgeDevice.device_uuid == device_uuid))
-        ).scalar_one_or_none()
-        now = datetime.now(UTC)
-        api_key = generate_opaque_token()
-        if device is None:
-            device = EdgeDevice(device_uuid=device_uuid, name=info.get("name") or device_uuid,
-                                status=DeviceStatus.PENDING, registered_at=now)
-            self.session.add(device)
-            action = "registered"
-        else:
-            if device.mac_address or device.owner_id:
-                await self._audit("rejected_409", ip, scope, device)
-                await self.session.commit()
-                raise ConflictError("this device ID is provisioned per owner; use its owner provisioning token")
-            if device.admin_state != "active":
-                await self._audit("rejected_403", ip, scope, device, reason=device.admin_state)
-                await self.session.commit()
-                raise PermissionDeniedError(f"this device is {device.admin_state} on the platform")
-            action = "re_registered"
-        for field in ("hostname", "ip_address", "agent_version", "gpu_name", "gpu_memory"):
-            if info.get(field) is not None:
-                setattr(device, field, info[field])
-        device.api_key_hash = hash_token(api_key)
-        device.last_registered_at = now
-        await self.session.flush()
-        await self._audit(action, ip, scope, device, key_rotated=action == "re_registered")
-        await self.session.commit()
-        return await self._result(device.id, api_key)
 
 
 async def load_device_with_profile(session: AsyncSession, device_id: uuid.UUID) -> EdgeDevice:

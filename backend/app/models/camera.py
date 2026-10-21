@@ -31,7 +31,7 @@ class Camera(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     edge_device_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("edge_devices.id", ondelete="CASCADE"), index=True
     )
-    # slug unique per edge device, used as camera_id in MQTT and in stream paths ("cam01")
+    # slug unique per edge device, used as camera_id in API paths, logs and stream paths ("cam01")
     code: Mapped[str] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(String(128))
 

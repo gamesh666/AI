@@ -1,14 +1,11 @@
-# Entry point, from the repository root (variables come from ./.env):
+# AIBOX SERVER. From the repository root (variables come from ./.env):
 #
-#   docker compose up -d                  core platform (production services)
-#   docker compose --profile demo up -d   + fake cameras, simulated edge devices, demo data
+#   ./scripts/install.sh       first install / update (generates .env, sets the address, builds, starts)
+#   docker compose up -d       start with the current settings
 #
-# infra/docker-compose.yml          production stack
-# docker-compose.demo.yml          development / simulation environment (profile "demo" only)
+# The services live in infra/docker-compose.yml.
 name: aivms
 
 include:
   - path: infra/docker-compose.yml
-    env_file: .env
-  - path: docker-compose.demo.yml
     env_file: .env

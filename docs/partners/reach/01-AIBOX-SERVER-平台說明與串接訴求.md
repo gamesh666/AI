@@ -22,7 +22,7 @@
   │ 攝影機 RTSP → YOLO → ROI / 離席狀態機        │            │                                       │
   │        │                │                    │  H.264     │  MediaMTX ──► 瀏覽器即時畫面（WebRTC/HLS） │
   │        └─ 已畫框畫面 ───┼───────────────────┼──RTSP────►│                                       │
-  │                         └─ 事件 / 狀態 ──────┼──MQTT────►│  後端 ──► PostgreSQL ──► 紀錄頁 / 總覽    │
+  │                         └─ 事件 / 狀態 ──────┼──HTTP────►│  後端 ──► PostgreSQL ──► 紀錄頁 / 總覽    │
   │ REACH 自己的網頁、DB、日報（照舊）           │  JSON      │                                       │
   └──────────────────────────────────────────────┘            └───────────────────────────────────────┘
 ```
@@ -79,25 +79,24 @@
 | 平台 API 位址 | `http://<平台IP>:8000/api/v1` |
 | 裝置 ID | `REACH01`（平台上建立） |
 | 裝置 API 金鑰 | 平台建立裝置時產生，只顯示一次 |
-| MQTT 位址 / 帳號 / 密碼 | `<平台IP>:1883` |
 | 影像推流位址 | `rtsp://<平台IP>:8554`（跨網際網路可用 SRT `<平台IP>:8890/udp`） |
 
-網路需求：REACH 主機需能**主動連出**到平台的 `8000/tcp`、`1883/tcp`、`8554/tcp`（或 `8890/udp`），
+網路需求：REACH 主機需能**主動連出**到平台的 `8000/tcp`、`8554/tcp`（或 `8890/udp`），
 上傳快照另需 `9000/tcp`。
 平台**不會**主動連進 REACH，也不需要 REACH 開任何對外 port。
 
 ## 7. 資安與隱私原則
 
 - 攝影機位址與帳密**只留在 REACH**，平台不需要、也不會保存。
-- 裝置金鑰、MQTT 密碼請放在 REACH 的 env 檔（例如 `/etc/reach-ai-office-vision/office-vision.env`），
+- 裝置金鑰請放在 REACH 的 env 檔（例如 `/etc/reach-ai-office-vision/office-vision.env`），
   **不得**寫進程式、Git、log 或前端。
 - 事件中的個人資料以**最少必要**為原則：建議只送 `employee_id`；是否送員工姓名由雙方另行確認。
-- 影像只走 H.264 串流，**不**透過 MQTT / Base64 / WebSocket 傳送。
+- 影像只走 H.264 串流，**不**透過 Base64 / WebSocket 傳送。
 
 ## 8. 參考資料（我方可提供）
 
 - 完整串接規格：`docs/edge-integration.md`
-- 可執行的參考程式：`examples/third-party-edge/generic_edge.py`（純 JSON + paho-mqtt + ffmpeg，已實測可串接）
+- 可執行的參考程式：`examples/edge-http/generic_edge.py`（純 JSON + HTTP + ffmpeg，已實測可串接）
 - JSON Schema：`shared/schemas/edge_log.schema.json` 等
 
 ## 9. 聯絡與測試

@@ -18,10 +18,10 @@
 
 - **錯誤格式**：一律 `{"detail": "<說明>"}`（含 422）。所有 `/api/v1/edge/*` 回應都帶 `Cache-Control: no-store`。
 - **速率限制**：同一來源 IP + 權杖每分鐘 10 次；同一 IP 連續 5 次 401 → 封鎖 15 分鐘（期間回 429）。
-- **停用 / 除役**：裝置被停用或除役後，`/edge/register` 回 403，且該裝置的 `X-Device-Key` 呼叫也回 403、推流被拒、MQTT 心跳與紀錄不再處理。
+- **停用 / 除役**：裝置被停用或除役後，`/edge/register` 回 403，且該裝置的 `X-Device-Key` 呼叫也回 403、推流被拒、心跳與紀錄不再處理。
 - **重新註冊**：同業主權杖 + 同 MAC → 同一個 device_uuid、新 api_key、舊 key 立即失效（401）。
 - **稽核**：registered / re_registered / key_rotated / rejected_401 / rejected_403 / rejected_409，含時間、來源 IP、權杖前綴、MAC，不含任何金鑰或權杖。
-- **MQTT**：仍使用平台固定帳密（不是 api_key），topic 前綴 `edge/{device_uuid}/`。
+- **回報方式**：心跳、狀態、紀錄一律以 HTTP 送到 `/api/v1/edge/*`，用 api_key（`X-Device-Key`）驗證；平台已不使用 MQTT。
 - 不帶 `mac_address` 的舊註冊方式只供 edge-agent 使用，無法接管已依 MAC / 業主佈建的裝置。
 
 ## §9 契約腳本輸出（測試環境，2026-10-12）

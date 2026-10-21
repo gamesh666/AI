@@ -7,6 +7,5 @@ class DashboardSummary(BaseModel):
     pending_devices: int
     camera_count: int
     active_camera_count: int
-    events_today: int
     logs_today: int = 0
     disconnects_today: int = 0

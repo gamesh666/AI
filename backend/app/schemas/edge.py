@@ -45,7 +45,7 @@ class EdgeVideoConfig(BaseModel):
 
 class EdgeCameraConfig(BaseModel):
     id: uuid.UUID
-    camera_id: str  # camera code, used in MQTT topics and payloads
+    camera_id: str  # camera code, used in API paths, logs and stream paths
     name: str
     # full URL WITH credentials — only served to the owning, authenticated device over HTTPS.
     # None = the edge manages this camera's source itself.
@@ -62,13 +62,6 @@ class EdgeCameraConfig(BaseModel):
     ai_model: EdgeModelConfig | None
 
 
-class EdgeMQTTConfig(BaseModel):
-    host: str
-    port: int
-    tls: bool
-    topics: dict[str, str]
-
-
 class EdgeStreamingConfig(BaseModel):
     protocol: str = "rtsp"  # rtsp | srt
     rtsp_publish_url: str
@@ -76,10 +69,11 @@ class EdgeStreamingConfig(BaseModel):
 
 
 class EdgeTelemetryConfig(BaseModel):
-    """How to send heartbeat / status / logs. HTTP works for every edge; MQTT only while mqtt_enabled."""
+    """Where to send heartbeat / status / logs (POST with X-Device-Key)."""
 
-    mqtt_enabled: bool
-    # API paths (relative to the API base URL) that take the same JSON as the MQTT topics
+    # always false: there is no MQTT any more (kept so edges that check it keep working)
+    mqtt_enabled: bool = False
+    # API paths, relative to the API base URL
     http: dict[str, str]
 
 
@@ -89,7 +83,6 @@ class EdgeConfig(BaseModel):
     version: int
     heartbeat_interval_seconds: int = 10
     cameras: list[EdgeCameraConfig]
-    mqtt: EdgeMQTTConfig
     telemetry: EdgeTelemetryConfig
     streaming: EdgeStreamingConfig
     # owner / site / contract data (REACH register contract §3.6); None when unknown
@@ -141,14 +134,14 @@ class PresignResponse(BaseModel):
 
 
 class EdgeHeartbeatAck(BaseModel):
-    """Answer to POST /edge/heartbeat: what MQTT would otherwise push to the edge."""
+    """Answer to POST /edge/heartbeat: what the platform has for the edge."""
 
     # changes whenever the platform-side config changes; re-fetch GET /edge/config when it differs from the last
     config_version: int
     # pending commands (oldest first), each {command_id, command, params, issued_at}; delivered once
     commands: list[dict[str, Any]] = Field(default_factory=list)
-    # false once the shared MQTT account is switched off: HTTP is then the only way in
-    mqtt_enabled: bool
+    # always false: there is no MQTT any more (kept so edges that check it keep working)
+    mqtt_enabled: bool = False
     server_time: datetime
 
 

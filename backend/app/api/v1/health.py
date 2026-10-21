@@ -4,7 +4,6 @@ from sqlalchemy import text
 
 from app.api.deps import DBSession
 from app.core.redis import get_redis
-from app.messaging.runtime import get_broker
 
 router = APIRouter()
 
@@ -26,8 +25,6 @@ async def readiness(db: DBSession) -> JSONResponse:
         checks["redis"] = bool(await get_redis().ping())
     except Exception:
         checks["redis"] = False
-    broker = get_broker()
-    checks["mqtt"] = bool(broker and broker.connected)
     ok = checks["database"] and checks["redis"]
     return JSONResponse(
         status_code=200 if ok else 503,

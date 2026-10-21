@@ -8,7 +8,6 @@ from app.api.v1 import (
     devices,
     edge,
     edge_telemetry,
-    events,
     health,
     logs,
     owners,
@@ -27,9 +26,8 @@ api_router.include_router(sites.router, prefix="/sites", tags=["sites"])
 api_router.include_router(devices.router, prefix="/devices", tags=["edge-devices"])
 api_router.include_router(cameras.router, prefix="/cameras", tags=["cameras"])
 api_router.include_router(ai_models.router, prefix="/ai-models", tags=["ai-models"])
-api_router.include_router(events.router, prefix="/events", tags=["events"])
 api_router.include_router(logs.router, prefix="/logs", tags=["edge-logs"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(streams.router, prefix="/streams", tags=["streams"])
-api_router.include_router(edge.router, prefix="/edge", tags=["edge-agent"])
-api_router.include_router(edge_telemetry.router, prefix="/edge", tags=["edge-agent"])
+api_router.include_router(edge.router, prefix="/edge", tags=["edge"])
+api_router.include_router(edge_telemetry.router, prefix="/edge", tags=["edge"])

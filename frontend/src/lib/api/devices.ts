@@ -21,7 +21,6 @@ export const devicesApi = {
   connection: (id: string) => api.get<EdgeConnectionInfo>(`/devices/${id}/connection`),
   audit: (id: string) => api.get<DeviceAudit[]>(`/devices/${id}/audit`),
   rotateKey: (id: string) => api.post<EdgeDeviceWithKey>(`/devices/${id}/rotate-key`),
-  telemetrySettings: () => api.get<{ mqtt_edge_enabled: boolean }>("/devices/telemetry-settings"),
   command: (id: string, command: string, params: Record<string, unknown> = {}) =>
     api.post<{ command_id: string }>(`/devices/${id}/commands`, { command, params }),
 };

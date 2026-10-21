@@ -63,30 +63,9 @@ class Settings(BaseSettings):
             ) from None
         return v
 
-    # --- edge provisioning ---
-    edge_provisioning_token: SecretStr
+    # --- edges ---
     device_offline_after_seconds: int = 30
     device_monitor_interval_seconds: int = 10
-
-    # --- mqtt ---
-    mqtt_enabled: bool = True
-    mqtt_host: str = "mosquitto"
-    mqtt_port: int = 1883
-    mqtt_username: str = "backend"
-    mqtt_password: SecretStr
-    mqtt_client_id_prefix: str = "aivms-backend"
-    mqtt_shared_group: str | None = "backend"
-    mqtt_tls: bool = False
-    # address edge agents use to reach the broker (returned in /edge/config)
-    mqtt_public_host: str = "localhost"
-    mqtt_public_port: int = 1883
-    # credentials edge devices log in to the broker with; only shown in the connection info
-    mqtt_edge_username: str = "edge"
-    mqtt_edge_password: SecretStr | None = None
-    # shared edge MQTT account on/off. Edges can send the same telemetry over HTTPS with their own device
-    # key (POST /api/v1/edge/heartbeat, /logs, ...); once every edge does, set false: Mosquitto then drops
-    # the shared account and the connection info stops handing it out.
-    mqtt_edge_enabled: bool = True
 
     # --- minio ---
     minio_endpoint: str = "minio:9000"

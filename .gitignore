@@ -19,18 +19,10 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 
-# edge runtime
-edge-agent/data/
-*.pt
-*.onnx
-*.engine
-
 # misc
 .DS_Store
 .idea/
 .vscode/
 
-# demo footage (simulation/media)
-simulation/media/*
-!simulation/media/README.md
+# ./scripts/backup.sh output (contains secrets)
 backups/

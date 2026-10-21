@@ -1,6 +1,7 @@
 # AIBOX SERVER 建置 SOP（新虛擬機從零到上線）
 
 > 適用：在任何一台新的 Linux 虛擬機上，從 `git clone` 開始架起 AIBOX SERVER 平台，接上 REACH 等 AI BOX。
+> 圖解版：[AIBOX-SERVER-圖解SOP.md](AIBOX-SERVER-圖解SOP.md)
 > 全程約 20～30 分鐘，其中第一次建置映像檔約佔 5～15 分鐘。
 > 需要的指令都在本文件，照順序貼上即可。
 
@@ -41,7 +42,7 @@ flowchart LR
 ```
 
 - AI BOX 一律**主動連出**到平台，平台從不連進現場。
-- 回報全部走 HTTP，每台用自己的裝置金鑰；新安裝**預設不開** MQTT 共用帳號。
+- 回報全部走 HTTP，每台用自己的裝置金鑰。
 
 ---
 
@@ -80,11 +81,10 @@ docker compose version     # 顯示 2.24 以上
 
 ```bash
 sudo mkdir -p /opt/ai-monitor && sudo chown $USER: /opt/ai-monitor
-git clone -b claude/ai-video-surveillance-mvp-mbcpyc https://github.com/gamesh666/AI.git /opt/ai-monitor
+git clone https://github.com/gamesh666/AI.git /opt/ai-monitor
 cd /opt/ai-monitor
 ```
 
-- 目前所有功能都在 `claude/ai-video-surveillance-mvp-mbcpyc` 分支，`main` 還是初始版本，**一定要加 `-b`**。之後合併回 `main`，就可以省略。
 - 這個 repo 是**公開**的，裡面沒有任何密碼。密碼都在下一步產生的 `.env`，只存在這台 VM 上。
 
 ## ④ 一鍵安裝
@@ -100,7 +100,7 @@ cd /opt/ai-monitor
 | 步驟 | 內容 |
 |------|------|
 | 1/5 | 檢查 Docker、Compose 版本、openssl |
-| 2/5 | 沒有 `.env` 就產生一份（全部隨機密碼、權限 600、正式環境模式、**MQTT 共用帳號關閉**）；已有就沿用 |
+| 2/5 | 沒有 `.env` 就產生一份（全部隨機密碼、權限 600）；已有就沿用 |
 | 3/5 | 把網頁、API、推流、快照的對外位址設成這台 VM 的 IP |
 | 4/5 | 建置並啟動所有服務（**不含**示範裝置） |
 | 5/5 | 等到平台可以使用，印出網址與第一次登入的帳密 |
@@ -113,8 +113,6 @@ AIBOX SERVER is running.
   API:   http://192.168.0.179:8000/api/v1   (for edge devices)
   login: admin / <隨機密碼>
 ```
-
-> 需要保留舊的 MQTT 回報方式（例如還有沒更新的設備）時，改用 `./scripts/install.sh --with-mqtt`。
 
 ## ⑤ 第一次登入
 

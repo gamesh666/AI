@@ -60,10 +60,6 @@ class EdgeDeviceRead(ORMModel):
     # models the edge reports running (heartbeat), None = never reported
     reported_models: list[dict[str, Any]] | None = None
     reported_models_at: datetime | None = None
-    # telemetry transport used in the last minutes: "http" | "mqtt" | "both" | None
-    telemetry_transport: str | None = None
-    last_mqtt_at: datetime | None = None
-    last_http_at: datetime | None = None
     created_at: datetime
 
 
@@ -71,20 +67,11 @@ class EdgeConnectionInfo(BaseModel):
     """Everything an edge needs to connect, except the device key (shown once, separately)."""
 
     device_id: str
-    mqtt_host: str
-    mqtt_port: int
-    mqtt_tls: bool
-    mqtt_username: str
-    # only for admins; None = ask an administrator
-    mqtt_password: str | None = None
     stream_protocol: str
     rtsp_publish_url: str
     srt_publish_url: str | None = None
     snapshot_upload_url: str
-    topics: dict[str, str]
-    # false once the shared MQTT account is switched off (MQTT_EDGE_ENABLED=false): send telemetry over HTTP
-    mqtt_enabled: bool = True
-    # HTTP telemetry endpoints, relative to the API base URL (same JSON as the MQTT topics)
+    # telemetry endpoints (POST, header X-Device-Key), relative to the API base URL
     http_endpoints: dict[str, str] = {}
 
 

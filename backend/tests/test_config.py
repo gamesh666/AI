@@ -5,8 +5,7 @@ from app.core.config import Settings
 
 
 def _settings(**overrides) -> Settings:
-    base = dict(postgres_password="x", jwt_secret_key="k" * 32, edge_provisioning_token="t", mqtt_password="m",
-                minio_access_key="a", minio_secret_key="s",
+    base = dict(postgres_password="x", jwt_secret_key="k" * 32, minio_access_key="a", minio_secret_key="s",
                 credential_encryption_key="QnjTH6SV2urR9xD0aiKmKVubmJ8_Wq08VSW3JEqwFnE=")
     base.update(overrides)
     return Settings(**base)
@@ -18,7 +17,7 @@ def test_invalid_fernet_key_fails_at_startup_with_instructions():
 
 
 def test_placeholders_warn_in_development_and_fail_in_production():
-    dev = _settings(edge_provisioning_token="change-me-provisioning-token")
-    assert dev.placeholder_secrets() == ["EDGE_PROVISIONING_TOKEN"]
+    dev = _settings(APP_ENV="development", minio_secret_key="change-me-minio-password")
+    assert dev.placeholder_secrets() == ["MINIO_SECRET_KEY"]
     with pytest.raises(ValidationError, match="placeholder secrets are not allowed in production"):
-        _settings(APP_ENV="production", edge_provisioning_token="change-me-provisioning-token")
+        _settings(APP_ENV="production", minio_secret_key="change-me-minio-password")

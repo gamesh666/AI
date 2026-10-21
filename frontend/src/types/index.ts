@@ -129,31 +129,17 @@ export interface EdgeDevice {
   /** models the edge reports running (heartbeat); null = never reported */
   reported_models: ReportedModel[] | null;
   reported_models_at: string | null;
-  /** how telemetry arrived in the last minutes */
-  telemetry_transport: TelemetryTransport | null;
-  last_mqtt_at: string | null;
-  last_http_at: string | null;
   created_at: string;
 }
 
-export type TelemetryTransport = "http" | "mqtt" | "both";
 
 export interface EdgeConnectionInfo {
   device_id: string;
-  mqtt_host: string;
-  mqtt_port: number;
-  mqtt_tls: boolean;
-  mqtt_username: string;
-  /** null for non-admins: ask an administrator */
-  mqtt_password: string | null;
   stream_protocol: string;
   rtsp_publish_url: string;
   srt_publish_url: string | null;
   snapshot_upload_url: string;
-  topics: Record<string, string>;
-  /** false once the shared MQTT account is switched off */
-  mqtt_enabled: boolean;
-  /** HTTP telemetry endpoints relative to the API base URL */
+  /** telemetry endpoints relative to the API base URL */
   http_endpoints: Record<string, string>;
 }
 
@@ -255,7 +241,6 @@ export interface DashboardSummary {
   pending_devices: number;
   camera_count: number;
   active_camera_count: number;
-  events_today: number;
   logs_today: number;
   disconnects_today: number;
 }

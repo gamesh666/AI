@@ -1,7 +1,7 @@
 """Edge telemetry over HTTP (authenticated with X-Device-Key).
 
-Same JSON as the MQTT topics, so an edge switches by changing where it sends, not what it sends. The device
-identity comes from the key: `device_uuid` / `device_id` may be left out, and must match the key when given.
+Heartbeat, status, camera status and logs as JSON (contracts in shared/python/aivms_shared/payloads.py).
+The device identity comes from the key: `device_uuid` / `device_id` may be left out, and must match the key when given.
 Errors are always {"detail": "<text>"}.
 """
 
@@ -14,17 +14,16 @@ from typing import Annotated, Any, TypeVar
 from fastapi import APIRouter, Path, Request
 from pydantic import BaseModel, ValidationError
 
-from aivms_shared.payloads import CameraRuntimeStatus, DetectionEvent, EdgeLog, Heartbeat
+from aivms_shared.payloads import CameraRuntimeStatus, EdgeLog, Heartbeat
 from aivms_shared.payloads import DeviceStatus as DeviceStatusPayload
 from app.api.deps import CurrentDevice, DBSession
-from app.core.config import get_settings
 from app.core.exceptions import DomainError, NotFoundError, PermissionDeniedError
 from app.models.edge_device import EdgeDevice
 from app.schemas.edge import EdgeHeartbeatAck, EdgeLogAck, EdgeLogBatchAck, EdgeLogRejected
 from app.schemas.site import SLUG_PATTERN
 from app.services import telemetry
 from app.services.device_service import DeviceService
-from app.services.edge_log_service import EdgeLogService, detection_to_log
+from app.services.edge_log_service import EdgeLogService
 from app.services.provisioning import UnprocessableError
 
 router = APIRouter()
@@ -79,26 +78,25 @@ async def _heartbeat_ack(device: EdgeDevice) -> EdgeHeartbeatAck:
     return EdgeHeartbeatAck(
         config_version=await telemetry.config_version(device.device_uuid),
         commands=await telemetry.pop_commands(device.device_uuid),
-        mqtt_enabled=get_settings().mqtt_edge_enabled,
         server_time=datetime.now(UTC),
     )
 
 
 @router.post("/heartbeat", response_model=EdgeHeartbeatAck)
 async def heartbeat(request: Request, device: CurrentDevice, db: DBSession) -> EdgeHeartbeatAck:
-    """Same body as edge/{device}/heartbeat, every ~10 s. Without it for 30 s the device is shown offline.
+    """Every ~10 s. Without it for 30 s the device is shown offline.
 
-    The answer carries what MQTT would push: pending commands and the config version.
+    The answer carries pending commands and the config version.
     """
     data = _own(_object(await _json(request)), "device_uuid", device.device_uuid)
     hb = _validate(Heartbeat, data, "heartbeat")
-    await DeviceService(db).ingest_heartbeat(hb, transport=telemetry.TRANSPORT_HTTP)
+    await DeviceService(db).ingest_heartbeat(hb)
     return await _heartbeat_ack(device)
 
 
 @router.post("/status", status_code=204)
 async def status(request: Request, device: CurrentDevice, db: DBSession) -> None:
-    """{"state": "online" | "offline"} — e.g. "offline" on a clean shutdown (MQTT used the Last Will for this)."""
+    """{"state": "online" | "offline"} — "online" at start, "offline" on a clean shutdown."""
     data = _own(_object(await _json(request)), "device_uuid", device.device_uuid)
     await DeviceService(db).ingest_status(_validate(DeviceStatusPayload, data, "status"))
 
@@ -110,7 +108,7 @@ async def camera_status(
     db: DBSession,
     code: Annotated[str, Path(pattern=SLUG_PATTERN)],
 ) -> None:
-    """Same body as edge/{device}/cameras/{camera}/status."""
+    """Health of one camera, every ~5 s."""
     data = _own(_object(await _json(request)), "camera_id", code, what="camera")
     payload = _validate(CameraRuntimeStatus, data, "camera status")
     if not await DeviceService(db).ingest_camera_status(device.device_uuid, payload):
@@ -129,7 +127,7 @@ async def _store_log(service: EdgeLogService, device: EdgeDevice, item: Any) -> 
 
 @router.post("/logs", response_model=EdgeLogAck | EdgeLogBatchAck)
 async def logs(request: Request, device: CurrentDevice, db: DBSession) -> EdgeLogAck | EdgeLogBatchAck:
-    """Same body as edge/{device}/logs (one object), or a JSON array of up to 100 of them.
+    """One log object, or a JSON array of up to 100 of them.
 
     One object: 200 with its event_id, or an error. Array: 200 with what was accepted and what was not (by index);
     a rejected item never blocks the others. Re-sending an event_id updates that log (e.g. office.leave open ->
@@ -149,15 +147,3 @@ async def logs(request: Request, device: CurrentDevice, db: DBSession) -> EdgeLo
         except DomainError as exc:
             rejected.append(EdgeLogRejected(index=index, detail=exc.message))
     return EdgeLogBatchAck(accepted=accepted, rejected=rejected)
-
-
-@router.post("/events", status_code=204)
-async def events(request: Request, device: CurrentDevice, db: DBSession) -> None:
-    """Detection event (edge-agent format, same body as edge/{device}/cameras/{camera}/events).
-
-    Stored as an Edge log of type ai.detection, like every other recognition result.
-    """
-    data = _own(_object(await _json(request)), "device_id", device.device_uuid)
-    event = _validate(DetectionEvent, data, "event")
-    if event.detections:
-        await EdgeLogService(db).ingest(detection_to_log(event), device.device_uuid)

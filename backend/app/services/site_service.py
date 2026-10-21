@@ -7,12 +7,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
-from app.messaging import publisher
 from app.models.edge_device import EdgeDevice
 from app.models.site import Site
 from app.repositories.site_repository import SiteRepository
 from app.schemas.common import Page, PageParams
 from app.schemas.site import SiteCreate, SiteRead, SiteUpdate
+from app.services import telemetry
 from app.services.camera_service import CameraService
 
 
@@ -68,7 +68,7 @@ class SiteService:
             await self.session.rollback()
             raise ConflictError("site name or code already exists") from exc
         for device in devices:
-            await publisher.notify_config_changed(device.device_uuid, "site_code_changed")
+            await telemetry.notify_config_changed(device.device_uuid, "site_code_changed")
         await self.session.refresh(site)
         return site
 

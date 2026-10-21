@@ -1,12 +1,11 @@
 "use client";
 
-import clsx from "clsx";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { copyText, downloadText } from "@/lib/clipboard";
 import { API_BASE } from "@/lib/config";
-import { buildConnectionSheet, type SheetFormat } from "@/lib/connectionSheet";
+import { buildConnectionSheet } from "@/lib/connectionSheet";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { EdgeConnectionInfo } from "@/types";
 
@@ -24,9 +23,8 @@ export function ConnectionInfoPanel({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const [format, setFormat] = useState<SheetFormat>("partner");
   const [copied, setCopied] = useState<"all" | "key" | "failed" | null>(null);
-  const sheet = useMemo(() => buildConnectionSheet(info, API_BASE, apiKey, format, t), [info, apiKey, format, t]);
+  const sheet = useMemo(() => buildConnectionSheet(info, API_BASE, apiKey, t), [info, apiKey, t]);
 
   const copy = async (what: "all" | "key", text: string) => {
     setCopied((await copyText(text)) ? what : "failed");
@@ -50,23 +48,7 @@ export function ConnectionInfoPanel({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xs uppercase text-muted">{t("sheet.connectionInfo")}</div>
-        <div className="inline-flex overflow-hidden rounded-item border border-line2 text-xs">
-          {(["partner", "agent"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFormat(f)}
-              className={clsx(
-                "px-2.5 py-1",
-                format === f ? "bg-accent text-on-accent" : "bg-panel text-ink2 hover:bg-panel2",
-              )}
-            >
-              {t(f === "partner" ? "sheet.formatPartner" : "sheet.formatAgent")}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="text-xs uppercase text-muted">{t("sheet.connectionInfo")}</div>
       <textarea
         readOnly
         value={sheet}

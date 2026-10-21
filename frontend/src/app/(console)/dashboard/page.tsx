@@ -12,7 +12,6 @@ import { useAsync } from "@/hooks/useAsync";
 import { useLiveDevices } from "@/hooks/useLiveDevices";
 import { API_BASE } from "@/lib/config";
 import { dashboardApi } from "@/lib/api/dashboard";
-import { devicesApi } from "@/lib/api/devices";
 import { sitesApi } from "@/lib/api/sites";
 import { useRealtime, useRealtimeStatus } from "@/lib/realtime/RealtimeProvider";
 import type { DashboardSummary, EdgeLog } from "@/types";
@@ -37,7 +36,6 @@ export default function DashboardPage() {
   const summary = useAsync(dashboardApi.summary);
   const devices = useLiveDevices();
   const sites = useAsync(async () => (await sitesApi.list()).total);
-  const flags = useAsync(() => devicesApi.telemetrySettings());
   const connected = useRealtimeStatus();
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -65,7 +63,6 @@ export default function DashboardPage() {
   const active = list.filter((d) => d.admin_state === "active");
   const online = active.filter((d) => d.status === "online").length;
   const onlineRate = active.length ? Math.round((online / active.length) * 100) : null;
-  const onHttp = active.filter((d) => d.telemetry_transport === "http").length;
   const camPct = s && s.camera_count ? (s.active_camera_count / s.camera_count) * 100 : 0;
   const camState = !s || !s.camera_count ? undefined : camPct === 100 ? "ok" : camPct === 0 ? "bad" : "warn";
 
@@ -83,7 +80,7 @@ export default function DashboardPage() {
             <HeroFact icon="sites" label={t("dashboard.factSites")} value={sites.data ?? "--"} />
             <HeroFact icon="devices" label={t("dashboard.factDevices")} value={active.length} />
             <HeroFact icon="online" label={t("dashboard.factOnlineRate")} value={onlineRate == null ? "--" : `${onlineRate}%`} />
-            <HeroFact icon="link" label={t("dashboard.factHttp")} value={`${onHttp} / ${active.length}`} />
+            <HeroFact icon="cameras" label={t("dashboard.activeCameras")} value={s ? `${s.active_camera_count} / ${s.camera_count}` : "--"} />
           </div>
         </div>
         <div className="hero-card text-[13px]">
@@ -100,18 +97,6 @@ export default function DashboardPage() {
                   <span className="state-dot" />
                   {connected ? t("topbar.live") : t("topbar.reconnecting")}
                 </span>
-              </dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted">{t("dashboard.platformMqtt")}</dt>
-              <dd className="m-0">
-                {flags.data ? (
-                  <span className={flags.data.mqtt_edge_enabled ? "hint-pill" : "svc-pill"} data-state="ok">
-                    {t(flags.data.mqtt_edge_enabled ? "dashboard.mqttOn" : "dashboard.mqttOff")}
-                  </span>
-                ) : (
-                  "--"
-                )}
               </dd>
             </div>
           </dl>
@@ -139,7 +124,7 @@ export default function DashboardPage() {
         <StatCard icon="logs" color="sky" label={t("dashboard.logsToday")} value={s?.logs_today} />
       </div>
 
-      <CorePanels summary={s} devices={list} connected={connected} mqttEnabled={flags.data?.mqtt_edge_enabled ?? null} />
+      <CorePanels summary={s} devices={list} connected={connected} />
 
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(max(320px, 42%), 100%), 1fr))" }}>
         <DeviceStatusList devices={list} />

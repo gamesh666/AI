@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 from app.models.camera import Camera
-from app.models.detection_event import DetectionEvent
 from app.models.edge_device import EdgeDevice
 from app.schemas.camera import CameraRead
-from app.schemas.detection_event import DetectionEventRead
 from app.schemas.edge_device import EdgeDeviceRead
-from app.services import storage_service, telemetry
 
 
 def device_to_read(device: EdgeDevice, camera_count: int = 0, disconnects_24h: int = 0) -> EdgeDeviceRead:
@@ -17,7 +14,6 @@ def device_to_read(device: EdgeDevice, camera_count: int = 0, disconnects_24h: i
     dto.owner_name = device.owner.name if device.owner else None
     dto.camera_count = camera_count
     dto.disconnects_24h = disconnects_24h
-    dto.telemetry_transport = telemetry.transport_of(device)
     return dto
 
 
@@ -76,25 +72,3 @@ def camera_to_read(camera: Camera) -> CameraRead:
     )
 
 
-def event_to_read(event: DetectionEvent) -> DetectionEventRead:
-    device = event.edge_device
-    site = device.site if device else None
-    return DetectionEventRead(
-        id=event.id,
-        event_group_id=event.event_group_id,
-        camera_id=event.camera_id,
-        camera_name=event.camera.name if event.camera else None,
-        edge_device_id=event.edge_device_id,
-        edge_device_name=device.name if device else None,
-        site_id=site.id if site else None,
-        site_name=site.name if site else None,
-        ai_model_id=event.ai_model_id,
-        ai_model_name=event.ai_model.name if event.ai_model else None,
-        track_id=event.track_id,
-        class_name=event.class_name,
-        confidence=event.confidence,
-        bbox=event.bbox,
-        detected_at=event.detected_at,
-        snapshot_url=storage_service.presign_download(event.snapshot_url),
-        metadata=event.extra or {},
-    )
