@@ -1,5 +1,7 @@
 # AIBOX SERVER — AI 智慧影像監控與邊緣運算管理平台
 
+> **在新虛擬機上架設**：照 [`docs/AIBOX-SERVER-建置SOP.md`](docs/AIBOX-SERVER-建置SOP.md) 做，`git clone` 後執行 `./scripts/install.sh` 即可（含備份、搬家、日常維護）。
+
 一個可執行、模組化、可水平擴充的 MVP：多個地點的 **Edge Device** 就近連接各自網段內的 RTSP/ONVIF 攝影機，
 在本地以 **YOLO** 推論，然後把兩種資料**主動推送**回中央平台：
 

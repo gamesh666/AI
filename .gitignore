@@ -33,3 +33,4 @@ edge-agent/data/
 # demo footage (simulation/media)
 simulation/media/*
 !simulation/media/README.md
+backups/

@@ -1,5 +1,7 @@
 # 在 Ubuntu 24.04 VM 上架設可操作的平台（Demo 模式）
 
+> 正式環境（不含示範裝置）請改看 [`AIBOX-SERVER-建置SOP.md`](AIBOX-SERVER-建置SOP.md)，一個 `./scripts/install.sh` 完成安裝。本文件是含模擬攝影機與示範裝置的 Demo 架設方式。
+
 目標：在沒有實體 Camera / Edge / GPU 的 VM 上，從**另一台電腦的瀏覽器**操作完整平台。
 
 ## 0. 已知問題與原因

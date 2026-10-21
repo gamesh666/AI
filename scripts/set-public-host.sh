@@ -4,7 +4,7 @@
 #   ./scripts/set-public-host.sh 192.168.56.10
 #   ./scripts/set-public-host.sh vms.example.local
 # Then rebuild/recreate (NEXT_PUBLIC_API_URL is baked into the frontend at build time):
-#   docker compose --profile demo up -d --build frontend backend mediamtx
+#   docker compose up -d --build frontend backend mediamtx   (add --profile demo for the demo stack)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -31,5 +31,5 @@ set_var MEDIAMTX_SRT_PUBLISH_URL "srt://$HOST:8890"
 
 echo "public host set to $HOST (previous .env saved as .env.bak)"
 echo "open: http://$HOST:3000"
-echo "apply: docker compose --profile demo up -d --build frontend backend mediamtx"
+echo "apply: docker compose up -d --build frontend backend mediamtx   (or ./scripts/install.sh)"
 echo "firewall: allow TCP 3000 8000 8888 8889 9000 (+ UDP 8189 for WebRTC; 1883/8554 for real edges)"
