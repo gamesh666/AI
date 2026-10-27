@@ -38,10 +38,10 @@ class PayloadTooLargeError(DomainError):
     status_code = 413
 
 
-async def _json(request: Request) -> Any:
+async def _json(request: Request, max_bytes: int = MAX_BODY_BYTES) -> Any:
     body = await request.body()
-    if len(body) > MAX_BODY_BYTES:
-        raise PayloadTooLargeError(f"request body too large (max {MAX_BODY_BYTES} bytes)")
+    if len(body) > max_bytes:
+        raise PayloadTooLargeError(f"request body too large (max {max_bytes} bytes)")
     try:
         return json.loads(body)
     except ValueError:

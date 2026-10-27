@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -26,6 +26,10 @@ from app.schemas.owner import (
 )
 
 TOKEN_PREFIX = "aivms_pt_"  # recognisable in configs; the random part follows
+
+
+# a revoked token stays visible this long (to see what was revoked), then it is deleted
+REVOKED_TOKEN_TTL = timedelta(minutes=5)
 
 
 class OwnerService:
@@ -95,8 +99,22 @@ class OwnerService:
             expires_at=token.expires_at, revoked_at=token.revoked_at, created_at=token.created_at, state=state,
         )
 
+    async def purge_revoked(self, owner_id: uuid.UUID | None = None,
+                            older_than: timedelta = REVOKED_TOKEN_TTL) -> int:
+        """Delete tokens revoked longer ago than `older_than` (devices keep working: they hold their own key)."""
+        stmt = delete(ProvisioningToken).where(
+            ProvisioningToken.revoked_at.is_not(None),
+            ProvisioningToken.revoked_at <= datetime.now(UTC) - older_than,
+        )
+        if owner_id is not None:
+            stmt = stmt.where(ProvisioningToken.owner_id == owner_id)
+        result = await self.session.execute(stmt)
+        await self.session.commit()
+        return result.rowcount or 0
+
     async def tokens(self, owner_id: uuid.UUID) -> list[ProvisioningTokenRead]:
         await self.get(owner_id)
+        await self.purge_revoked(owner_id)
         stmt = (
             select(ProvisioningToken).where(ProvisioningToken.owner_id == owner_id)
             .options(selectinload(ProvisioningToken.site)).order_by(ProvisioningToken.created_at.desc())

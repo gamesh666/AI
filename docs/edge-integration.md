@@ -9,7 +9,7 @@
 | **即時辨識畫面**（已畫好框的影像） | H.264 RTSP（或 SRT）推到 MediaMTX | 瀏覽器用 WebRTC 播放，失敗自動改 HLS |
 | 裝置 / 攝影機健康狀態 | HTTP POST JSON | 顯示在線 / 離線、FPS、串流狀態 |
 
-所有連線都由 Edge **主動連出**，每台只用自己的**裝置金鑰**（header `X-Device-Key`），外流也只影響那一台。
+所有連線都由 Edge **主動連出**。上線只需要業主的**佈建權杖**；註冊時平台自動發給每台自己的裝置金鑰（header `X-Device-Key`），由 Edge 保存，人不用經手，外流也只影響那一台。
 
 平台不解讀 `event_type` 與 `data` 的內容，所以 Edge 之後改辨識項目，平台**不用改程式**。
 
@@ -18,32 +18,29 @@
 
 ---
 
-## 0. 在平台上建立 Edge（一次）
+## 0. 上線：只用佈建權杖
 
-管理員在網頁 **邊緣裝置 → + 新增裝置**，填裝置 ID（例如 `REACH01`）並選場域，
-畫面會跳出 **裝置連線資訊**：API 金鑰（只顯示這一次）＋整份可直接貼上的設定（`AIBOX_*` env 格式，含 HTTP 端點、
-推流位址、需要開通的連線），按「複製全部」或「下載 .env」交給 Edge 端即可。
+裝置**只能**用業主的佈建權杖自動註冊建立，平台網頁沒有手動新增裝置，也不會顯示或更換任何金鑰。
 
-之後要再傳一次：admin 在裝置列按 **連線資訊**（金鑰欄會是 `<DEVICE_KEY>`，金鑰遺失請按「更換金鑰」）。
+1. 管理員在「業主」頁替業主產生**佈建權杖**（只顯示一次），把兩行設定放進 AI BOX 出廠設定：
 
-Edge 端需要的設定：
+   ```bash
+   AIBOX_API_URL=http://<平台IP>:8000
+   AIBOX_PROVISIONING_TOKEN=aivms_pt_...
+   ```
 
-| 設定 | 範例 | 來源 |
-|------|------|------|
-| 平台 API | `http://<平台IP>:8000/api/v1` | |
-| 裝置 ID | `REACH01` | 上一步 |
-| 裝置 API 金鑰 | `EDGE_DEVICE_KEY` | 上一步（只顯示一次） |
+2. AI BOX 以 MAC 呼叫 `POST /api/v1/edge/register`（header `X-Provisioning-Token`），平台回傳：
+   - `device_uuid`：平台編的裝置 ID（例如 `REACH01`）；
+   - `api_key`：這台的裝置金鑰，**由 AI BOX 自己存起來**，之後所有呼叫都帶 `X-Device-Key: <api_key>`，
+     RTSP / SRT 推流密碼也是它（帳號 = 裝置 ID）；
+   - `site_id`、`site_profile`：業主 / 場域 / 合約資料。
+3. 接著 `GET /api/v1/edge/config` 取得其餘所有設定（推流位址、HTTP 端點、心跳間隔、攝影機）。
 
-所有 REST 呼叫都帶 header `X-Device-Key: <API 金鑰>`。
+金鑰遺失或要換新：AI BOX 再用**有效的**權杖註冊一次即可（同一個 MAC 沿用原 ID，舊金鑰立刻失效）。
+權杖撤銷 5 分鐘後會從平台刪除；已註冊的裝置不受影響，但之後要重新註冊就需要新的權杖。
 
-### 0b. 自動註冊（REACH AI BOX 等出廠設備）
-
-管理員在「業主」頁替業主產生**佈建權杖**（只顯示一次）放進設備出廠設定；設備以 MAC 呼叫
-`POST /api/v1/edge/register` 自動註冊、取得 device_uuid 與金鑰，並帶回業主 / 場域 / 合約資料（`site_profile`）。
 完整契約：[`docs/reach-edge-register/CLAUDE.md`](reach-edge-register/CLAUDE.md)，交付說明：
 [`docs/reach-edge-register/DELIVERY.md`](reach-edge-register/DELIVERY.md)。
-
-已經手動建立的裝置：在裝置的「編輯」填入設備 MAC（並選業主），設備自動綁定時就會沿用原本的 ID，不會重複建立。
 
 ## 1. 宣告攝影機（Edge 自己管理來源）
 
@@ -233,11 +230,72 @@ X-Device-Key: ...
 完整欄位見 [`shared/python/aivms_shared/payloads.py`](../shared/python/aivms_shared/payloads.py)，
 Python Edge 也可以直接 `pip install` 這個套件使用同一份資料模型。
 
+## 4c. 出勤事件報表（平台下單、Edge 產生 PDF）
+
+平台「邊緣裝置 → 產生報表」的資料**全部來自 Edge 自己的資料庫**，PDF 也由 Edge 用自己的匯出功能產生，
+平台只負責下單、收檔、提供下載。平台不連進 Edge：訂單放在心跳回應裡。
+
+**① 送報表選項**（啟動時、員工 / 部門 / 工位有變動時；平台的下拉選單用它）
+
+```http
+PUT /api/v1/edge/report-options
+X-Device-Key: ...
+
+{"employees":   [{"id": "A001", "name": "王小明", "department": "業務部", "seat": "S01"}],
+ "departments": [{"value": "業務部", "label": "業務部"}],
+ "seats":       [{"value": "S01", "label": "S01 窗邊"}],
+ "events":      [{"value": "away", "label": "離席"}],
+ "statuses":    [{"value": "returned", "label": "已回座"}, {"value": "auto_closed", "label": "未確認回座"}]}
+```
+
+回 `204`。每次送整份（覆蓋上一次），上限 2 MB。
+
+**② 心跳回應收到 `generate_report`**
+
+```json
+{"command_id": "…", "command": "generate_report", "params": {
+  "report_id": "6f1c…", "kind": "attendance", "format": "pdf",
+  "filters": {"employee_id": "A001", "department": null, "seat": null,
+              "period": "yesterday", "start_date": "2026-10-26", "end_date": "2026-10-26",
+              "event": null, "status": null, "attendance_status": "late_confirmed",
+              "vlm": null, "review": null, "face": null},
+  "upload": {"method": "PUT", "path": "/edge/reports/6f1c…/file", "content_type": "application/pdf", "max_bytes": 20971520},
+  "status": {"method": "POST", "path": "/edge/reports/6f1c…/status"}}}
+```
+
+- `null` = 全部。`start_date` / `end_date` 以 Edge 當地日期為準，**照給的日期產生**（`period` 只是使用者按的快捷鍵）。
+- `employee_id`、`department`、`seat`、`event`、`status` 是 ① 送來的 `id` / `value`。
+- 固定代碼：
+
+| 欄位 | 代碼 |
+|---|---|
+| `attendance_status` | `on_time` 準時到班、`late_pending_review` 遲到候選、`late_confirmed` 遲到已確認、`late_rejected` 遲到已駁回、`identity_conflict` 身分不一致、`not_arrived` 尚未到班、`normal_departure` 正常下班、`early_leave_pending_review` 早退候選、`early_leave_confirmed` 早退已確認、`early_leave_rejected` 早退已駁回、`not_judged` 尚未判定、`unverifiable` 無法確認 |
+| `vlm` | `supported` 影像支持、`not_supported` 影像不支持、`undetermined` 無法判定、`model_unavailable` 模型無法使用、`disabled` 未啟用 |
+| `review` | `pending` 待確認、`confirmed` 已確認、`rejected` 已駁回、`not_required` 不需審核 |
+| `face` | `matched` 人臉相符、`unverified` 未驗證／不符 |
+
+**③ 回報進度（選用）與上傳 PDF**
+
+```http
+POST /api/v1/edge/reports/{report_id}/status      {"state": "generating"}
+POST /api/v1/edge/reports/{report_id}/status      {"state": "failed", "message": "查無資料庫連線"}
+
+PUT  /api/v1/edge/reports/{report_id}/file
+X-Device-Key: ...
+Content-Type: application/pdf
+
+<PDF 檔本身，≤ 20 MB>
+```
+
+上傳成功回 `200` 與報表資料（`status: "ready"`），平台網頁就出現「下載 PDF」。
+別台裝置的 `report_id` 一律 `404`；不是 PDF 回 `422`；超過大小回 `413`。15 分鐘內沒完成，平台顯示「裝置未回應」
+（之後仍可上傳）。裝置離線時訂單留在佇列（24 小時），連線後的心跳就會收到。
+
 ## 5. 驗證
 
 ```bash
 # 在可以連到平台的機器上
-EDGE_API_URL=http://<平台IP>:8000/api/v1 EDGE_DEVICE_ID=REACH01 EDGE_DEVICE_KEY=... \
+EDGE_API_URL=http://<平台IP>:8000/api/v1 EDGE_PROVISIONING_TOKEN=aivms_pt_... EDGE_MAC=02:00:00:00:00:01 \
 EDGE_CAMERAS="bimer-entrance-right:BIMer 大門右側,bimer-back-left:BIMer 後左" \
 python examples/edge-http/generic_edge.py
 ```

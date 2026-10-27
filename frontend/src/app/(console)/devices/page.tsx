@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { ConnectionInfoPanel } from "@/components/devices/ConnectionInfoPanel";
 import { DeviceForm } from "@/components/devices/DeviceForm";
+import { ReportDialog } from "@/components/devices/ReportDialog";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
@@ -20,7 +20,7 @@ import { sitesApi } from "@/lib/api/sites";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { pct } from "@/lib/format";
-import type { EdgeConnectionInfo, EdgeDevice } from "@/types";
+import type { EdgeDevice } from "@/types";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 const modelText = (m: { name: string; version?: string }) => [m.name, m.version].filter(Boolean).join(" ");
@@ -36,33 +36,14 @@ export default function DevicesPage() {
   const m = useMutation();
   const [auditOf, setAuditOf] = useState<EdgeDevice | null>(null);
   const audit = useAsync(async () => (auditOf ? devicesApi.audit(auditOf.id) : []), [auditOf?.id]);
-  const [editing, setEditing] = useState<EdgeDevice | null | "new">(null);
-  // connection info to hand over; apiKey only right after create / rotate (shown once)
-  const [revealed, setRevealed] = useState<{ info: EdgeConnectionInfo; apiKey: string | null } | null>(null);
+  const [editing, setEditing] = useState<EdgeDevice | null>(null);
+  const [reportOf, setReportOf] = useState<EdgeDevice | null>(null);
 
   const save = async (v: DeviceInput) => {
-    if (editing === "new") {
-      const res = await m.run(() => devicesApi.create(v));
-      if (!res.ok) return;
-      if (res.value.connection) setRevealed({ info: res.value.connection, apiKey: res.value.api_key });
-    } else if (editing) {
-      const { device_uuid: _, ...changes } = v;
-      const res = await m.run(() => devicesApi.update(editing.id, changes));
-      if (!res.ok) return;
-    }
+    if (!editing) return;
+    if (!(await m.run(() => devicesApi.update(editing.id, v))).ok) return;
     setEditing(null);
     devices.reload();
-  };
-
-  const rotate = async (d: EdgeDevice) => {
-    if (!confirm(t("devices.confirmRotate", { name: d.name }))) return;
-    const res = await m.run(() => devicesApi.rotateKey(d.id));
-    if (res.ok && res.value.connection) setRevealed({ info: res.value.connection, apiKey: res.value.api_key });
-  };
-
-  const showConnection = async (d: EdgeDevice) => {
-    const res = await m.run(() => devicesApi.connection(d.id));
-    if (res.ok) setRevealed({ info: res.value, apiKey: null });
   };
 
   const remove = async (d: EdgeDevice) => {
@@ -72,11 +53,7 @@ export default function DevicesPage() {
 
   return (
     <>
-      <PageHeader
-        title={t("nav.devices")}
-        subtitle={t("devices.subtitle")}
-        actions={canEdit && <Button onClick={() => setEditing("new")}>{t("devices.provision")}</Button>}
-      />
+      <PageHeader title={t("nav.devices")} subtitle={t("devices.subtitle")} />
       <ErrorBanner error={devices.error ?? m.error} />
       <DataTable
         loading={devices.loading}
@@ -171,13 +148,8 @@ export default function DevicesPage() {
                     </Button>
                   )}
                   {isAdmin && (
-                    <Button variant="ghost" onClick={() => showConnection(d)}>
-                      {t("sheet.connectionInfo")}
-                    </Button>
-                  )}
-                  {isAdmin && (
-                    <Button variant="ghost" onClick={() => rotate(d)}>
-                      {t("devices.rotateKey")}
+                    <Button variant="ghost" onClick={() => setReportOf(d)}>
+                      {t("reports.open")}
                     </Button>
                   )}
                   <Button variant="ghost" onClick={() => remove(d)}>
@@ -188,19 +160,17 @@ export default function DevicesPage() {
           },
         ]}
       />
-      <Modal
-        open={editing !== null}
-        title={editing === "new" ? t("devices.provisionTitle") : t("devices.editTitle")}
-        onClose={() => setEditing(null)}
-      >
-        <DeviceForm
-          initial={editing === "new" ? null : editing}
-          sites={sites.data ?? []}
-          owners={owners.data ?? []}
-          isAdmin={isAdmin}
-          busy={m.busy}
-          onSubmit={save}
-        />
+      <Modal open={editing !== null} title={t("devices.editTitle")} onClose={() => setEditing(null)}>
+        {editing && (
+          <DeviceForm
+            initial={editing}
+            sites={sites.data ?? []}
+            owners={owners.data ?? []}
+            isAdmin={isAdmin}
+            busy={m.busy}
+            onSubmit={save}
+          />
+        )}
       </Modal>
       <Modal
         open={!!auditOf}
@@ -226,14 +196,12 @@ export default function DevicesPage() {
         </ul>
       </Modal>
       <Modal
-        open={!!revealed}
-        wide
-        title={revealed ? `${t("devices.credentialsTitle")} · ${revealed.info.device_id}` : ""}
-        onClose={() => setRevealed(null)}
+        open={!!reportOf}
+        wide="xl"
+        title={reportOf ? t("reports.title", { name: reportOf.name }) : ""}
+        onClose={() => setReportOf(null)}
       >
-        {revealed && (
-          <ConnectionInfoPanel info={revealed.info} apiKey={revealed.apiKey} onClose={() => setRevealed(null)} />
-        )}
+        {reportOf && <ReportDialog device={reportOf} />}
       </Modal>
     </>
   );

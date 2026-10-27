@@ -181,6 +181,8 @@ class CommandType(StrEnum):
     RESTART_CAMERA = "restart_camera"
     CAPTURE_SNAPSHOT = "capture_snapshot"
     PING = "ping"
+    # params: report_id, kind, format, filters, upload (see docs/edge-integration.md §報表)
+    GENERATE_REPORT = "generate_report"
 
 
 class Command(_Payload):

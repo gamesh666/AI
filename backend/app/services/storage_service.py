@@ -7,6 +7,7 @@ through the API servers. Browsers download with a short-lived presigned GET.
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -97,3 +98,32 @@ def presign_download(key: str | None) -> str | None:
     except Exception:
         logger.exception("failed to presign %s", key)
         return None
+
+
+def report_key(device_uuid: str, report_id: uuid.UUID) -> str:
+    return f"reports/{device_uuid}/{report_id}.pdf"
+
+
+async def put_bytes(key: str, data: bytes, content_type: str) -> None:
+    s = get_settings()
+    await asyncio.to_thread(
+        internal_client().put_object, s.minio_bucket_snapshots, key, io.BytesIO(data), len(data),
+        content_type=content_type,
+    )
+
+
+async def remove_object(key: str) -> None:
+    s = get_settings()
+    try:
+        await asyncio.to_thread(internal_client().remove_object, s.minio_bucket_snapshots, key)
+    except Exception:
+        logger.warning("could not remove %s", key)
+
+
+def presign_attachment(key: str, filename: str, expires_seconds: int = 300) -> str:
+    """Short-lived download link that saves the object as `filename`."""
+    s = get_settings()
+    return public_client().presigned_get_object(
+        s.minio_bucket_snapshots, key, expires=timedelta(seconds=expires_seconds),
+        response_headers={"response-content-disposition": f'attachment; filename="{filename}"'},
+    )

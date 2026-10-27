@@ -133,19 +133,49 @@ export interface EdgeDevice {
 }
 
 
-export interface EdgeConnectionInfo {
-  device_id: string;
-  stream_protocol: string;
-  rtsp_publish_url: string;
-  srt_publish_url: string | null;
-  snapshot_upload_url: string;
-  /** telemetry endpoints relative to the API base URL */
-  http_endpoints: Record<string, string>;
+export interface ReportOption {
+  value: string;
+  label: string;
 }
 
-export interface EdgeDeviceWithKey extends EdgeDevice {
-  api_key: string;
-  connection: EdgeConnectionInfo | null;
+/** Choices for the report dialog, as last sent by the edge (empty lists until it does). */
+export interface ReportOptions {
+  employees: { id: string; name: string; department: string | null; seat: string | null }[];
+  departments: ReportOption[];
+  seats: ReportOption[];
+  events: ReportOption[];
+  statuses: ReportOption[];
+  updated_at: string | null;
+}
+
+export type ReportPeriod = "yesterday" | "last_week" | "last_month" | "last_year" | "custom";
+
+export interface ReportFilters {
+  employee_id: string | null;
+  department: string | null;
+  seat: string | null;
+  period: ReportPeriod;
+  start_date: string;
+  end_date: string;
+  event: string | null;
+  status: string | null;
+  attendance_status: string | null;
+  vlm: string | null;
+  review: string | null;
+  face: string | null;
+}
+
+export interface DeviceReport {
+  id: UUID;
+  edge_device_id: UUID;
+  kind: string;
+  filters: ReportFilters;
+  status: "queued" | "generating" | "ready" | "failed" | "expired";
+  message: string | null;
+  filename: string;
+  size_bytes: number | null;
+  created_at: string;
+  finished_at: string | null;
 }
 
 export interface CameraRuntimeStats {

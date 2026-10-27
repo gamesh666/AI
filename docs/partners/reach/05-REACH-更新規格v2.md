@@ -3,6 +3,7 @@
 > 對象：REACH Office Vision 的平台串接模組（現有 `app/integrations/aivms_*.py`）。
 > 本文件**取代** 04 號文件，並補充 02 號規格；兩者衝突時以本文件為準。
 > 平台名稱自本版起為 **AIBOX SERVER**。REACH 定位為**自家邊緣設備**，往後所有新設備也照本規格。
+> 後續：[06 號規格](06-REACH-更新規格v3-報表與權杖.md)——平台產生報表、只用權杖上線（平台不再手動發金鑰）。
 
 ## 目錄
 
@@ -33,7 +34,7 @@
 AIBOX_ENABLED=true
 AIBOX_API_URL='http://192.168.0.179:8000/api/v1'   # 正式環境會改 https://，見第 9 節
 AIBOX_DEVICE_ID='REACH01'
-AIBOX_DEVICE_KEY='<平台提供，只顯示一次>'
+AIBOX_DEVICE_KEY='<自動綁定時由平台寫入，不需人工填>'
 AIBOX_STREAM_URL='rtsp://192.168.0.179:8554'
 AIBOX_CA_FILE=                        # 新增：自簽憑證時的 CA 檔路徑，見第 9 節
 AIBOX_PROVISIONING_TOKEN=             # MAC 自動綁定用（出廠設定），見第 4 節
@@ -46,7 +47,7 @@ AIBOX_PROVISIONING_TOKEN=             # MAC 自動綁定用（出廠設定），
 - 讀設定時先讀 `AIBOX_xxx`，沒有才讀 `AIVMS_xxx`。
 - 用到舊名時，啟動時記一行 warning：「請改用 `AIBOX_xxx`」。
 - 舊名至少支援到下一個大版本。
-- 平台「連線資訊」從現在起輸出 `AIBOX_*`，可直接貼上。
+- 平台已不再提供「連線資訊」，`AIBOX_DEVICE_KEY` 一律由自動綁定取得（06 號規格第 1 節）。
 
 以下可以不改：
 
@@ -60,7 +61,7 @@ AIBOX_PROVISIONING_TOKEN=             # MAC 自動綁定用（出廠設定），
 
 目前所有設備共用一組 MQTT 帳密，外流就能冒充任何一台設備。改用 HTTP 後：
 
-- 每台只用自己的裝置金鑰（`X-Device-Key`），外流只影響那一台，平台按「更換金鑰」即可作廢。
+- 每台只用自己的裝置金鑰（`X-Device-Key`），外流只影響那一台；用新權杖重新自動綁定，舊金鑰立即作廢。
 - REACH 不再需要 MQTT 帳密，也不用連 1883 埠。
 - 平台會直接回應錯誤原因。用 MQTT 送錯時，平台只能默默丟棄。
 

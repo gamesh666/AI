@@ -1,6 +1,7 @@
 """業主 (owners) and their provisioning tokens. Contract / contact data: operators read, admins write."""
 
 import uuid
+from datetime import timedelta
 
 from fastapi import APIRouter, status
 
@@ -42,6 +43,15 @@ async def delete_owner(owner_id: uuid.UUID, db: DBSession, _: AdminUser) -> None
 @router.get("/{owner_id}/tokens", response_model=list[ProvisioningTokenRead])
 async def list_tokens(owner_id: uuid.UUID, db: DBSession, _: AdminUser) -> list[ProvisioningTokenRead]:
     return await OwnerService(db).tokens(owner_id)
+
+
+@router.post("/{owner_id}/tokens/purge", response_model=list[ProvisioningTokenRead])
+async def purge_tokens(owner_id: uuid.UUID, db: DBSession, _: AdminUser) -> list[ProvisioningTokenRead]:
+    """Delete every revoked token of this owner now; returns the remaining ones, newest first."""
+    service = OwnerService(db)
+    await service.get(owner_id)
+    await service.purge_revoked(owner_id, older_than=timedelta(0))
+    return await service.tokens(owner_id)
 
 
 @router.post("/{owner_id}/tokens", response_model=ProvisioningTokenCreated, status_code=status.HTTP_201_CREATED)
