@@ -6,19 +6,15 @@ from app.api.deps import AdminUser, DBSession, OperatorUser, Pagination, ViewerU
 from app.core.enums import DeviceStatus, UserRole
 from app.core.exceptions import PermissionDeniedError
 from app.schemas.common import Page
-from app.schemas.edge_device import (
-    DeviceCommandRequest,
-    EdgeConnectionInfo,
-    EdgeDeviceCreate,
-    EdgeDeviceRead,
-    EdgeDeviceUpdate,
-    EdgeDeviceWithKey,
-)
+from app.schemas.edge_device import DeviceCommandRequest, EdgeDeviceRead, EdgeDeviceUpdate
 from app.schemas.owner import DeviceAuditRead
+from app.schemas.report import DeviceReportRead, ReportDownload, ReportFilters, ReportOptionsRead
 from app.services.device_service import DeviceService
 from app.services.owner_service import OwnerService
+from app.services.report_service import ReportService
 
 router = APIRouter()
+reports_router = APIRouter()
 
 
 @router.get("", response_model=Page[EdgeDeviceRead])
@@ -39,13 +35,6 @@ def _admin_fields(body, user) -> None:
         raise PermissionDeniedError(f"only administrators may change {', '.join(sorted(sensitive))}")
 
 
-@router.post("", response_model=EdgeDeviceWithKey, status_code=status.HTTP_201_CREATED)
-async def create_device(body: EdgeDeviceCreate, db: DBSession, user: OperatorUser) -> EdgeDeviceWithKey:
-    _admin_fields(body, user)
-    """Pre-provision a device. The returned `api_key` is shown ONCE, with the connection info to hand over."""
-    return await DeviceService(db).create(body)
-
-
 @router.get("/{device_id}", response_model=EdgeDeviceRead)
 async def get_device(device_id: uuid.UUID, db: DBSession, _: ViewerUser) -> EdgeDeviceRead:
     return await DeviceService(db).get_read(device_id)
@@ -61,7 +50,7 @@ async def update_device(
 
 @router.get("/{device_id}/audit", response_model=list[DeviceAuditRead])
 async def device_audit(device_id: uuid.UUID, db: DBSession, _: AdminUser) -> list[DeviceAuditRead]:
-    """Registrations, key rotations and rejected attempts (never contains a key or token)."""
+    """Registrations and rejected attempts (never contains a key or token)."""
     return await OwnerService(db).device_audit(device_id)
 
 
@@ -70,19 +59,35 @@ async def delete_device(device_id: uuid.UUID, db: DBSession, _: OperatorUser) ->
     await DeviceService(db).delete(device_id)
 
 
-@router.post("/{device_id}/rotate-key", response_model=EdgeDeviceWithKey)
-async def rotate_device_key(device_id: uuid.UUID, db: DBSession, _: AdminUser) -> EdgeDeviceWithKey:
-    return await DeviceService(db).rotate_key(device_id)
-
-
-@router.get("/{device_id}/connection", response_model=EdgeConnectionInfo)
-async def get_device_connection(device_id: uuid.UUID, db: DBSession, _: AdminUser) -> EdgeConnectionInfo:
-    """Connection info to hand over again later. The device key is never retrievable: rotate it if lost."""
-    return await DeviceService(db).connection(device_id)
-
-
 @router.post("/{device_id}/commands", status_code=status.HTTP_202_ACCEPTED)
 async def send_device_command(
     device_id: uuid.UUID, body: DeviceCommandRequest, db: DBSession, _: OperatorUser
 ) -> dict:
     return await DeviceService(db).send_command(device_id, body.command, body.params)
+
+
+# ---- 出勤事件報表 (built on the edge from its own database) -------------------------------------
+
+
+@router.get("/{device_id}/report-options", response_model=ReportOptionsRead)
+async def report_options(device_id: uuid.UUID, db: DBSession, _: AdminUser) -> ReportOptionsRead:
+    """Employees, departments, seats... as last sent by the edge."""
+    return await ReportService(db).options(await DeviceService(db).get(device_id))
+
+
+@router.get("/{device_id}/reports", response_model=list[DeviceReportRead])
+async def list_reports(device_id: uuid.UUID, db: DBSession, _: AdminUser) -> list[DeviceReportRead]:
+    return await ReportService(db).list(await DeviceService(db).get(device_id))
+
+
+@router.post("/{device_id}/reports", response_model=DeviceReportRead, status_code=status.HTTP_202_ACCEPTED)
+async def request_report(
+    device_id: uuid.UUID, body: ReportFilters, db: DBSession, user: AdminUser
+) -> DeviceReportRead:
+    """Sent to the edge with its next heartbeat; the edge uploads the PDF when done."""
+    return await ReportService(db).request(await DeviceService(db).get(device_id), body, user.id)
+
+
+@reports_router.get("/{report_id}/download", response_model=ReportDownload)
+async def download_report(report_id: uuid.UUID, db: DBSession, _: AdminUser) -> ReportDownload:
+    return await ReportService(db).download(report_id)

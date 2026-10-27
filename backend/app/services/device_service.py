@@ -13,9 +13,8 @@ from app.core.config import get_settings
 from app.core.enums import CameraStatus, DeviceStatus, StreamStatus
 from app.core.exceptions import AuthError, ConflictError, DomainError, NotFoundError, PermissionDeniedError
 from app.core.redis import get_redis
-from app.core.security import generate_opaque_token, hash_token
+from app.core.security import hash_token
 from app.models.edge_device import EdgeDevice
-from app.models.owner import EdgeDeviceAudit
 from app.realtime.broadcaster import broadcaster
 from app.realtime.messages import RealtimeEventType
 from app.repositories.camera_repository import CameraRepository
@@ -23,11 +22,8 @@ from app.repositories.device_repository import DeviceRepository
 from app.repositories.edge_log_repository import EdgeLogRepository
 from app.schemas.common import Page, PageParams
 from app.schemas.edge_device import (
-    EdgeConnectionInfo,
-    EdgeDeviceCreate,
     EdgeDeviceRead,
     EdgeDeviceUpdate,
-    EdgeDeviceWithKey,
 )
 from app.services import telemetry
 from app.services.camera_service import CameraService
@@ -56,18 +52,6 @@ def _camera_status_message(device: EdgeDevice, camera) -> dict:
     }
 
 
-
-def connection_info(device_uuid: str) -> EdgeConnectionInfo:
-    """What to hand to whoever sets up the edge (the device key is returned separately, once)."""
-    s = get_settings()
-    return EdgeConnectionInfo(
-        device_id=device_uuid,
-        stream_protocol=s.edge_stream_protocol,
-        rtsp_publish_url=s.mediamtx_rtsp_publish_url,
-        srt_publish_url=s.mediamtx_srt_publish_url,
-        snapshot_upload_url=s.minio_edge_url,
-        http_endpoints=dict(telemetry.HTTP_PATHS),
-    )
 
 
 class DeviceService:
@@ -106,25 +90,6 @@ class DeviceService:
         counts = await self.repo.camera_counts([device.id])
         return device_to_read(device, counts.get(device.id, 0))
 
-    async def create(self, data: EdgeDeviceCreate) -> EdgeDeviceWithKey:
-        api_key = generate_opaque_token()
-        values = data.model_dump()
-        values["mac_address"] = normalize_mac(values["mac_address"]) if values.get("mac_address") else None
-        device = EdgeDevice(**values, api_key_hash=hash_token(api_key), status=DeviceStatus.PENDING,
-                            registered_at=datetime.now(UTC))
-        try:
-            await self.repo.add(device)
-            await self.session.commit()
-        except IntegrityError as exc:
-            await self.session.rollback()
-            raise ConflictError("device ID or MAC address already exists") from exc
-        await self.session.refresh(device, ["site", "owner"])
-        return EdgeDeviceWithKey(
-            **device_to_read(device).model_dump(),
-            api_key=api_key,
-            connection=connection_info(device.device_uuid),
-        )
-
     async def update(self, device_id: uuid.UUID, data: EdgeDeviceUpdate) -> EdgeDeviceRead:
         device = await self.get(device_id)
         changes = data.model_dump(exclude_unset=True)
@@ -148,23 +113,6 @@ class DeviceService:
     async def delete(self, device_id: uuid.UUID) -> None:
         await self.repo.delete(await self.get(device_id))
         await self.session.commit()
-
-    async def rotate_key(self, device_id: uuid.UUID) -> EdgeDeviceWithKey:
-        device = await self.get(device_id)
-        api_key = generate_opaque_token()
-        device.api_key_hash = hash_token(api_key)
-        self.session.add(EdgeDeviceAudit(edge_device_id=device.id, device_uuid=device.device_uuid,
-                                         mac_address=device.mac_address, action="key_rotated",
-                                         detail={"by": "admin"}))
-        await self.session.commit()
-        read = await self.get_read(device_id)
-        return EdgeDeviceWithKey(
-            **read.model_dump(), api_key=api_key, connection=connection_info(device.device_uuid)
-        )
-
-    async def connection(self, device_id: uuid.UUID) -> EdgeConnectionInfo:
-        device = await self.get(device_id)
-        return connection_info(device.device_uuid)
 
     async def send_command(self, device_id: uuid.UUID, command: str, params: dict) -> dict:
         device = await self.get(device_id)

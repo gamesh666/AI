@@ -53,6 +53,9 @@ class EdgeDevice(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     provisioning_token_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("provisioning_tokens.id", ondelete="SET NULL")
     )
+    # choices for the report dialog (employees, departments, seats...), sent by the edge; NULL = never sent
+    report_options: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
+    report_options_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

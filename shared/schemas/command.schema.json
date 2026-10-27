@@ -5,7 +5,8 @@
         "reload_config",
         "restart_camera",
         "capture_snapshot",
-        "ping"
+        "ping",
+        "generate_report"
       ],
       "title": "CommandType",
       "type": "string"

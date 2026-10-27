@@ -1,4 +1,4 @@
-"""Marks devices offline when heartbeats stop.
+"""Marks devices offline when heartbeats stop, and deletes provisioning tokens revoked > 5 minutes ago.
 
 Runs in every backend replica, but a Redis lock guarantees only one replica
 does the work per interval.
@@ -13,6 +13,7 @@ from app.core.config import get_settings
 from app.core.redis import get_redis
 from app.db.session import get_session_factory
 from app.services.device_service import DeviceService
+from app.services.owner_service import OwnerService
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,11 @@ class DeviceMonitor:
             return
         async with get_session_factory()() as session:
             changed = await DeviceService(session).mark_stale_offline()
+            purged = await OwnerService(session).purge_revoked()
         if changed:
             logger.info("marked %d device(s) offline", changed)
+        if purged:
+            logger.info("deleted %d revoked provisioning token(s)", purged)
 
     async def _run(self) -> None:
         settings = get_settings()

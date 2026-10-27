@@ -2,6 +2,8 @@
 
 It does not use the platform's edge-agent. It shows the whole contract with plain JSON:
 
+  0. POST /api/v1/edge/register                 first start only: owner provisioning token + MAC -> device ID
+                                                and the device's own key, kept in EDGE_IDENTITY_FILE
   1. PUT  /api/v1/edge/cameras                 the COMPLETE camera list -> stream paths (cameras no longer
                                                 listed are disabled on the platform, not deleted)
   2. POST /api/v1/edge/heartbeat                every 10 s (device online, CPU/memory, models); the answer
@@ -12,12 +14,14 @@ It does not use the platform's edge-agent. It shows the whole contract with plai
   4. POST /api/v1/edge/logs                     whatever was recognised; same event_id again = update
      POST /api/v1/edge/snapshots/presign        optional snapshot upload (HTTP PUT to the returned URL)
 
-Everything authenticates with the device's own key (X-Device-Key).
+Everything after registration authenticates with the device's own key (X-Device-Key); nobody types a key.
+A `generate_report` command is answered with "failed": this example has no attendance data to report.
 
 Replace `fake_recognition()` and the FFmpeg test pattern with your own AI output.
 No dependencies besides the Python standard library and an ffmpeg binary for the video part.
 
-    EDGE_API_URL=http://<platform>:8000/api/v1 EDGE_DEVICE_ID=REACH01 EDGE_DEVICE_KEY=... python generic_edge.py
+    EDGE_API_URL=http://<platform>:8000/api/v1 EDGE_PROVISIONING_TOKEN=aivms_pt_... EDGE_MAC=02:00:00:00:00:01 \
+    python generic_edge.py
 """
 
 from __future__ import annotations
@@ -40,8 +44,7 @@ from urllib.parse import quote, urlsplit
 log = logging.getLogger("generic-edge")
 
 API = os.environ.get("EDGE_API_URL", "http://localhost:8000/api/v1").rstrip("/")
-DEVICE = os.environ["EDGE_DEVICE_ID"]
-KEY = os.environ["EDGE_DEVICE_KEY"]
+IDENTITY_FILE = os.environ.get("EDGE_IDENTITY_FILE", "edge-identity.json")
 # override for when the address in /edge/config is not reachable from here (e.g. inside Docker)
 RTSP_PUBLISH_URL = os.environ.get("EDGE_RTSP_PUBLISH_URL")
 CAMERAS = [c for c in os.environ.get("EDGE_CAMERAS", "cam01:Demo camera").split(",") if c]
@@ -50,6 +53,34 @@ WIDTH, HEIGHT, FPS = 1280, 720, 15
 
 def now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def register() -> tuple[str, str]:
+    """Device ID + key: from the identity file, or by registering once with the owner's provisioning token."""
+    try:
+        with open(IDENTITY_FILE) as f:
+            saved = json.load(f)
+        return saved["device_id"], saved["device_key"]
+    except FileNotFoundError:
+        pass
+    mac = os.environ["EDGE_MAC"].lower()
+    req = urllib.request.Request(
+        API + "/edge/register",
+        method="POST",
+        data=json.dumps({"device_uuid": "REACH-" + mac.replace(":", "").upper(), "mac_address": mac}).encode(),
+        headers={"X-Provisioning-Token": os.environ["EDGE_PROVISIONING_TOKEN"], "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        result = json.loads(resp.read())
+    # the key is a secret: only this device keeps it
+    fd = os.open(IDENTITY_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump({"device_id": result["device_uuid"], "device_key": result["api_key"]}, f)
+    log.info("registered as %s", result["device_uuid"])
+    return result["device_uuid"], result["api_key"]
+
+
+DEVICE, KEY = "", ""
 
 
 def api(method: str, path: str, body: dict | None = None) -> dict:
@@ -85,6 +116,9 @@ class HttpTelemetry:
             log.info("command from the platform: %s %s", cmd["command"], cmd.get("params"))
             if cmd["command"] == "reload_config":
                 self.on_config_changed()
+            elif cmd["command"] == "generate_report":
+                # a real edge builds the PDF from its database and PUTs it to params.upload.path
+                self._post(cmd["params"]["status"]["path"], {"state": "failed", "message": "no attendance data here"})
         version = ack.get("config_version")
         if version is not None and self.config_version is not None and version != self.config_version:
             self.on_config_changed()
@@ -178,7 +212,9 @@ def fake_recognition(camera: str) -> list[dict]:
 
 
 def main() -> None:
+    global DEVICE, KEY
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    DEVICE, KEY = register()
 
     # 1. sync the complete camera list -> stream paths
     listed = [{"code": c.partition(":")[0], "name": c.partition(":")[2] or c.partition(":")[0]} for c in CAMERAS]

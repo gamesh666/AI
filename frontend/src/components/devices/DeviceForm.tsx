@@ -16,7 +16,7 @@ export function DeviceForm({
   busy,
   onSubmit,
 }: {
-  initial?: EdgeDevice | null;
+  initial: EdgeDevice;
   sites: Site[];
   owners?: Owner[];
   isAdmin?: boolean;
@@ -25,35 +25,28 @@ export function DeviceForm({
 }) {
   const { t } = useI18n();
   const [v, setV] = useState<DeviceInput>({
-    device_uuid: initial?.device_uuid ?? "",
-    name: initial?.name ?? "",
-    site_id: initial?.site_id ?? "",
-    mac_address: initial?.mac_address ?? "",
-    owner_id: initial?.owner_id ?? "",
-    admin_state: initial?.admin_state ?? "active",
+    name: initial.name,
+    site_id: initial.site_id ?? "",
+    mac_address: initial.mac_address ?? "",
+    owner_id: initial.owner_id ?? "",
+    admin_state: initial.admin_state,
   });
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-        const body: DeviceInput = { device_uuid: v.device_uuid, name: v.name, site_id: v.site_id || null };
+        const body: DeviceInput = { name: v.name, site_id: v.site_id || null };
         if (isAdmin) {
-          body.mac_address = v.mac_address || (initial?.mac_address ? "" : null);
+          body.mac_address = v.mac_address || (initial.mac_address ? "" : null);
           body.owner_id = v.owner_id || null;
-          if (initial) body.admin_state = v.admin_state;
+          body.admin_state = v.admin_state;
         }
         onSubmit(body);
       }}
     >
-      <Field label={t("devices.deviceId")} hint={t("devices.deviceIdHint")}>
-        <Input
-          required
-          disabled={!!initial}
-          pattern="[A-Za-z0-9_\-]{3,64}"
-          value={v.device_uuid}
-          onChange={(e) => setV({ ...v, device_uuid: e.target.value })}
-        />
+      <Field label={t("devices.deviceId")}>
+        <Input disabled value={initial.device_uuid} />
       </Field>
       <Field label={t("common.name")}>
         <Input required value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
@@ -89,17 +82,15 @@ export function DeviceForm({
               ))}
             </Select>
           </Field>
-          {initial && (
-            <Field label={t("devices.adminState")} hint={t("devices.adminStateHint")}>
-              <Select value={v.admin_state} onChange={(e) => setV({ ...v, admin_state: e.target.value as AdminState })}>
-                {(["active", "disabled", "retired"] as const).map((s) => (
-                  <option key={s} value={s}>
-                    {t(`devices.state.${s}`)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          )}
+          <Field label={t("devices.adminState")} hint={t("devices.adminStateHint")}>
+            <Select value={v.admin_state} onChange={(e) => setV({ ...v, admin_state: e.target.value as AdminState })}>
+              {(["active", "disabled", "retired"] as const).map((s) => (
+                <option key={s} value={s}>
+                  {t(`devices.state.${s}`)}
+                </option>
+              ))}
+            </Select>
+          </Field>
         </fieldset>
       )}
       <Button type="submit" disabled={busy} className="w-full">

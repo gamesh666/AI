@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,9 @@ import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { Owner, ProvisioningTokenCreated, Site } from "@/types";
 
 const STATE_TONE = { active: "green", revoked: "gray", expired: "yellow" } as const;
+// the platform deletes a revoked token this long after it was revoked
+const REVOKED_TTL_MS = 5 * 60 * 1000;
+const POLL_MS = 30 * 1000;
 
 /** Provisioning tokens of one owner: the factory token an edge uses to register itself (shown once). */
 export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
@@ -25,6 +28,22 @@ export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
   const [copied, setCopied] = useState(false);
   const [v, setV] = useState({ label: "", site_id: "", device_prefix: "REACH", max_devices: "", expires: "" });
   const ownerSites = sites.filter((s) => s.owner_id === owner.id);
+  const list = useMemo(
+    () => [...(tokens.data ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [tokens.data],
+  );
+
+  // keep the list current: revoked tokens disappear by themselves after 5 minutes
+  useEffect(() => {
+    const id = setInterval(() => tokens.reload(), POLL_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner.id]);
+
+  const refresh = async () => {
+    const res = await m.run(() => ownersApi.purgeTokens(owner.id));
+    if (res.ok) tokens.setData(res.value);
+  };
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +74,18 @@ export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
   return (
     <div className="space-y-4 text-sm">
       <ErrorBanner error={tokens.error ?? m.error} />
-      <p className="text-xs text-muted">{t("tokens.hint")}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs text-muted">{t("tokens.hint")}</p>
+        <Button
+          variant="secondary"
+          className="shrink-0 whitespace-nowrap"
+          onClick={refresh}
+          disabled={m.busy}
+          title={t("tokens.refreshHint")}
+        >
+          {t("tokens.refresh")}
+        </Button>
+      </div>
 
       {created && (
         <div className="notice space-y-2 p-3" data-state="warn">
@@ -74,8 +104,8 @@ export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
       )}
 
       <ul className="divide-y divide-line rounded border border-line">
-        {(tokens.data ?? []).length === 0 && <li className="px-3 py-4 text-center text-muted">{t("tokens.none")}</li>}
-        {tokens.data?.map((tk) => (
+        {list.length === 0 && <li className="px-3 py-4 text-center text-muted">{t("tokens.none")}</li>}
+        {list.map((tk) => (
           <li key={tk.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -91,6 +121,10 @@ export function TokensPanel({ owner, sites }: { owner: Owner; sites: Site[] }) {
                   max: tk.max_devices ?? "∞",
                 })}
                 {tk.expires_at && ` · ${t("tokens.expires", { time: formatDateTime(tk.expires_at) })}`}
+                {tk.revoked_at &&
+                  ` · ${t("tokens.deletesAt", {
+                    time: formatDateTime(new Date(new Date(tk.revoked_at).getTime() + REVOKED_TTL_MS).toISOString()),
+                  })}`}
               </div>
             </div>
             {tk.state === "active" && (

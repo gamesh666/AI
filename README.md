@@ -38,13 +38,14 @@ cd /opt/ai-monitor
 - **總覽**：在線裝置、攝影機、今日斷線與紀錄、邊緣裝置運算狀態。
 - **即時監看**：各攝影機已畫框的即時影像（WebRTC，失敗自動改 HLS）。
 - **Edge 紀錄**：所有辨識結果與系統紀錄（斷線 / 恢復、攝影機增減），可篩選，快照可放大。
-- **業主 / 場域 / 邊緣裝置**：合約資料、佈建權杖（AI BOX 以 MAC 自動註冊）、裝置金鑰、稽核。
+- **業主 / 場域 / 邊緣裝置**：合約資料、佈建權杖（AI BOX 以 MAC 自動註冊；撤銷 5 分鐘後自動刪除）、稽核。
+- **產生報表**：在邊緣裝置頁向 AI BOX 要「出勤事件報表」PDF，資料與檔案都由 AI BOX 自己的資料庫產生。
 - **AI 模型**：各裝置回報正在使用的模型與版本。
 - 介面：繁中 / 簡中 / 英文，Claude 色調 / 科技風兩種主題，10 分鐘無操作自動登出。
 
 ## 邊緣裝置怎麼接
 
-全部是 HTTP，每台用自己的裝置金鑰（`X-Device-Key`）：
+上線只需要業主的**佈建權杖**。AI BOX 註冊時平台自動發給它自己的裝置金鑰（`X-Device-Key`），由 AI BOX 保存，人不用經手。全部是 HTTP：
 
 | 動作 | 端點 |
 |---|---|
@@ -56,7 +57,9 @@ cd /opt/ai-monitor
 | 辨識紀錄（一筆或一次 100 筆） | `POST /api/v1/edge/logs` |
 | 上線 / 離線 | `POST /api/v1/edge/status` |
 | 快照上傳網址 | `POST /api/v1/edge/snapshots/presign` |
-| 已畫框影像 | `rtsp://<裝置ID>:<金鑰>@<平台IP>:8554/<stream_path>` |
+| 報表選項（員工、部門、工位） | `PUT /api/v1/edge/report-options` |
+| 報表進度 / 上傳 PDF（心跳回應的 `generate_report`） | `POST /api/v1/edge/reports/{id}/status`、`PUT /api/v1/edge/reports/{id}/file` |
+| 已畫框影像 | `rtsp://<裝置ID>:<註冊取得的金鑰>@<平台IP>:8554/<stream_path>` |
 
 規格：[docs/edge-integration.md](docs/edge-integration.md)。可執行範例：[examples/edge-http/](examples/edge-http/)。
 REACH 專用文件：[docs/partners/reach/](docs/partners/reach/)。

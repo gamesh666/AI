@@ -12,15 +12,6 @@ from app.schemas.common import ORMModel
 DEVICE_UUID_PATTERN = r"^[A-Za-z0-9_\-]{3,64}$"
 
 
-class EdgeDeviceCreate(BaseModel):
-    device_uuid: str = Field(pattern=DEVICE_UUID_PATTERN)
-    name: str = Field(min_length=1, max_length=128)
-    site_id: uuid.UUID | None = None
-    # pre-bind a box: its auto-registration (MAC) then maps to this device instead of creating a new one
-    mac_address: str | None = Field(default=None, max_length=32)
-    owner_id: uuid.UUID | None = None
-
-
 class EdgeDeviceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     site_id: uuid.UUID | None = None
@@ -61,25 +52,6 @@ class EdgeDeviceRead(ORMModel):
     reported_models: list[dict[str, Any]] | None = None
     reported_models_at: datetime | None = None
     created_at: datetime
-
-
-class EdgeConnectionInfo(BaseModel):
-    """Everything an edge needs to connect, except the device key (shown once, separately)."""
-
-    device_id: str
-    stream_protocol: str
-    rtsp_publish_url: str
-    srt_publish_url: str | None = None
-    snapshot_upload_url: str
-    # telemetry endpoints (POST, header X-Device-Key), relative to the API base URL
-    http_endpoints: dict[str, str] = {}
-
-
-class EdgeDeviceWithKey(EdgeDeviceRead):
-    """Returned only once, when a device is created / its key is rotated."""
-
-    api_key: str
-    connection: EdgeConnectionInfo | None = None
 
 
 class DeviceCommandRequest(BaseModel):

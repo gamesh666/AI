@@ -22,6 +22,7 @@ HTTP_PATHS = {
     "status": "/edge/status",
     "camera_status": "/edge/cameras/{camera_id}/status",
     "logs": "/edge/logs",
+    "report_options": "/edge/report-options",
 }
 
 COMMAND_QUEUE_KEY = "aivms:device:{uuid}:commands"

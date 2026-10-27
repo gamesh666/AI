@@ -26,5 +26,7 @@ export const ownersApi = {
   remove: (id: string) => api.del(`/owners/${id}`),
   tokens: (id: string) => api.get<ProvisioningToken[]>(`/owners/${id}/tokens`),
   createToken: (id: string, body: TokenInput) => api.post<ProvisioningTokenCreated>(`/owners/${id}/tokens`, body),
+  /** deletes every revoked token now; returns the remaining ones, newest first */
+  purgeTokens: (id: string) => api.post<ProvisioningToken[]>(`/owners/${id}/tokens/purge`),
   revokeToken: (tokenId: string) => api.post<ProvisioningToken>(`/provisioning-tokens/${tokenId}/revoke`),
 };
